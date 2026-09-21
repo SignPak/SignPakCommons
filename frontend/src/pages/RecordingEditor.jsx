@@ -1,15 +1,130 @@
-import { useState } from 'react'
-import { Button, Eyebrow, VideoArtwork } from '../components/ui'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import TrimSlider from '../components/TrimSlider'
+import { Alert, Arrow, Button, ButtonLink, Eyebrow, PageState } from '../components/ui'
+import { useLibrary } from '../context/LibraryContext'
+import { useRecordings } from '../context/RecordingContext'
+import { formatTime } from '../utils/format'
 
-const shell = 'mx-auto w-[calc(100%-38px)] max-w-[1160px] lg:w-[calc(100%-64px)]'
+export default function RecordingEditor() {
+  const { videoId } = useParams()
+  return <EditScreen key={videoId} videoId={videoId} />
+}
 
-export default function RecordingEditor({ lesson, navigate, recordingReady, submit }) {
-  const [start, setStart] = useState(0)
-  const [end, setEnd] = useState(100)
-  const [captions, setCaptions] = useState(true)
-  const [mirrored, setMirrored] = useState(false)
+function EditScreen({ videoId }) {
+  const { publishedVideos, isDone, nextVideo, submitRecording } = useLibrary()
+  const { recordings, removeRecording, updateEdit } = useRecordings()
+  const navigate = useNavigate()
+  const video = publishedVideos.find((item) => item.id === videoId)
+  const recording = recordings[videoId]
+
+  if (!video) return <PageState eyebrow="Not found" title="That lesson isn't available." action={<ButtonLink to="/home">Back to library</ButtonLink>}>It may have been unpublished or removed.</PageState>
+
+  const next = nextVideo(video)
+  if (isDone(video.id)) return <Submitted video={video} next={next} navigate={navigate} />
+  if (!recording) return <PageState eyebrow="Nothing to edit" title="Record a take first." action={<ButtonLink to={`/lesson/${video.id}`}>Back to video</ButtonLink>}>You need a recording before you can trim it.</PageState>
+
+  return <Editor
+    video={video} recording={recording}
+    onEdit={(patch) => updateEdit(video.id, patch)}
+    onSubmit={async () => {
+      await submitRecording(video, recording) // marks the lesson done, which swaps this screen for <Submitted />
+      removeRecording(video.id)
+    }}
+  />
+}
+
+function Editor({ video, recording, onEdit, onSubmit }) {
+  const preview = useRef(null)
+  const { start, end, mirrored } = recording.edit
+  const total = recording.duration
   const [playing, setPlaying] = useState(false)
-  const canSubmit = recordingReady || true
+  const [time, setTime] = useState(start)
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
-  return <main className="pb-20"><div className={`${shell} flex gap-3 pt-10 text-xs text-[#8b867e]`}><button onClick={() => navigate('player')}>← Back to video</button><span>/</span><b className="font-normal text-[#282824]">Edit your recording</b></div><section className={`${shell} grid gap-10 pt-16 lg:grid-cols-[1.5fr_.7fr]`}><div><Eyebrow>{recordingReady ? 'Recording ready' : 'Demo recording'}</Eyebrow><h1 className="font-serif text-6xl">Make it <em className="text-[#e3533d]">yours.</em></h1><p className="mt-4 text-sm text-[#858077]">Review your recording before you send it out into the world.</p><VideoArtwork lesson={lesson} className={`mt-10 grid min-h-[300px] place-items-center sm:min-h-[400px] ${mirrored ? '-scale-x-100' : ''}`}><button aria-label={playing ? 'Pause recording preview' : 'Play recording preview'} onClick={() => setPlaying(!playing)} className="relative grid h-16 w-16 place-items-center rounded-full border border-white bg-black/20 text-white">{playing ? 'Ⅱ' : '▶'}</button><span className="absolute bottom-5 left-5 text-xs text-white">{playing ? '00:18' : '00:00'} / 00:42</span></VideoArtwork>{!recordingReady && <p className="mt-3 text-xs text-[#9b6658]">Camera access was unavailable, so this is a demo preview. You can still complete the prototype flow.</p>}</div><aside className="pt-12"><h2 className="border-b border-[#d7d0c3] pb-4 font-serif text-3xl"><span className="mr-4 text-sm text-[#e3533d]">01</span>Trim video</h2><p className="my-7 text-sm leading-6 text-[#77736c]">Choose the moment that feels right. Adjust the range, then preview the result.</p><div className="relative h-2 bg-[#e3533d]/25"><span className="absolute h-full bg-[#e3533d]" style={{ left: `${start}%`, right: `${100 - end}%` }} /><input aria-label="Trim start" type="range" min="0" max={end - 1} value={start} onChange={(event) => setStart(Number(event.target.value))} className="absolute inset-0 w-full opacity-0" /><input aria-label="Trim end" type="range" min={start + 1} max="100" value={end} onChange={(event) => setEnd(Number(event.target.value))} className="absolute inset-0 w-full opacity-0" /></div><div className="flex justify-between py-3 text-[10px] text-[#969087]"><span>{String(Math.round(start * 0.42)).padStart(2, '0')} sec</span><span>{String(Math.round(end * 0.42)).padStart(2, '0')} sec</span></div><label className="flex items-center justify-between border-t border-[#d7d0c3] py-4 text-xs"><span>Add captions</span><input type="checkbox" checked={captions} onChange={(event) => setCaptions(event.target.checked)} className="h-4 w-4 accent-[#e3533d]" /></label><label className="flex items-center justify-between border-t border-[#d7d0c3] py-4 text-xs"><span>Mirror video</span><input type="checkbox" checked={mirrored} onChange={(event) => setMirrored(event.target.checked)} className="h-4 w-4 accent-[#e3533d]" /></label><Button className="mt-6 w-full text-left" onClick={submit} disabled={!canSubmit}>Submit recording <span className="float-right">↗</span></Button><button className="mx-auto mt-5 block text-xs text-[#77736c]" onClick={() => navigate('player')}>Back to player</button></aside></section></main>
+  // MediaRecorder files often report an infinite duration until the browser has scanned them once.
+  useEffect(() => {
+    const element = preview.current
+    if (!element) return undefined
+    const fix = () => {
+      if (element.duration !== Infinity) return
+      element.currentTime = 1e101
+      element.addEventListener('timeupdate', () => { element.currentTime = start }, { once: true })
+    }
+    element.addEventListener('loadedmetadata', fix)
+    return () => element.removeEventListener('loadedmetadata', fix)
+  }, [recording.url, start])
+
+  const togglePlay = () => {
+    const element = preview.current
+    if (!element.paused) { element.pause(); return }
+    if (element.currentTime < start || element.currentTime >= end - 0.05) element.currentTime = start
+    element.play().catch(() => {})
+  }
+  const onTimeUpdate = (event) => {
+    const element = event.currentTarget
+    setTime(element.currentTime)
+    if (!element.paused && element.currentTime >= end) { element.pause(); element.currentTime = end }
+  }
+  const change = (patch) => {
+    onEdit(patch)
+    if (preview.current) preview.current.currentTime = patch.start ?? patch.end ?? 0
+  }
+  const submit = async () => {
+    setBusy(true)
+    setError('')
+    try { await onSubmit() } catch (caught) { setError(caught.message || 'Your recording could not be submitted. Try again.'); setBusy(false) }
+  }
+
+  return <main className="page">
+    <nav className="shell breadcrumb" aria-label="Breadcrumb"><Link to={`/lesson/${video.id}`}>← Back to video</Link><span>/</span><b>Edit your recording</b></nav>
+    <section className="shell editor-grid">
+      <div>
+        <Eyebrow>{video.title}</Eyebrow>
+        <h1 className="display display-xl">Make it <em>yours.</em></h1>
+        <p className="lede">Review your recording before you submit it.</p>
+        <div className="editor-stage">
+          <video ref={preview} src={recording.url} className={`editor-video ${mirrored ? 'is-mirrored' : ''}`} playsInline onClick={togglePlay}
+            onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={onTimeUpdate} aria-label="Preview of your recording" />
+          <button type="button" className="editor-play" onClick={togglePlay} aria-label={playing ? 'Pause preview' : 'Play preview'}>{playing ? 'Ⅱ' : '▶'}</button>
+          <span className="editor-time">{formatTime(Math.max(time - start, 0))} / {formatTime(end - start)}</span>
+        </div>
+      </div>
+
+      <aside className="editor-side">
+        <h2 className="editor-side-title display display-sm">Trim video</h2>
+        <p className="editor-side-copy">Drag the handles to keep only the part you want. Your preview only plays the selected range.</p>
+        <TrimSlider total={total} start={start} end={end} onChange={change} />
+        <div className="trim-times"><span>Start {formatTime(start)}</span><span>Keeping {formatTime(end - start)}</span><span>End {formatTime(end)}</span></div>
+        <label className="toggle"><span>Mirror video</span><input type="checkbox" checked={mirrored} onChange={(event) => onEdit({ mirrored: event.target.checked })} /></label>
+
+        {error && <Alert tone="error">{error}</Alert>}
+        {confirming
+          ? <div className="confirm">
+            <p>Submit this recording? Once submitted, you can't watch, edit or delete it.</p>
+            <div className="confirm-actions"><Button onClick={submit} disabled={busy}>{busy ? 'Submitting…' : 'Yes, submit'}</Button><Button variant="outline" onClick={() => setConfirming(false)} disabled={busy}>Keep editing</Button></div>
+          </div>
+          : <Button block className="editor-submit" onClick={() => setConfirming(true)}>Submit recording <Arrow /></Button>}
+        <Link to={`/lesson/${video.id}`} className="editor-back">Back to player</Link>
+      </aside>
+    </section>
+  </main>
+}
+
+function Submitted({ video, next, navigate }) {
+  return <main className="page">
+    <section className="shell submitted">
+      <span className="submitted-check" aria-hidden="true">✓</span>
+      <Eyebrow>{video.title}</Eyebrow>
+      <h1 className="display display-xl">Recording <em>submitted.</em></h1>
+      <p className="lede">This lesson is marked done on your profile. Submitted recordings are locked, so they can't be watched, edited or deleted.</p>
+      <div className="submitted-actions">
+        <Button onClick={() => navigate(next ? `/lesson/${next.id}` : `/library/${video.categoryId}`)}>{next ? 'Next video' : 'Back to lessons'} →</Button>
+        <ButtonLink variant="outline" to={`/lesson/${video.id}`}>Back to video</ButtonLink>
+        <ButtonLink variant="ghost" to="/profile">View progress ↗</ButtonLink>
+      </div>
+    </section>
+  </main>
 }

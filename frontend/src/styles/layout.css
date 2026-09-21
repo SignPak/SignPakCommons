@@ -1,0 +1,39 @@
+/* Page frame: shell width, header, footer and generic page states. */
+@layer components {
+  .app { @apply min-h-screen overflow-x-clip; }
+  .shell { @apply mx-auto w-[calc(100%-38px)] max-w-[1160px] lg:w-[calc(100%-64px)]; }
+  .page { @apply pb-24; }
+  .boot { @apply grid min-h-screen place-items-center bg-cream text-sm text-muted; }
+  .hide-on-mobile { @apply hidden sm:inline-flex; }
+  .breadcrumb { @apply flex items-center gap-3 pt-10 text-xs text-faint; }
+  .breadcrumb b { @apply font-normal text-ink; }
+  .breadcrumb a:hover { @apply text-coral-deep; }
+
+  .page-state { @apply py-24; }
+  .page-state-copy { @apply mb-8 mt-4 max-w-md text-sm leading-6 text-muted; }
+
+  /* Header */
+  .site-header { @apply relative z-10; }
+  .site-header-bar { @apply mx-auto flex h-[86px] w-[calc(100%-38px)] max-w-[1280px] items-center justify-between lg:w-[calc(100%-64px)]; }
+  .site-nav { @apply hidden items-center gap-8 text-xs text-muted md:flex; }
+  .site-nav a:hover { @apply text-coral-deep; }
+  .site-actions { @apply flex items-center gap-2; }
+  .menu-toggle { @apply grid h-10 w-10 place-items-center text-xl md:hidden; }
+  .mobile-nav { @apply mx-auto mb-4 grid w-[calc(100%-38px)] gap-1 border border-line bg-paper p-3 text-sm md:hidden; }
+  .mobile-nav a, .mobile-nav button { @apply px-3 py-3 text-left hover:text-coral-deep; }
+
+  /* Footer */
+  .site-footer { @apply bg-ink text-cream; }
+  .site-footer-grid { @apply grid grid-cols-1 gap-12 py-16 md:grid-cols-[1.2fr_.8fr_.8fr]; }
+  .site-footer-copy { @apply mt-5 max-w-xs text-sm leading-6 text-line; }
+  .footer-title { @apply mb-5 text-[10px] font-bold uppercase tracking-[.2em] text-peach; }
+  .footer-links { @apply grid gap-3 text-sm text-line; }
+  .footer-links a:hover { @apply text-white; }
+  .site-footer-base { @apply flex flex-col justify-between gap-3 border-t border-white/15 py-5 text-[10px] text-faint sm:flex-row; }
+}
+
+/* Grid children may shrink below their content width, so wide media never pushes the page sideways on phones. */
+@layer components {
+  .hero > *, .landing-about > *, .contact > *, .demo-grid > *, .auth > *, .profile-grid > *, .player-grid > *,
+  .editor-grid > *, .admin-split > *, .upload > *, .video-row-edit > *, .category-edit > * { min-width: 0; }
+}

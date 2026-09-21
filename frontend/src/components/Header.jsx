@@ -1,9 +1,33 @@
-import { Brand, Button } from './ui'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { Arrow, Brand, Button, ButtonLink } from './ui'
 
-export default function Header({ navigate, onAuth, sessionActive }) {
-  return <header className="relative z-10 mx-auto flex h-[86px] w-[calc(100%-38px)] max-w-[1280px] items-center justify-between lg:w-[calc(100%-64px)]">
-    <Brand onClick={() => navigate('landing')} />
-    <nav className="hidden items-center gap-8 text-xs text-[#6d6a63] md:flex"><button onClick={() => navigate(sessionActive ? 'home' : 'demo')}>{sessionActive ? 'Library' : 'How it works'}</button><button onClick={() => navigate('landing')}>About</button><button onClick={() => navigate('contact')}>Contact</button></nav>
-    <div className="flex items-center gap-3">{sessionActive ? <><Button variant="ghost" className="hidden sm:block" onClick={() => navigate('profile')}>My space</Button><Button onClick={() => navigate('home')}>Open library <span className="ml-3 text-base">↗</span></Button></> : <><Button variant="ghost" className="hidden sm:block" onClick={() => onAuth('login')}>Log in</Button><Button onClick={() => onAuth('signup')}>Get started <span className="ml-3 text-base">↗</span></Button></>}<button className="text-xl md:hidden" onClick={() => navigate(sessionActive ? 'home' : 'demo')} aria-label={sessionActive ? 'Open library' : 'See how Signpak works'}>☰</button></div>
+const publicLinks = [['How it works', '/demo'], ['About', '/#about'], ['Policy', '/#policy'], ['Contact', '/#contact']]
+const memberLinks = [['Library', '/home'], ['My space', '/profile']]
+
+export default function Header() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const links = user ? memberLinks : publicLinks
+  const close = () => setOpen(false)
+  const handleLogout = async () => { close(); await logout(); navigate('/') }
+
+  return <header className="site-header">
+    <div className="site-header-bar">
+      <Brand />
+      <nav className="site-nav" aria-label="Main">{links.map(([label, to]) => <Link key={to} to={to}>{label}</Link>)}</nav>
+      <div className="site-actions">
+        {user
+          ? <><Button variant="ghost" className="hide-on-mobile" onClick={handleLogout}>Log out</Button><ButtonLink to="/home">Open library <Arrow /></ButtonLink></>
+          : <><ButtonLink variant="ghost" to="/login" className="hide-on-mobile">Log in</ButtonLink><ButtonLink to="/signup">Get started <Arrow /></ButtonLink></>}
+        <button type="button" className="menu-toggle" aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen(!open)}>{open ? '✕' : '☰'}</button>
+      </div>
+    </div>
+    {open && <nav id="mobile-nav" className="mobile-nav" aria-label="Mobile">
+      {links.map(([label, to]) => <Link key={to} to={to} onClick={close}>{label}</Link>)}
+      {user ? <button type="button" onClick={handleLogout}>Log out</button> : <Link to="/login" onClick={close}>Log in</Link>}
+    </nav>}
   </header>
 }

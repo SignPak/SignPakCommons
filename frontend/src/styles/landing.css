@@ -1,0 +1,53 @@
+/* Landing page and demo page. */
+@layer components {
+  .hero { @apply grid grid-cols-1 min-h-[620px] items-center gap-10 py-12 lg:grid-cols-2 lg:py-0; }
+  .hero-copy { @apply mt-7 max-w-sm text-sm leading-7 text-muted; }
+  .hero-actions { @apply mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center; }
+  .hero-proof { @apply mt-6 text-xs text-faint; }
+  .hero-art { @apply relative h-[460px] sm:h-[560px]; }
+  .hero-photo { @apply absolute inset-6 bg-clay bg-cover bg-center mix-blend-multiply saturate-75; background-image: url('https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1000&q=85'); }
+  .hero-quote { @apply absolute bottom-10 left-0 m-0 bg-cream p-5 font-serif text-lg italic; box-shadow: 8px 8px 0 var(--color-coral); }
+  .hero-quote small { @apply mt-2 block font-sans text-[10px] not-italic text-faint; }
+
+  .marquee { @apply overflow-hidden whitespace-nowrap bg-coral-deep py-4 text-center text-[10px] font-bold tracking-[.3em] text-white; }
+
+  .landing-section { @apply py-24; }
+  .landing-about { @apply grid grid-cols-1 gap-8 md:grid-cols-2; }
+  .about-body { @apply max-w-md space-y-4 text-sm leading-7 text-muted; }
+  .stats { @apply mt-10 grid grid-cols-3 border-t border-line pt-5; }
+  .stats div { @apply flex flex-col-reverse; }
+  .stats dd { @apply m-0 font-serif text-3xl text-ink; }
+  .stats dt { @apply text-[10px] text-faint; }
+
+  .landing-band { @apply bg-paper; }
+  .policy-grid { @apply mt-12 grid grid-cols-1 gap-8 md:grid-cols-3; }
+  .policy-card { @apply border-t-2 border-coral pt-5; }
+  .policy-card p { @apply mt-4 text-sm leading-7 text-muted; }
+
+  .contact { @apply grid grid-cols-1 gap-12 lg:grid-cols-[.9fr_1.1fr]; }
+  .contact-copy { @apply my-7 max-w-sm text-sm leading-7 text-muted; }
+  .contact-card { @apply bg-paper p-6 sm:p-10; }
+  .contact-card > .btn-block { @apply mt-8; }
+  .contact-done { @apply grid min-h-[380px] place-content-center justify-items-center text-center; }
+  .contact-done p { @apply mx-auto mb-6 mt-3 max-w-xs text-sm leading-6 text-muted; }
+  .contact-check { @apply mb-6 grid h-14 w-14 place-items-center rounded-full bg-sage text-xl text-sage-ink; }
+
+  .cta-band { @apply grid grid-cols-1 bg-forest text-cream md:grid-cols-2; }
+  .cta-band .display { @apply text-cream; }
+  .cta-band .display em { @apply text-peach; }
+  .cta-band-copy { @apply py-20; padding-inline: max(19px, calc((100vw - 1160px) / 2)); }
+  .cta-band-copy .btn { @apply mt-8; }
+  .cta-band-art { @apply min-h-[280px] bg-cover bg-center saturate-50; background-image: url('https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=900&q=85'); }
+
+  /* Demo */
+  .demo { @apply min-h-[calc(100vh-86px)] bg-clay pb-16; }
+  .demo-top { @apply flex items-center justify-between pt-6; }
+  .demo-grid { @apply grid grid-cols-1 items-center gap-10 py-14 lg:grid-cols-[.8fr_1.2fr]; }
+  .demo-steps { @apply my-8 grid max-w-sm list-none gap-4 p-0 [counter-reset:step]; }
+  .demo-steps li { @apply grid grid-cols-[2rem_1fr] gap-x-3 text-sm leading-6 text-ink/80 [counter-increment:step]; }
+  .demo-steps li::before { @apply row-span-2 font-serif text-2xl leading-none text-coral-deep; content: counter(step); }
+  .demo-steps b { @apply font-serif text-lg font-normal text-ink; }
+  .demo-video { @apply m-0 bg-ink p-3; }
+  .demo-video video { @apply block aspect-video w-full bg-black; }
+  .demo-video figcaption { @apply pt-3 text-[11px] text-line; }
+}
