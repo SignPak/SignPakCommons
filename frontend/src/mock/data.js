@@ -1,29 +1,58 @@
-export const mockUser = {
-  firstName: 'Maya',
-  surname: 'Rivera',
-  initials: 'MR',
-  joined: 'September 2026',
+// Seed data used by services/api.js the first time the app runs in a browser.
+// Once the Express/MongoDB backend exists, this file can be deleted.
+
+// Public CC0 clip from MDN, used as a stand-in for every base video.
+export const SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
+// Replace with your own file, e.g. '/demo/how-it-works.mp4' placed in frontend/public/demo/
+export const DEMO_VIDEO = SAMPLE_VIDEO
+
+export const LEVELS = ['Beginner', 'Practice', 'Intermediate', 'Advanced']
+export const TONES = ['yellow', 'blue', 'red', 'green']
+
+export const DEMO_ADMIN = { email: 'admin@signpak.dev', password: 'Admin@123' }
+
+const day = 24 * 60 * 60 * 1000
+const now = Date.now()
+
+export const seedUsers = [
+  { id: 'user_admin', email: DEMO_ADMIN.email, password: DEMO_ADMIN.password, firstName: 'Admin', surname: 'Signpak', role: 'admin', createdAt: now - 60 * day, connections: {} },
+  { id: 'user_maya', email: 'maya@example.com', password: 'Learner@123', firstName: 'Maya', surname: 'Rivera', role: 'user', createdAt: now - 40 * day, connections: {} },
+  { id: 'user_omar', email: 'omar@example.com', password: 'Learner@123', firstName: 'Omar', surname: 'Khan', role: 'user', createdAt: now - 25 * day, connections: {} },
+  { id: 'user_ayesha', email: 'ayesha@example.com', password: 'Learner@123', firstName: 'Ayesha', surname: 'Malik', role: 'user', createdAt: now - 12 * day, connections: {} },
+]
+
+export const seedCategories = [
+  { id: 'daily', label: 'Daily phrases', tone: 'yellow', copy: 'Build a confident vocabulary for the moments that make up your day.' },
+  { id: 'work', label: 'Work & career', tone: 'blue', copy: 'Make meetings, introductions and collaboration feel more natural.' },
+  { id: 'travel', label: 'Travel', tone: 'red', copy: 'Move through new places with a few thoughtful phrases in your pocket.' },
+  { id: 'stories', label: 'Stories & culture', tone: 'green', copy: 'Explore expression, storytelling and the texture of signed language.' },
+]
+
+const poster = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=85`
+const video = (id, order, title, level, durationSec, categoryId, image) => ({
+  id: `video_${id}`, title, level, durationSec, categoryId, order,
+  poster: poster(image), videoUrl: SAMPLE_VIDEO, status: 'published', createdAt: now - (30 - id) * day,
+})
+
+export const seedVideos = [
+  video(1, 1, 'Nice to meet you', 'Beginner', 134, 'daily', 'photo-1551836022-d5d88e9218df'),
+  video(2, 2, 'A warm introduction', 'Beginner', 188, 'daily', 'photo-1521737711867-e3b97375f902'),
+  video(3, 3, 'Where are you from?', 'Practice', 102, 'daily', 'photo-1529156069898-49953e39b3ac'),
+  video(4, 1, 'The team check-in', 'Practice', 260, 'work', 'photo-1556761175-b413da4baf72'),
+  video(5, 2, 'Could you show me?', 'Intermediate', 171, 'work', 'photo-1543269865-cbf427effbad'),
+  video(6, 1, 'Finding your way', 'Beginner', 212, 'travel', 'photo-1530789253388-582c481c54b0'),
+  video(7, 1, 'A story in motion', 'Advanced', 310, 'stories', 'photo-1531058020387-3be344556be6'),
+]
+
+// A few past submissions from the demo learners so the admin dashboard has something to chart.
+export function buildSeedSubmissions() {
+  const plan = [
+    ['user_maya', 'video_1', 13], ['user_maya', 'video_2', 11], ['user_maya', 'video_3', 8], ['user_maya', 'video_4', 6],
+    ['user_omar', 'video_1', 12], ['user_omar', 'video_6', 9], ['user_omar', 'video_2', 9], ['user_omar', 'video_5', 5], ['user_omar', 'video_7', 2],
+    ['user_ayesha', 'video_1', 7], ['user_ayesha', 'video_3', 5], ['user_ayesha', 'video_4', 4], ['user_ayesha', 'video_6', 3], ['user_ayesha', 'video_2', 1],
+  ]
+  return plan.map(([userId, videoId, daysAgo], index) => ({
+    id: `sub_seed_${index}`, userId, videoId, submittedAt: now - daysAgo * day - index * 3600000,
+    trimStart: 0, trimEnd: 12, mirrored: false, duration: 12, size: 1_200_000 + index * 40_000, mimeType: 'video/webm',
+  }))
 }
-
-export const mockCategories = [
-  { id: 'daily', label: 'Daily phrases', count: '24 lessons', tone: 'yellow', copy: 'Build a confident vocabulary for the moments that make up your day.' },
-  { id: 'work', label: 'Work & career', count: '18 lessons', tone: 'blue', copy: 'Make meetings, introductions and collaboration feel more natural.' },
-  { id: 'travel', label: 'Travel', count: '12 lessons', tone: 'red', copy: 'Move through new places with a few thoughtful phrases in your pocket.' },
-  { id: 'stories', label: 'Stories & culture', count: '16 lessons', tone: 'green', copy: 'Explore expression, storytelling and the texture of signed language.' },
-]
-
-export const mockLessons = [
-  { id: 1, title: 'Nice to meet you', level: 'Beginner', duration: '02:14', category: 'daily', image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85' },
-  { id: 2, title: 'A warm introduction', level: 'Beginner', duration: '03:08', category: 'daily', image: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=85' },
-  { id: 3, title: 'Where are you from?', level: 'Practice', duration: '01:42', category: 'daily', image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=85' },
-  { id: 4, title: 'The team check-in', level: 'Practice', duration: '04:20', category: 'work', image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=85' },
-  { id: 5, title: 'Could you show me?', level: 'Intermediate', duration: '02:51', category: 'work', image: 'https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=900&q=85' },
-  { id: 6, title: 'Finding your way', level: 'Beginner', duration: '03:32', category: 'travel', image: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?auto=format&fit=crop&w=900&q=85' },
-  { id: 7, title: 'A story in motion', level: 'Advanced', duration: '05:10', category: 'stories', image: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?auto=format&fit=crop&w=900&q=85' },
-]
-
-export const mockAdminStats = [
-  ['Total learners', '2,481', '+12.4% this month'],
-  ['Lessons watched', '18,392', '+8.2% this month'],
-  ['Recordings shared', '6,204', '+21.6% this month'],
-]

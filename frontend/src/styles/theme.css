@@ -1,0 +1,32 @@
+/* Design tokens. Every colour and font used in the app comes from here. */
+@theme {
+  --font-sans: 'Trebuchet MS', 'Avenir Next', sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+
+  --color-ink: #282824;
+  --color-cream: #f6f2e9;
+  --color-paper: #fbf9f4;
+  --color-line: #d7d0c3;
+  --color-muted: #6b675f;
+  --color-faint: #857f75;
+
+  --color-coral: #e3533d;
+  --color-coral-deep: #c2402c;
+  --color-peach: #f0b59f;
+  --color-forest: #2d473d;
+
+  --color-sun: #f1d67d;
+  --color-sky: #b8d0d5;
+  --color-clay: #e9a28c;
+  --color-sage: #b9cdbd;
+  --color-sage-ink: #37563d;
+  --color-sand: #e9c7a2;
+  --color-sand-ink: #865a43;
+  --color-leaf: #4f7d5c;
+}
+
+@theme {
+  --color-mint: #e5efe5;
+  --color-blush: #fbe9e5;
+  --color-ash: #ded8ce;
+}

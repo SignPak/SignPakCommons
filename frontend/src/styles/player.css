@@ -1,0 +1,70 @@
+/* Lesson player, recorder and recording editor. */
+@layer components {
+  .player-top { @apply flex justify-between py-8 text-xs text-faint; }
+  .player-top a:hover { @apply text-coral-deep; }
+  .player-grid { @apply grid grid-cols-1 gap-10 lg:grid-cols-[1.6fr_.7fr]; }
+  .player-meta { @apply flex flex-col justify-between gap-5 py-6 sm:flex-row sm:items-end; }
+  .player-side { @apply pt-2 lg:pt-5; }
+
+  /* Base video */
+  .base-player-stage { @apply relative grid min-h-[280px] place-items-center bg-ink sm:min-h-[440px]; }
+  .base-player-video { @apply absolute inset-0 h-full w-full cursor-pointer bg-black object-contain; }
+  .base-player-big { @apply relative grid h-20 w-20 place-items-center rounded-full border border-white/70 bg-black/30 text-xl text-white backdrop-blur-sm hover:bg-coral-deep; }
+  .base-player-error { @apply relative max-w-xs px-6 text-center text-sm text-white; }
+  .base-player-controls { @apply flex items-center gap-3 bg-ink px-4 py-3 text-white sm:gap-4 sm:px-5; }
+  .base-player-controls button { @apply grid h-9 min-w-9 place-items-center px-1 text-sm hover:text-peach; }
+  .base-player-seek { @apply h-1 min-w-0 flex-1 cursor-pointer appearance-none bg-white/25 accent-coral; }
+  .base-player-time { @apply whitespace-nowrap text-[11px] tabular-nums text-line; }
+
+  /* Recorder */
+  .recorder-status { @apply text-[10px] uppercase tracking-widest text-muted; }
+  .recorder-status span { @apply text-coral-deep; }
+  .recorder-status.is-live { @apply text-coral-deep; }
+  .recorder-status.is-live span { @apply animate-pulse; }
+  .recorder .display { @apply mt-6; }
+  .recorder-copy { @apply mt-5 max-w-xs text-sm leading-6 text-muted; }
+  .recorder-stage { @apply relative my-6 grid aspect-video place-items-center overflow-hidden bg-ash text-xs text-faint; }
+  .recorder-video { @apply absolute inset-0 h-full w-full -scale-x-100 bg-black object-cover; }
+  .recorder-video[controls] { @apply scale-x-100 object-contain; }
+  .recorder-video.is-hidden { @apply hidden; }
+  .recorder-empty { @apply px-4 text-center; }
+  .rec-dot { @apply mr-1 text-coral-deep; }
+  .recorder-delete { @apply mx-auto my-4 block text-xs text-muted underline-offset-4 hover:text-coral-deep hover:underline; }
+  .recorder-save { @apply mt-2; }
+  .locked .display { @apply mt-6; }
+  .locked .btn-block { @apply mt-6; }
+  .locked-secondary { @apply mt-3; }
+
+  /* Editor */
+  .editor-grid { @apply grid grid-cols-1 gap-10 pt-14 lg:grid-cols-[1.5fr_.7fr]; }
+  .editor-stage { @apply relative mt-10 grid min-h-[300px] place-items-center overflow-hidden bg-ink sm:min-h-[420px]; }
+  .editor-video { @apply absolute inset-0 h-full w-full cursor-pointer bg-black object-contain; }
+  .editor-video.is-mirrored { @apply -scale-x-100; }
+  .editor-play { @apply relative grid h-16 w-16 place-items-center rounded-full border border-white bg-black/30 text-white backdrop-blur-sm hover:bg-coral-deep; }
+  .editor-time { @apply absolute bottom-4 left-4 text-xs tabular-nums text-white; }
+  .editor-side { @apply pt-2 lg:pt-12; }
+  .editor-side-title { @apply border-b border-line pb-4; }
+  .editor-side-copy { @apply my-6 text-sm leading-6 text-muted; }
+  .trim-times { @apply flex justify-between gap-2 py-3 text-[11px] tabular-nums text-faint; }
+  .toggle { @apply flex cursor-pointer items-center justify-between border-t border-line py-4 text-xs; }
+  .toggle input { @apply h-4 w-4 accent-coral; }
+  .editor-submit { @apply mt-6; }
+  .editor-back { @apply mx-auto mt-5 block text-center text-xs text-muted hover:text-coral-deep; }
+
+  /* Two overlapping range inputs form the dual-handle trim slider. Only the thumbs take pointer events. */
+  .trim { @apply relative h-8; }
+  .trim-track { @apply absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 bg-coral/25; }
+  .trim-fill { @apply absolute h-full bg-coral; }
+  .trim input { @apply pointer-events-none absolute inset-0 m-0 h-8 w-full appearance-none bg-transparent; }
+  .trim input::-webkit-slider-runnable-track { background: transparent; }
+  .trim input::-moz-range-track { background: transparent; }
+  .trim input::-webkit-slider-thumb { @apply pointer-events-auto h-6 w-3 cursor-ew-resize appearance-none border-2 border-cream bg-coral-deep; }
+  .trim input::-moz-range-thumb { @apply pointer-events-auto h-6 w-3 cursor-ew-resize rounded-none border-2 border-cream bg-coral-deep; }
+  .trim input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+  .trim input:focus-visible::-moz-range-thumb { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+
+  /* After submitting */
+  .submitted { @apply py-24; }
+  .submitted-check { @apply mb-6 grid h-14 w-14 place-items-center rounded-full bg-sage text-xl text-sage-ink; }
+  .submitted-actions { @apply mt-10 flex flex-wrap items-center gap-3; }
+}

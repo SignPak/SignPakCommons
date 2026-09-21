@@ -1,0 +1,36 @@
+/* Home and category browser. */
+@layer components {
+  .home-head { @apply flex flex-col justify-between gap-8 py-14 sm:flex-row sm:items-end; }
+  .continue { @apply flex items-center justify-between gap-6 bg-sand p-8 sm:p-14; }
+  .continue-meta { @apply mt-2 text-xs text-sand-ink; }
+  .continue-progress { @apply mt-6 grid w-56 max-w-full gap-2 text-[11px] text-sand-ink; }
+  .continue-progress .progress { @apply bg-white/50; }
+  .continue-play { @apply grid h-16 w-16 shrink-0 place-items-center rounded-full bg-coral-deep text-white transition-transform hover:scale-105; }
+  .home-library { @apply pt-24; }
+
+  .category-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4; }
+  .category-tile { @apply relative flex min-h-[245px] flex-col justify-between p-6 text-left transition-transform hover:-translate-y-1; }
+  .category-tile-index { @apply font-serif; }
+  .category-tile-arrow { @apply absolute right-5 top-5 text-xl; }
+  .category-tile p { @apply mt-2 text-xs leading-5 text-ink/70; }
+  .category-tile small { @apply text-[11px] text-ink/70; }
+
+  .category-head { @apply flex flex-col justify-between gap-8 border-b border-line py-16 sm:flex-row sm:items-end; }
+  .category-copy { @apply max-w-xs text-sm leading-6 text-muted; }
+  .category-body { @apply pt-16; }
+  .filters { @apply flex flex-wrap justify-end gap-2 text-xs; }
+  .filters select { @apply cursor-pointer border-0 border-b border-line bg-transparent px-1 py-2 outline-none focus:border-coral; }
+  .search { @apply mb-10 block max-w-sm text-xs text-muted; }
+  .search input { @apply mt-2 block w-full border-0 border-b border-line bg-transparent py-3 text-sm text-ink outline-none focus:border-coral; }
+
+  .lesson-grid { @apply grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3; }
+  .lesson-card { @apply block text-left; }
+  .lesson-card-art { @apply h-64; }
+  .lesson-card-index { @apply absolute left-4 top-4 text-xs text-white; }
+  .lesson-card-done { @apply absolute right-4 top-4; }
+  .lesson-card-play { @apply absolute bottom-4 right-4 grid h-10 w-10 place-items-center rounded-full bg-cream text-xs not-italic text-coral-deep transition-transform; }
+  .lesson-card:hover .lesson-card-play { @apply scale-110; }
+  .lesson-card-meta { @apply mt-4 text-[10px] uppercase tracking-widest text-faint; }
+  .lesson-card h3 { @apply mt-2; }
+  .lesson-card-cta { @apply mt-3 block text-xs text-coral-deep; }
+}

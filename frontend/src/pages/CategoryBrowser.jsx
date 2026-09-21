@@ -1,17 +1,67 @@
-import { useState } from 'react'
-import { Eyebrow, SectionHeading, VideoArtwork } from '../components/ui'
-import { mockCategories, mockLessons } from '../mock/data'
+import { useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { Badge, ButtonLink, Eyebrow, PageState, SectionHeading, VideoArtwork } from '../components/ui'
+import { useLibrary } from '../context/LibraryContext'
+import { formatTime } from '../utils/format'
 
-const tones = { yellow: 'bg-[#f1d67d]', blue: 'bg-[#b8d0d5]', red: 'bg-[#e9a28c]', green: 'bg-[#b9cdbd]' }
-const shell = 'mx-auto w-[calc(100%-38px)] max-w-[1160px] lg:w-[calc(100%-64px)]'
+const SORTS = {
+  path: { label: 'Path order', compare: (a, b) => (a.order || 0) - (b.order || 0) },
+  newest: { label: 'Newest first', compare: (a, b) => b.createdAt - a.createdAt },
+  shortest: { label: 'Shortest first', compare: (a, b) => a.durationSec - b.durationSec },
+}
 
-export default function CategoryBrowser({ categoryId, navigate, openLesson }) {
-  const category = mockCategories.find((item) => item.id === categoryId) || mockCategories[0]
+export default function CategoryBrowser() {
+  const { categoryId } = useParams()
+  const { categories, videosIn, isDone } = useLibrary()
   const [query, setQuery] = useState('')
   const [level, setLevel] = useState('All levels')
-  const [sort, setSort] = useState('Newest first')
-  const lessons = mockLessons.filter((lesson) => lesson.category === category.id).filter((lesson) => level === 'All levels' || lesson.level === level).filter((lesson) => lesson.title.toLowerCase().includes(query.toLowerCase())).sort((first, second) => sort === 'Shortest first' ? first.duration.localeCompare(second.duration) : second.id - first.id)
-  const levels = ['All levels', ...new Set(mockLessons.filter((lesson) => lesson.category === category.id).map((lesson) => lesson.level))]
+  const [sort, setSort] = useState('path')
 
-  return <main className="pb-20"><div className={`${shell} flex gap-3 pt-10 text-xs text-[#8b867e]`}><button onClick={() => navigate('home')}>Library</button><span>/</span><b className="font-normal text-[#282824]">{category.label}</b></div><section className={`${shell} flex flex-col justify-between gap-8 border-b border-[#ded8cd] py-16 sm:flex-row sm:items-end`}><div><Eyebrow>Learning path · {category.count}</Eyebrow><h1 className="font-serif text-6xl leading-none">{category.label}<br /><em className="text-[#e3533d]">starts here.</em></h1></div><p className="max-w-xs text-sm leading-6 text-[#77736c]">{category.copy}</p></section><section className={`${shell} pt-16`}><SectionHeading eyebrow={`${lessons.length} lessons`} title="Pick a lesson." action={<div className="flex flex-wrap justify-end gap-2 text-xs"><select value={sort} onChange={(event) => setSort(event.target.value)} className="border-b border-[#d7d0c3] bg-transparent px-1 py-2 outline-none"><option>Newest first</option><option>Shortest first</option></select><select value={level} onChange={(event) => setLevel(event.target.value)} className="border-b border-[#d7d0c3] bg-transparent px-1 py-2 outline-none">{levels.map((item) => <option key={item}>{item}</option>)}</select></div>} /><label className="mb-8 block max-w-sm text-xs text-[#77736c]">Search lessons<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try 'introduction'" className="mt-2 block w-full border-b border-[#d7d0c3] bg-transparent py-3 outline-none focus:border-[#e3533d]" /></label>{lessons.length ? <div className="grid gap-8 md:grid-cols-3">{lessons.map((lesson, index) => <button key={lesson.id} className="text-left" onClick={() => openLesson(lesson)}><VideoArtwork lesson={lesson} className={`h-64 ${tones[category.tone]}`}><span className="absolute left-4 top-4 text-xs text-white">{String(index + 1).padStart(2, '0')}</span><i className="absolute bottom-4 right-4 grid h-10 w-10 place-items-center rounded-full bg-[#f6f2e9] text-xs not-italic text-[#e3533d]">▶</i></VideoArtwork><p className="mt-4 text-[10px] uppercase tracking-widest text-[#908b81]">{lesson.level} · {lesson.duration}</p><h3 className="mt-2 font-serif text-2xl">{lesson.title}</h3><span className="mt-3 block text-xs text-[#e3533d]">Open lesson ↗</span></button>)}</div> : <div className="border-t border-[#d7d0c3] py-12 text-sm text-[#77736c]">No lessons match those filters. <button className="text-[#e3533d]" onClick={() => { setQuery(''); setLevel('All levels') }}>Clear filters</button></div>}</section></main>
+  const category = categories.find((item) => item.id === categoryId)
+  const all = useMemo(() => (category ? videosIn(category.id) : []), [category, videosIn])
+  const levels = ['All levels', ...new Set(all.map((item) => item.level))]
+  const lessons = all
+    .filter((item) => level === 'All levels' || item.level === level)
+    .filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase()))
+    .sort(SORTS[sort].compare)
+
+  if (!category) {
+    return <PageState eyebrow="Not found" title="We couldn't find that path." action={<ButtonLink to="/home">Back to library</ButtonLink>}>It may have been renamed or removed.</PageState>
+  }
+
+  return <main className="page">
+    <nav className="shell breadcrumb" aria-label="Breadcrumb"><Link to="/home">Library</Link><span>/</span><b>{category.label}</b></nav>
+    <section className="shell category-head">
+      <div><Eyebrow>Learning path · {all.length} {all.length === 1 ? 'lesson' : 'lessons'}</Eyebrow><h1 className="display display-xl">{category.label}<br /><em>starts here.</em></h1></div>
+      <p className="category-copy">{category.copy}</p>
+    </section>
+
+    <section className="shell category-body">
+      <SectionHeading eyebrow={`${lessons.length} showing`} title="Pick a lesson." action={
+        <div className="filters">
+          <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort lessons">{Object.entries(SORTS).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select>
+          <select value={level} onChange={(event) => setLevel(event.target.value)} aria-label="Filter by level">{levels.map((item) => <option key={item}>{item}</option>)}</select>
+        </div>
+      } />
+      <label className="search"><span>Search lessons</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try “introduction”" /></label>
+
+      {lessons.length
+        ? <div className="lesson-grid">
+          {lessons.map((lesson) => {
+            const done = isDone(lesson.id)
+            return <Link key={lesson.id} to={`/lesson/${lesson.id}`} className="lesson-card">
+              <VideoArtwork video={lesson} className={`lesson-card-art tone-${category.tone}`}>
+                <span className="lesson-card-index">{String(all.indexOf(lesson) + 1).padStart(2, '0')}</span>
+                {done && <span className="lesson-card-done"><Badge tone="success">Done ✓</Badge></span>}
+                <i className="lesson-card-play" aria-hidden="true">▶</i>
+              </VideoArtwork>
+              <p className="lesson-card-meta">{lesson.level} · {formatTime(lesson.durationSec)}</p>
+              <h3 className="display display-sm">{lesson.title}</h3>
+              <span className="lesson-card-cta">{done ? 'Submitted' : 'Open lesson'} ↗</span>
+            </Link>
+          })}
+        </div>
+        : <p className="empty-note">{all.length ? 'No lessons match those filters. ' : 'No lessons in this path yet. '}{all.length > 0 && <button type="button" className="link-accent" onClick={() => { setQuery(''); setLevel('All levels') }}>Clear filters</button>}</p>}
+    </section>
+  </main>
 }

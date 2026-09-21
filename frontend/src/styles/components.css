@@ -1,0 +1,80 @@
+/* Shared building blocks used across pages. */
+@layer components {
+  /* ---------- Typography ---------- */
+  .display { @apply font-serif leading-none tracking-[-.04em] text-ink; }
+  .display em { @apply text-coral; }
+  .display-xl { @apply text-5xl leading-[.92] tracking-[-.05em] sm:text-7xl; }
+  .display-lg { @apply text-4xl sm:text-5xl; }
+  .display-md { @apply text-3xl sm:text-4xl; }
+  .display-sm { @apply text-2xl; }
+  .lede { @apply mt-3 max-w-xl text-sm leading-6 text-muted; }
+  .eyebrow { @apply mb-4 text-[10px] font-bold uppercase tracking-[.2em] text-coral-deep; }
+  .eyebrow-light { @apply text-peach; }
+  .link-accent { @apply cursor-pointer text-xs text-coral-deep underline-offset-4 hover:underline; }
+  .empty-note { @apply py-6 text-sm text-muted; }
+
+  /* ---------- Brand ---------- */
+  .brand { @apply flex items-center gap-2 text-xl font-black tracking-tight text-ink; }
+  .brand-mark { @apply grid h-8 w-8 place-items-center rounded-full bg-coral font-serif text-lg italic text-white; }
+  .brand-accent { @apply text-coral; }
+  .brand-light { @apply text-cream; }
+
+  /* ---------- Buttons ---------- */
+  .btn { @apply inline-flex items-center justify-center gap-3 border border-transparent px-5 py-3 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-block { @apply flex w-full justify-between text-left; }
+  .btn-arrow { @apply text-base leading-none; }
+  .btn-dark { @apply bg-ink text-cream hover:bg-coral-deep disabled:hover:bg-ink; }
+  .btn-light { @apply bg-cream text-ink hover:bg-white; }
+  .btn-outline { @apply border-line text-ink hover:border-coral; }
+  .btn-ghost { @apply px-3 text-ink hover:text-coral-deep; }
+  .btn-danger { @apply bg-coral-deep text-white hover:bg-ink; }
+
+  /* ---------- Forms ---------- */
+  .field { @apply mt-5 block; }
+  .field-label { @apply block text-[11px] text-muted; }
+  .field-control { @apply mt-2 block w-full border-0 border-b border-line bg-transparent py-2 text-sm text-ink outline-none placeholder:text-faint/70; }
+  .field-control:focus { border-color: var(--color-coral); box-shadow: 0 1px 0 0 var(--color-coral); }
+  .field-control[aria-invalid='true'] { border-color: var(--color-coral-deep); }
+  .field-textarea { @apply min-h-24 resize-y; }
+  .field-select { @apply cursor-pointer; }
+  .field-row { @apply grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
+  .field-error { @apply mt-2 text-xs text-coral-deep; }
+  .field-hint { @apply mt-2 text-[11px] text-faint; }
+
+  .alert { @apply mt-5 border-l-4 px-4 py-3 text-xs leading-5; }
+  .alert-info { @apply border-sky bg-sky/30 text-ink; }
+  .alert-success { @apply border-sage bg-mint text-sage-ink; }
+  .alert-error { @apply border-coral bg-blush text-coral-deep; }
+
+  /* ---------- Small pieces ---------- */
+  .progress { @apply h-2 w-full bg-line/70; }
+  .progress-bar { @apply block h-full bg-coral transition-[width] duration-500; }
+  .avatar { @apply grid shrink-0 place-items-center rounded-full bg-sand text-sand-ink; }
+  .avatar-sm { @apply h-9 w-9 text-xs; }
+  .avatar-md { @apply h-12 w-12 text-sm; }
+  .avatar-lg { @apply h-20 w-20 text-xl; }
+  .badge { @apply inline-block px-2 py-1 text-[10px] font-bold uppercase tracking-widest; }
+  .badge-neutral { @apply bg-ash text-muted; }
+  .badge-success { @apply bg-mint text-sage-ink; }
+  .chip-link { @apply flex items-center gap-3 border-b border-line pb-2 text-xs hover:border-coral; }
+
+  .panel { @apply bg-paper p-6 sm:p-8; }
+  .panel-outline { @apply border border-line; }
+  .panel-sage { @apply bg-sage; }
+  .panel-copy { @apply mt-3 text-sm leading-6 text-muted; }
+  .panel-note { @apply text-xs text-muted; }
+  .panel-action { @apply mt-6; }
+  .panel + .panel { @apply mt-6; }
+
+  .section-heading { @apply mb-7 flex flex-wrap items-end justify-between gap-5; }
+
+  /* Poster art for lessons. The image itself is set from data, everything else lives here. */
+  .media { @apply relative bg-cover bg-center saturate-75; }
+  .tone-yellow { @apply bg-sun; }
+  .tone-blue { @apply bg-sky; }
+  .tone-red { @apply bg-clay; }
+  .tone-green { @apply bg-sage; }
+
+  .confirm { @apply mt-5 border border-coral bg-blush p-4 text-xs leading-5 text-ink; }
+  .confirm-actions { @apply mt-3 flex flex-wrap gap-2; }
+}
