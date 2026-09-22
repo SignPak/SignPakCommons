@@ -8,6 +8,8 @@ export const DEMO_VIDEO = SAMPLE_VIDEO
 
 export const LEVELS = ['Beginner', 'Practice', 'Intermediate', 'Advanced']
 export const TONES = ['yellow', 'blue', 'red', 'green']
+// The keys are stored in the database, so they stay. These are the colours people actually see.
+export const TONE_LABELS = { yellow: 'Lime', blue: 'Sky', red: 'Turquoise', green: 'Mint' }
 
 export const DEMO_ADMIN = { email: 'admin@signpak.dev', password: 'Admin@123' }
 

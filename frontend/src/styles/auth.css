@@ -1,17 +1,18 @@
 /* Login and signup. */
 @layer components {
-  .auth { @apply grid grid-cols-1 min-h-[calc(100vh-86px)] md:grid-cols-[43%_57%]; }
-  .auth-art { @apply relative flex min-h-[260px] items-end bg-forest bg-cover bg-center p-8 text-cream md:min-h-0; background-image: url('https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1000&q=80'); }
-  .auth-art::before { @apply absolute inset-0 bg-forest/80; content: ''; }
-  .auth-art-copy { @apply relative pb-6 md:pb-16; }
-  .auth-art .display { @apply text-cream; }
-  .auth-art .display em { @apply text-peach; }
-  .auth-panel { @apply grid place-items-center bg-paper px-5 py-14; }
-  .auth-card { @apply w-full max-w-[410px]; }
-  .auth-back { @apply mb-10 inline-block text-xs text-muted hover:text-coral-deep; }
-  .auth-sub { @apply mt-3 text-sm text-muted; }
+  .auth { @apply grid min-h-[calc(100vh-72px)] grid-cols-1 md:grid-cols-[42%_58%]; }
+  .auth-art {
+    @apply relative flex min-h-[240px] items-end overflow-hidden bg-cover bg-center p-8 sm:p-12 md:min-h-0;
+    background-image: url('https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1000&q=80');
+  }
+  .auth-art::before { content: ''; @apply absolute inset-0; background: linear-gradient(160deg, rgb(0 64 26 / 0.86) 20%, rgb(0 46 18 / 0.94) 100%), radial-gradient(70% 60% at 100% 0%, rgb(64 224 208 / 0.4), transparent 70%); }
+  .auth-art-copy { @apply relative pb-2 md:pb-10; }
+  .auth-panel { @apply grid place-items-center bg-page px-5 py-12 sm:py-16; }
+  .auth-card { @apply w-full max-w-[440px] rounded-3xl border border-line bg-surface p-7 shadow-lift sm:p-10; }
+  .auth-back { @apply mb-8 inline-block rounded-full text-sm font-semibold text-muted hover:text-accent-ink; }
+  .auth-sub { @apply mt-4 text-base text-muted; }
   .auth-submit { @apply mt-8; }
-  .auth-footer { @apply mt-6 text-center text-xs text-muted; }
-  .auth-footer a { @apply text-coral-deep underline-offset-4 hover:underline; }
-  .auth-dev { @apply mt-8 border border-dashed border-line p-3 text-[11px] text-faint; }
+  .auth-footer { @apply mt-7 text-center text-base text-muted; }
+  .auth-footer a { @apply font-semibold text-accent-ink underline underline-offset-4 decoration-2 decoration-transparent hover:decoration-current; }
+  .auth-dev { @apply mt-8 rounded-xl border border-dashed border-line-strong p-3 text-sm text-faint; }
 }

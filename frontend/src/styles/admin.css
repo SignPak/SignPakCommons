@@ -1,73 +1,79 @@
 /* Admin workspace. */
 @layer components {
-  .admin-head { @apply flex flex-col justify-between gap-6 py-14 sm:flex-row sm:items-end; }
-  .admin-tabs { @apply flex gap-1 border-b border-line; }
-  .admin-tab { @apply -mb-px border-b-2 border-transparent px-4 py-3 text-sm text-muted hover:text-ink; }
-  .admin-tab.is-active { @apply border-coral font-bold text-ink; }
+  .admin-head { @apply flex flex-col justify-between gap-6 py-12 sm:flex-row sm:items-end sm:py-16; }
+  .admin-tabs { @apply flex flex-wrap gap-2; }
+  .admin-tab { @apply rounded-full border border-line bg-surface px-5 py-2.5 font-ui text-[0.9375rem] font-bold text-muted transition hover:border-accent-ink hover:text-heading; }
+  .admin-tab.is-active { @apply border-brand bg-brand text-brand-ink; }
   .admin-body { @apply space-y-6 pt-8; }
   .admin-split { @apply grid grid-cols-1 gap-6 lg:grid-cols-[1.25fr_.75fr]; }
   .admin-split-categories { @apply lg:grid-cols-[.8fr_1.2fr]; }
-  .admin-split .panel + .panel { @apply mt-0; }
-  .admin-body .panel + .panel { @apply mt-0; }
+  .admin-body .panel + .panel, .admin-split .panel + .panel { @apply mt-0; }
 
-  .stat-grid { @apply grid grid-cols-1 gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-4; }
-  .stat-card { @apply flex flex-col bg-paper p-6; }
-  .stat-card span { @apply text-[11px] text-muted; }
-  .stat-card b { @apply my-3 text-4xl font-normal; }
-  .stat-card small { @apply text-[11px] text-leaf; }
+  .stat-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4; }
+  .stat-card { @apply relative flex flex-col overflow-hidden rounded-3xl border border-line bg-surface p-6 shadow-soft; }
+  .stat-card::before { content: ''; @apply absolute inset-x-0 top-0 h-1.5; background: var(--progress); }
+  .stat-card span { @apply font-ui text-sm font-bold text-muted; }
+  .stat-card b { @apply my-2 font-display text-6xl font-bold leading-none; }
+  .stat-card small { @apply text-sm text-success; }
 
   .chart { @apply m-0; }
-  .chart svg { @apply block h-44 w-full overflow-visible; }
-  .chart-area { fill: color-mix(in srgb, var(--color-coral) 12%, transparent); }
-  .chart-line { fill: none; stroke: var(--color-coral); stroke-width: 2; vector-effect: non-scaling-stroke; }
-  .chart-dot { fill: var(--color-coral-deep); }
-  .chart-axis { @apply mt-3 flex justify-between text-[10px] text-faint; }
+  .chart svg { @apply block h-48 w-full overflow-visible; }
+  .chart-area { fill: color-mix(in srgb, var(--color-cyan) 16%, transparent); }
+  .chart-line { fill: none; stroke: var(--color-cyan); stroke-width: 3; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .chart-dot { fill: var(--surface); stroke: var(--color-cyan); stroke-width: 2.5; }
+  .chart-axis { @apply mt-3 flex justify-between text-sm text-muted; }
 
-  .bar-list { @apply m-0 grid list-none gap-4 p-0; }
-  .bar-list li { @apply grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-3 text-xs; }
-  .bar-track { @apply h-3 bg-ash/60; }
-  .bar-fill { @apply block h-full min-w-[2px]; }
+  .bar-list { @apply m-0 grid list-none gap-5 p-0; }
+  .bar-list li { @apply grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 text-sm font-semibold; }
+  .bar-list b { @apply font-ui text-base; }
+  .bar-track { @apply h-3.5 overflow-hidden rounded-full bg-panel; }
+  .bar-fill { @apply block h-full min-w-[4px] rounded-full; }
 
-  .table-wrap { @apply overflow-x-auto; }
-  .table { @apply w-full border-collapse text-left text-xs; }
-  .table th { @apply border-b border-line py-3 pr-4 text-[10px] font-bold uppercase tracking-widest text-faint; }
-  .table td { @apply border-b border-line/60 py-4 pr-4; }
+  /* overflow-x:auto on a table does not stop Chromium counting the table's full
+     width in document.documentElement.scrollWidth unless the wrapper also gets its
+     own layout containment, so the table would otherwise widen the whole page. */
+  .table-wrap { @apply overflow-x-auto; width: 100%; max-width: 100%; contain: layout; }
+  .table { @apply w-full border-collapse text-left text-sm; }
+  .table th { @apply whitespace-nowrap border-b-2 border-line px-3 py-3 font-ui text-xs font-bold uppercase tracking-wider text-muted; }
+  .table td { @apply border-b border-line px-3 py-4; }
+  .table tbody tr:hover { @apply bg-panel; }
 
-  .inline-input { @apply w-full min-w-40 border-0 border-b border-line bg-transparent py-2 text-xs outline-none focus:border-coral sm:w-56; }
+  .inline-input { @apply w-full min-w-40 py-2.5 text-sm sm:w-64; }
 
   .upload { @apply grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_.9fr]; }
   .upload-drop { @apply min-w-0; }
-  .upload-pick { @apply grid min-h-[260px] cursor-pointer place-content-center justify-items-center gap-2 border border-dashed border-faint bg-cream p-6 text-center text-xs text-muted hover:border-coral; }
-  .upload-preview { @apply block aspect-video w-full bg-black; }
-  .upload-file { @apply mt-3 text-xs text-muted; }
+  .upload-pick { @apply grid min-h-[280px] cursor-pointer place-content-center justify-items-center gap-2 rounded-3xl border-2 border-dashed border-line-strong bg-panel p-6 text-center text-base text-muted transition hover:border-accent-ink hover:bg-secondary-soft; }
+  .upload-preview { @apply block aspect-video w-full rounded-2xl bg-black; }
+  .upload-file { @apply mt-3 text-sm text-muted; }
+  .upload-file b { @apply text-heading; }
   .upload-file label { @apply ml-2; }
   .upload-fields > .field:first-child { @apply mt-0; }
 
   .video-list { @apply m-0 list-none p-0; }
-  .video-row { @apply border-t border-line/70 py-4; }
+  .video-row { @apply border-t border-line py-5; }
   .video-row-main { @apply flex flex-wrap items-center gap-x-4 gap-y-3; }
-  .video-row-thumb { @apply h-12 w-16 shrink-0; }
-  .video-row-info { @apply min-w-0 flex-1 basis-40; }
-  .video-row-info b { @apply block font-normal; }
-  .video-row-info small { @apply text-[11px] text-faint; }
-  .row-actions { @apply flex flex-wrap gap-x-4 gap-y-1 text-xs; }
-  .row-actions button { @apply text-muted underline-offset-4 hover:text-ink hover:underline; }
-  .row-actions .is-danger { @apply text-coral-deep; }
-  .video-row-preview { @apply mt-4 block aspect-video w-full max-w-xl bg-black; }
+  .video-row-thumb { @apply h-14 w-24 shrink-0 rounded-xl bg-panel; }
+  .video-row-info { @apply min-w-0 flex-1 basis-44; }
+  .video-row-info b { @apply block font-display text-2xl font-bold leading-none text-heading; }
+  .video-row-info small { @apply mt-1 block text-sm text-muted; }
+  .row-actions { @apply flex flex-wrap gap-x-1 gap-y-1 text-sm; }
+  .row-actions button { @apply rounded-full px-3 py-1.5 font-semibold text-muted transition hover:bg-panel hover:text-heading; }
+  .row-actions .is-danger { @apply text-danger; }
+  .video-row-preview { @apply mt-4 block aspect-video w-full max-w-xl rounded-2xl bg-black; }
   .video-row-edit { @apply mt-2 grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
   .row-form-actions { @apply mt-6 flex flex-wrap gap-2 sm:col-span-2; }
 
-  .category-list { @apply mt-8 grid list-none gap-1 border-t border-line p-0 pt-4; }
-  .category-list-item { @apply flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-cream; }
-  .category-list-item.is-active { @apply bg-cream font-bold; }
-  .category-list-item small { @apply ml-auto text-faint; }
-  .swatch { @apply h-3 w-3 shrink-0 rounded-full; }
+  .category-list { @apply mt-8 grid list-none gap-1.5 border-t border-line p-0 pt-5; }
+  .category-list-item { @apply flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-ui text-base font-bold text-heading transition hover:bg-panel; }
+  .category-list-item.is-active { @apply bg-secondary-soft; }
+  .category-list-item small { @apply ml-auto text-sm text-muted; }
+  .swatch { @apply h-4 w-4 shrink-0 rounded-full; }
   .category-edit { @apply mt-2 grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
   .field-wide { @apply sm:col-span-2; }
   .assign-title { @apply mb-2 mt-10 flex items-center gap-3; }
   .assign-list { @apply m-0 list-none p-0; }
-  .assign-list li { @apply flex items-center justify-between gap-4 border-t border-line/70 py-3 text-xs; }
-  .assign-list b { @apply block text-sm font-normal; }
-  .assign-list small { @apply text-[11px] text-faint; }
-  .assign-list button { @apply shrink-0 text-coral-deep underline-offset-4 hover:underline; }
+  .assign-list li { @apply flex items-center justify-between gap-4 border-t border-line py-3.5; }
+  .assign-list b { @apply block font-ui text-base font-bold text-heading; }
+  .assign-list small { @apply text-sm text-muted; }
+  .assign-list button { @apply shrink-0 rounded-full px-3 py-1.5 text-sm font-bold text-accent-ink underline underline-offset-4 hover:bg-panel; }
 }

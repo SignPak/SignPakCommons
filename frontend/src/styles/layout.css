@@ -1,39 +1,42 @@
 /* Page frame: shell width, header, footer and generic page states. */
 @layer components {
   .app { @apply min-h-screen overflow-x-clip; }
-  .shell { @apply mx-auto w-[calc(100%-38px)] max-w-[1160px] lg:w-[calc(100%-64px)]; }
+  .shell { @apply mx-auto w-[calc(100%-2.5rem)] max-w-[1200px] lg:w-[calc(100%-4rem)]; }
   .page { @apply pb-24; }
-  .boot { @apply grid min-h-screen place-items-center bg-cream text-sm text-muted; }
+  .boot { @apply grid min-h-screen place-items-center bg-page text-base text-muted; }
   .hide-on-mobile { @apply hidden sm:inline-flex; }
-  .breadcrumb { @apply flex items-center gap-3 pt-10 text-xs text-faint; }
-  .breadcrumb b { @apply font-normal text-ink; }
-  .breadcrumb a:hover { @apply text-coral-deep; }
+  .breadcrumb { @apply flex items-center gap-2.5 pt-8 text-sm text-muted; }
+  .breadcrumb b { @apply font-semibold text-heading; }
+  .breadcrumb a { @apply underline-offset-4 hover:text-accent-ink hover:underline; }
 
   .page-state { @apply py-24; }
-  .page-state-copy { @apply mb-8 mt-4 max-w-md text-sm leading-6 text-muted; }
+  .page-state-copy { @apply mb-8 mt-5 max-w-md text-lg leading-relaxed text-muted; }
 
   /* Header */
-  .site-header { @apply relative z-10; }
-  .site-header-bar { @apply mx-auto flex h-[86px] w-[calc(100%-38px)] max-w-[1280px] items-center justify-between lg:w-[calc(100%-64px)]; }
-  .site-nav { @apply hidden items-center gap-8 text-xs text-muted md:flex; }
-  .site-nav a:hover { @apply text-coral-deep; }
+  .site-header { @apply sticky top-0 z-40 border-b border-line backdrop-blur-md; background-color: var(--header-bg); }
+  .site-header-bar { @apply mx-auto flex h-[72px] w-[calc(100%-2.5rem)] max-w-[1200px] items-center justify-between gap-4 lg:w-[calc(100%-4rem)]; }
+  .site-nav { @apply hidden items-center gap-1 md:flex; }
+  .site-nav a { @apply rounded-full px-4 py-2 font-ui text-[0.9375rem] font-semibold text-muted transition-colors hover:bg-panel hover:text-heading; }
   .site-actions { @apply flex items-center gap-2; }
-  .menu-toggle { @apply grid h-10 w-10 place-items-center text-xl md:hidden; }
-  .mobile-nav { @apply mx-auto mb-4 grid w-[calc(100%-38px)] gap-1 border border-line bg-paper p-3 text-sm md:hidden; }
-  .mobile-nav a, .mobile-nav button { @apply px-3 py-3 text-left hover:text-coral-deep; }
+  .theme-toggle { @apply grid h-11 w-11 place-items-center rounded-full border border-line-strong text-heading transition hover:bg-panel hover:border-accent-ink; }
+  .theme-toggle svg { @apply h-5 w-5; }
+  .menu-toggle { @apply grid h-11 w-11 place-items-center rounded-full text-xl text-heading hover:bg-panel md:hidden; }
+  .mobile-nav { @apply mx-auto mb-4 grid w-[calc(100%-2.5rem)] gap-1 rounded-2xl border border-line bg-surface p-2 shadow-lift md:hidden; }
+  .mobile-nav a, .mobile-nav button { @apply rounded-xl px-4 py-3 text-left font-ui text-base font-semibold text-heading hover:bg-panel; }
 
   /* Footer */
-  .site-footer { @apply bg-ink text-cream; }
-  .site-footer-grid { @apply grid grid-cols-1 gap-12 py-16 md:grid-cols-[1.2fr_.8fr_.8fr]; }
-  .site-footer-copy { @apply mt-5 max-w-xs text-sm leading-6 text-line; }
-  .footer-title { @apply mb-5 text-[10px] font-bold uppercase tracking-[.2em] text-peach; }
-  .footer-links { @apply grid gap-3 text-sm text-line; }
-  .footer-links a:hover { @apply text-white; }
-  .site-footer-base { @apply flex flex-col justify-between gap-3 border-t border-white/15 py-5 text-[10px] text-faint sm:flex-row; }
+  .site-footer { background-color: var(--feature); color: #fff; }
+  .site-footer-grid { @apply grid grid-cols-1 gap-12 py-16 md:grid-cols-[1.4fr_.8fr_.8fr]; }
+  .site-footer-copy { @apply mt-5 max-w-xs text-base leading-relaxed; color: rgb(255 255 255 / 0.78); }
+  .footer-title { @apply mb-5 font-ui text-[0.8125rem] font-bold uppercase tracking-[.14em] text-turquoise; }
+  .footer-links { @apply grid gap-3 text-base; color: rgb(255 255 255 / 0.85); }
+  .footer-links a { @apply w-fit underline-offset-4 hover:text-turquoise hover:underline; }
+  .site-footer-base { @apply flex flex-col justify-between gap-3 border-t py-6 text-sm sm:flex-row; border-color: rgb(255 255 255 / 0.16); color: rgb(255 255 255 / 0.7); }
+  .site-footer :focus-visible { outline-color: var(--color-turquoise); }
 }
 
 /* Grid children may shrink below their content width, so wide media never pushes the page sideways on phones. */
 @layer components {
-  .hero > *, .landing-about > *, .contact > *, .demo-grid > *, .auth > *, .profile-grid > *, .player-grid > *,
+  .hero-inner > *, .landing-about > *, .contact > *, .demo-grid > *, .auth > *, .profile-grid > *, .player-grid > *,
   .editor-grid > *, .admin-split > *, .upload > *, .video-row-edit > *, .category-edit > * { min-width: 0; }
 }

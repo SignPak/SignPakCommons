@@ -1,36 +1,49 @@
 /* Home and category browser. */
 @layer components {
-  .home-head { @apply flex flex-col justify-between gap-8 py-14 sm:flex-row sm:items-end; }
-  .continue { @apply flex items-center justify-between gap-6 bg-sand p-8 sm:p-14; }
-  .continue-meta { @apply mt-2 text-xs text-sand-ink; }
-  .continue-progress { @apply mt-6 grid w-56 max-w-full gap-2 text-[11px] text-sand-ink; }
-  .continue-progress .progress { @apply bg-white/50; }
-  .continue-play { @apply grid h-16 w-16 shrink-0 place-items-center rounded-full bg-coral-deep text-white transition-transform hover:scale-105; }
-  .home-library { @apply pt-24; }
+  .home-head { @apply flex flex-col justify-between gap-8 py-12 sm:flex-row sm:items-end sm:py-16; }
 
-  .category-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4; }
-  .category-tile { @apply relative flex min-h-[245px] flex-col justify-between p-6 text-left transition-transform hover:-translate-y-1; }
-  .category-tile-index { @apply font-serif; }
-  .category-tile-arrow { @apply absolute right-5 top-5 text-xl; }
-  .category-tile p { @apply mt-2 text-xs leading-5 text-ink/70; }
-  .category-tile small { @apply text-[11px] text-ink/70; }
+  /* Continue learning card */
+  .continue {
+    @apply relative flex items-center justify-between gap-6 overflow-hidden rounded-[2rem] p-8 shadow-lift sm:p-12;
+    background-color: var(--feature);
+    background-image: radial-gradient(60% 120% at 100% 0%, rgb(64 224 208 / 0.3), transparent 60%), radial-gradient(40% 80% at 0% 100%, rgb(0 150 255 / 0.22), transparent 65%);
+    color: #fff;
+  }
+  .continue .display { color: #fff; }
+  .continue .eyebrow { color: var(--color-turquoise); }
+  .continue-meta { @apply mt-3 text-base; color: rgb(255 255 255 / 0.8); }
+  .continue-progress { @apply mt-7 grid w-72 max-w-full gap-2.5 text-sm; color: rgb(255 255 255 / 0.85); }
+  .continue-progress .progress { background-color: rgb(255 255 255 / 0.2); }
+  .continue-play { @apply grid h-20 w-20 shrink-0 place-items-center rounded-full bg-turquoise text-2xl text-deep shadow-lift transition-transform hover:scale-105; }
+  .home-library { @apply pt-20 sm:pt-24; }
 
-  .category-head { @apply flex flex-col justify-between gap-8 border-b border-line py-16 sm:flex-row sm:items-end; }
-  .category-copy { @apply max-w-xs text-sm leading-6 text-muted; }
-  .category-body { @apply pt-16; }
-  .filters { @apply flex flex-wrap justify-end gap-2 text-xs; }
-  .filters select { @apply cursor-pointer border-0 border-b border-line bg-transparent px-1 py-2 outline-none focus:border-coral; }
-  .search { @apply mb-10 block max-w-sm text-xs text-muted; }
-  .search input { @apply mt-2 block w-full border-0 border-b border-line bg-transparent py-3 text-sm text-ink outline-none focus:border-coral; }
+  .category-grid { @apply grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4; }
+  .category-tile { @apply relative flex min-h-[270px] flex-col justify-between rounded-[1.75rem] p-7 text-left shadow-soft transition duration-200 hover:-translate-y-1.5 hover:shadow-lift; color: #00280f; }
+  .category-tile .display { color: #00280f; }
+  .category-tile-index { @apply font-display text-6xl font-bold leading-none; color: rgb(0 40 15 / 0.65); }
+  .category-tile-arrow { @apply absolute right-6 top-6 grid h-11 w-11 place-items-center rounded-full bg-white/70 text-xl transition-transform; }
+  .category-tile:hover .category-tile-arrow { @apply rotate-12; }
+  .category-tile p { @apply mt-3 text-base leading-snug; color: rgb(0 40 15 / 0.85); }
+  .category-tile small { @apply mt-4 block font-ui text-sm font-bold; color: rgb(0 40 15 / 0.85); }
 
-  .lesson-grid { @apply grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3; }
-  .lesson-card { @apply block text-left; }
-  .lesson-card-art { @apply h-64; }
-  .lesson-card-index { @apply absolute left-4 top-4 text-xs text-white; }
-  .lesson-card-done { @apply absolute right-4 top-4; }
-  .lesson-card-play { @apply absolute bottom-4 right-4 grid h-10 w-10 place-items-center rounded-full bg-cream text-xs not-italic text-coral-deep transition-transform; }
+  .category-head { @apply flex flex-col justify-between gap-8 border-b border-line py-14 sm:flex-row sm:items-end sm:py-16; }
+  .category-copy { @apply max-w-sm text-lg leading-relaxed text-muted; }
+  .category-body { @apply pt-14; }
+  .filters { @apply flex flex-wrap justify-end gap-3 text-sm; }
+  .filters select { @apply w-auto py-2.5 pr-8 text-sm; }
+  .search { @apply mb-10 block max-w-md font-ui text-sm font-bold text-heading; }
+  .search input { @apply mt-2 font-sans font-normal; }
+
+  .lesson-grid { @apply grid grid-cols-1 gap-x-7 gap-y-10 sm:grid-cols-2 lg:grid-cols-3; }
+  .lesson-card { @apply block rounded-3xl text-left; }
+  .lesson-card-art { @apply h-64 rounded-3xl shadow-soft transition duration-200; }
+  .lesson-card-art::after { content: ''; @apply pointer-events-none absolute inset-0; background: linear-gradient(to top, rgb(0 30 12 / 0.55), transparent 55%); }
+  .lesson-card:hover .lesson-card-art { @apply -translate-y-1 shadow-lift; }
+  .lesson-card-index { @apply absolute left-5 top-5 z-10 rounded-full bg-black/45 px-3 py-1 font-ui text-sm font-bold text-white backdrop-blur-sm; }
+  .lesson-card-done { @apply absolute right-4 top-4 z-10; }
+  .lesson-card-play { @apply absolute bottom-4 right-4 z-10 grid h-12 w-12 place-items-center rounded-full bg-turquoise text-sm not-italic text-deep transition-transform; }
   .lesson-card:hover .lesson-card-play { @apply scale-110; }
-  .lesson-card-meta { @apply mt-4 text-[10px] uppercase tracking-widest text-faint; }
-  .lesson-card h3 { @apply mt-2; }
-  .lesson-card-cta { @apply mt-3 block text-xs text-coral-deep; }
+  .lesson-card-meta { @apply mt-5 font-ui text-sm font-bold uppercase tracking-wider text-faint; }
+  .lesson-card h3 { @apply mt-1.5; }
+  .lesson-card-cta { @apply mt-3 block font-ui text-[0.9375rem] font-bold text-accent-ink; }
 }

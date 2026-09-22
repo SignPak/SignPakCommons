@@ -1,70 +1,74 @@
 /* Lesson player, recorder and recording editor. */
 @layer components {
-  .player-top { @apply flex justify-between py-8 text-xs text-faint; }
-  .player-top a:hover { @apply text-coral-deep; }
-  .player-grid { @apply grid grid-cols-1 gap-10 lg:grid-cols-[1.6fr_.7fr]; }
-  .player-meta { @apply flex flex-col justify-between gap-5 py-6 sm:flex-row sm:items-end; }
-  .player-side { @apply pt-2 lg:pt-5; }
+  .player-top { @apply flex items-center justify-between gap-4 py-7 text-sm text-muted; }
+  .player-top a { @apply font-ui text-[0.9375rem] font-bold text-heading underline-offset-4 hover:text-accent-ink hover:underline; }
+  .player-grid { @apply grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_.75fr]; }
+  .player-meta { @apply flex flex-col justify-between gap-5 py-7 sm:flex-row sm:items-end; }
+  .player-side { @apply self-start rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8; }
 
   /* Base video */
-  .base-player-stage { @apply relative grid min-h-[280px] place-items-center bg-ink sm:min-h-[440px]; }
+  .base-player { @apply overflow-hidden rounded-3xl bg-night shadow-lift; }
+  .base-player-stage { @apply relative grid min-h-[260px] place-items-center bg-black sm:min-h-[440px]; }
   .base-player-video { @apply absolute inset-0 h-full w-full cursor-pointer bg-black object-contain; }
-  .base-player-big { @apply relative grid h-20 w-20 place-items-center rounded-full border border-white/70 bg-black/30 text-xl text-white backdrop-blur-sm hover:bg-coral-deep; }
-  .base-player-error { @apply relative max-w-xs px-6 text-center text-sm text-white; }
-  .base-player-controls { @apply flex items-center gap-3 bg-ink px-4 py-3 text-white sm:gap-4 sm:px-5; }
-  .base-player-controls button { @apply grid h-9 min-w-9 place-items-center px-1 text-sm hover:text-peach; }
-  .base-player-seek { @apply h-1 min-w-0 flex-1 cursor-pointer appearance-none bg-white/25 accent-coral; }
-  .base-player-time { @apply whitespace-nowrap text-[11px] tabular-nums text-line; }
+  .base-player-big { @apply relative grid h-20 w-20 place-items-center rounded-full bg-turquoise pl-1 text-2xl text-deep shadow-lift transition hover:scale-105; }
+  .base-player-error { @apply relative max-w-xs px-6 text-center text-base text-white; }
+  .base-player-controls { @apply flex items-center gap-2 bg-night px-3 py-2.5 text-white sm:gap-3 sm:px-5; }
+  .base-player-controls button { @apply grid h-11 min-w-11 place-items-center rounded-full px-2 font-ui text-base font-bold transition hover:bg-white/10 hover:text-turquoise; }
+  .base-player-seek { @apply h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/25; accent-color: var(--color-turquoise); }
+  .base-player-time { @apply whitespace-nowrap font-ui text-sm font-semibold tabular-nums; color: rgb(255 255 255 / 0.85); }
 
   /* Recorder */
-  .recorder-status { @apply text-[10px] uppercase tracking-widest text-muted; }
-  .recorder-status span { @apply text-coral-deep; }
-  .recorder-status.is-live { @apply text-coral-deep; }
-  .recorder-status.is-live span { @apply animate-pulse; }
-  .recorder .display { @apply mt-6; }
-  .recorder-copy { @apply mt-5 max-w-xs text-sm leading-6 text-muted; }
-  .recorder-stage { @apply relative my-6 grid aspect-video place-items-center overflow-hidden bg-ash text-xs text-faint; }
+  .recorder-status { @apply inline-flex items-center gap-2 rounded-full bg-panel px-3.5 py-1.5 font-ui text-xs font-bold uppercase tracking-widest text-muted; }
+  .recorder-status span { @apply text-accent-ink; }
+  .recorder-status.is-live { @apply bg-danger-soft text-danger; }
+  .recorder-status.is-live span { @apply animate-pulse text-danger; }
+  .recorder .display, .locked .display { @apply mt-5; }
+  .recorder-copy { @apply mt-4 text-base leading-relaxed text-muted; }
+  .recorder-stage { @apply relative my-6 grid aspect-video place-items-center overflow-hidden rounded-2xl border border-dashed border-line-strong bg-panel text-sm text-muted; }
   .recorder-video { @apply absolute inset-0 h-full w-full -scale-x-100 bg-black object-cover; }
   .recorder-video[controls] { @apply scale-x-100 object-contain; }
   .recorder-video.is-hidden { @apply hidden; }
   .recorder-empty { @apply px-4 text-center; }
-  .rec-dot { @apply mr-1 text-coral-deep; }
-  .recorder-delete { @apply mx-auto my-4 block text-xs text-muted underline-offset-4 hover:text-coral-deep hover:underline; }
+  .rec-dot { @apply mr-1 text-danger; }
+  .recorder-delete { @apply mx-auto my-4 block rounded-full px-3 py-1 text-sm font-semibold text-muted underline underline-offset-4 hover:text-danger; }
   .recorder-save { @apply mt-2; }
-  .locked .display { @apply mt-6; }
   .locked .btn-block { @apply mt-6; }
   .locked-secondary { @apply mt-3; }
 
   /* Editor */
-  .editor-grid { @apply grid grid-cols-1 gap-10 pt-14 lg:grid-cols-[1.5fr_.7fr]; }
-  .editor-stage { @apply relative mt-10 grid min-h-[300px] place-items-center overflow-hidden bg-ink sm:min-h-[420px]; }
+  .editor-grid { @apply grid grid-cols-1 gap-10 pt-12 lg:grid-cols-[1.5fr_.75fr]; }
+  .editor-stage { @apply relative mt-9 grid min-h-[300px] place-items-center overflow-hidden rounded-3xl bg-black shadow-lift sm:min-h-[420px]; }
   .editor-video { @apply absolute inset-0 h-full w-full cursor-pointer bg-black object-contain; }
   .editor-video.is-mirrored { @apply -scale-x-100; }
-  .editor-play { @apply relative grid h-16 w-16 place-items-center rounded-full border border-white bg-black/30 text-white backdrop-blur-sm hover:bg-coral-deep; }
-  .editor-time { @apply absolute bottom-4 left-4 text-xs tabular-nums text-white; }
-  .editor-side { @apply pt-2 lg:pt-12; }
+  .editor-play { @apply relative grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-turquoise pl-1 text-2xl text-deep shadow-lift transition hover:scale-105; }
+  .editor-time { @apply absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1 font-ui text-sm font-semibold tabular-nums text-white; }
+  .editor-side { @apply self-start rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8; }
   .editor-side-title { @apply border-b border-line pb-4; }
-  .editor-side-copy { @apply my-6 text-sm leading-6 text-muted; }
-  .trim-times { @apply flex justify-between gap-2 py-3 text-[11px] tabular-nums text-faint; }
-  .toggle { @apply flex cursor-pointer items-center justify-between border-t border-line py-4 text-xs; }
-  .toggle input { @apply h-4 w-4 accent-coral; }
+  .editor-side-copy { @apply my-6 text-base leading-relaxed text-muted; }
+  .trim-times { @apply flex justify-between gap-2 py-3 font-ui text-sm font-semibold tabular-nums text-muted; }
+  .toggle { @apply flex cursor-pointer items-center justify-between border-t border-line py-4 font-ui text-base font-bold text-heading; }
+  .toggle input { @apply h-5 w-5; accent-color: var(--brand); }
+  :root[data-theme='dark'] .toggle input { accent-color: var(--color-turquoise); }
   .editor-submit { @apply mt-6; }
-  .editor-back { @apply mx-auto mt-5 block text-center text-xs text-muted hover:text-coral-deep; }
+  .editor-back { @apply mx-auto mt-5 block text-center text-sm font-semibold text-muted underline-offset-4 hover:text-accent-ink hover:underline; }
 
   /* Two overlapping range inputs form the dual-handle trim slider. Only the thumbs take pointer events. */
-  .trim { @apply relative h-8; }
-  .trim-track { @apply absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 bg-coral/25; }
-  .trim-fill { @apply absolute h-full bg-coral; }
-  .trim input { @apply pointer-events-none absolute inset-0 m-0 h-8 w-full appearance-none bg-transparent; }
+  .trim { @apply relative h-10; }
+  .trim-track { @apply absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full bg-line; }
+  .trim-fill { @apply absolute h-full rounded-full; background: var(--progress); }
+  .trim input { @apply pointer-events-none absolute inset-0 m-0 h-10 w-full appearance-none bg-transparent; }
   .trim input::-webkit-slider-runnable-track { background: transparent; }
   .trim input::-moz-range-track { background: transparent; }
-  .trim input::-webkit-slider-thumb { @apply pointer-events-auto h-6 w-3 cursor-ew-resize appearance-none border-2 border-cream bg-coral-deep; }
-  .trim input::-moz-range-thumb { @apply pointer-events-auto h-6 w-3 cursor-ew-resize rounded-none border-2 border-cream bg-coral-deep; }
-  .trim input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--color-ink); outline-offset: 2px; }
-  .trim input:focus-visible::-moz-range-thumb { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+  .trim input::-webkit-slider-thumb { @apply pointer-events-auto h-7 w-7 cursor-ew-resize appearance-none rounded-full border-[3px] border-surface bg-brand shadow-soft; }
+  .trim input::-moz-range-thumb { @apply pointer-events-auto h-7 w-7 cursor-ew-resize rounded-full border-[3px] border-surface bg-brand shadow-soft; }
+  :root[data-theme='dark'] .trim input::-webkit-slider-thumb { background: var(--color-turquoise); }
+  :root[data-theme='dark'] .trim input::-moz-range-thumb { background: var(--color-turquoise); }
+  .trim input:focus-visible { outline: none; }
+  .trim input:focus-visible::-webkit-slider-thumb { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .trim input:focus-visible::-moz-range-thumb { outline: 3px solid var(--focus); outline-offset: 2px; }
 
   /* After submitting */
-  .submitted { @apply py-24; }
-  .submitted-check { @apply mb-6 grid h-14 w-14 place-items-center rounded-full bg-sage text-xl text-sage-ink; }
+  .submitted { @apply py-20 sm:py-28; }
+  .submitted-check { @apply mb-6 grid h-16 w-16 place-items-center rounded-full bg-success-soft text-2xl text-success; }
   .submitted-actions { @apply mt-10 flex flex-wrap items-center gap-3; }
 }

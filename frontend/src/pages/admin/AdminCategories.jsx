@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Field from '../../components/Field'
 import { Alert, Badge, Button, Eyebrow } from '../../components/ui'
 import { useLibrary } from '../../context/LibraryContext'
-import { TONES } from '../../mock/data'
+import { TONES, TONE_LABELS } from '../../mock/data'
 import { formatTime } from '../../utils/format'
 
 const NEW_CATEGORY = { label: '', copy: '', tone: TONES[0] }
@@ -32,7 +32,7 @@ export default function AdminCategories() {
       <form onSubmit={create} noValidate>
         <Field label="Name" name="label" value={form.label} onChange={change} placeholder="e.g. Everyday life" error={error} />
         <Field as="textarea" label="Description" name="copy" value={form.copy} onChange={change} rows={3} placeholder="One sentence learners will see." />
-        <Field as="select" label="Colour" name="tone" value={form.tone} onChange={change}>{TONES.map((tone) => <option key={tone} value={tone}>{tone[0].toUpperCase() + tone.slice(1)}</option>)}</Field>
+        <Field as="select" label="Colour" name="tone" value={form.tone} onChange={change}>{TONES.map((tone) => <option key={tone} value={tone}>{TONE_LABELS[tone]}</option>)}</Field>
         <Button type="submit" block className="panel-action">Add category</Button>
       </form>
       <ul className="category-list" aria-label="Categories">
@@ -64,7 +64,7 @@ function CategoryDetail({ category, onDeleted }) {
     <h2 className="display display-md">{category.label}</h2>
     <div className="category-edit">
       <Field label="Name" name="label" value={draft.label} onChange={change} />
-      <Field as="select" label="Colour" name="tone" value={draft.tone} onChange={change}>{TONES.map((tone) => <option key={tone} value={tone}>{tone[0].toUpperCase() + tone.slice(1)}</option>)}</Field>
+      <Field as="select" label="Colour" name="tone" value={draft.tone} onChange={change}>{TONES.map((tone) => <option key={tone} value={tone}>{TONE_LABELS[tone]}</option>)}</Field>
       <Field as="textarea" label="Description" name="copy" value={draft.copy} onChange={change} rows={2} className="field-wide" />
     </div>
     <div className="row-form-actions">

@@ -1,29 +1,27 @@
 /* Profile dashboard. */
 @layer components {
-  .profile-head { @apply flex flex-col justify-between gap-8 border-b border-line py-14 sm:flex-row sm:items-end; }
-  .profile-logout { @apply mt-4 -ml-3; }
-  .profile-grid { @apply grid grid-cols-1 gap-6 pt-12 lg:grid-cols-[1.4fr_.7fr]; }
+  .profile-head { @apply flex flex-col justify-between gap-8 border-b border-line py-12 sm:flex-row sm:items-end sm:py-16; }
+  .profile-logout { @apply mt-5 -ml-4; }
+  .profile-grid { @apply grid grid-cols-1 gap-6 pt-12 lg:grid-cols-[1.4fr_.75fr]; }
   .profile-main { @apply space-y-6; }
   .profile-side { @apply space-y-6; }
-  .profile-count { @apply font-serif text-3xl font-normal text-coral; }
-  .progress-caption { @apply mt-3 flex justify-between text-[11px] text-faint; }
-  .progress-caption b { @apply text-ink; }
+  .profile-count { @apply font-display text-5xl font-bold leading-none text-heading; }
+  .progress-caption { @apply mt-3 flex justify-between text-sm text-muted; }
+  .progress-caption b { @apply font-ui text-heading; }
 
-  .path-progress { @apply mt-8 grid list-none gap-4 border-t border-line p-0 pt-6; }
-  .path-progress li { @apply grid grid-cols-[1fr_1fr_auto] items-center gap-4 text-xs; }
-  .path-progress small { @apply tabular-nums text-faint; }
+  .path-progress { @apply mt-8 grid list-none gap-5 border-t border-line p-0 pt-7; }
+  .path-progress li { @apply grid grid-cols-[1fr_1fr_auto] items-center gap-4 text-base; }
+  .path-progress small { @apply font-ui text-sm font-bold tabular-nums text-muted; }
 
-  .submission-list { @apply mt-4 list-none p-0; }
-  .submission-list li { @apply flex items-center gap-3 border-t border-line/70 py-4 text-xs; }
+  .submission-list { @apply mt-5 list-none p-0; }
+  .submission-list li { @apply flex items-center gap-4 border-t border-line py-4; }
   .submission-list li > div { @apply flex-1; }
-  .submission-list b { @apply block font-serif text-base font-normal; }
-  .submission-list small { @apply text-[11px] text-faint; }
-  .submission-icon { @apply grid h-8 w-8 place-items-center rounded-full bg-sage text-sage-ink; }
+  .submission-list b { @apply block font-ui text-base font-bold text-heading; }
+  .submission-list small { @apply text-sm text-muted; }
+  .submission-icon { @apply grid h-10 w-10 place-items-center rounded-full bg-success-soft text-success; }
 
-  .panel-sage .field-label { @apply text-ink/70; }
-  .panel-sage .field-control { @apply border-black/25 placeholder:text-ink/40; }
-  .panel-sage .field-control:focus { border-color: var(--color-ink); box-shadow: 0 1px 0 0 var(--color-ink); }
-  .connected { @apply mt-2 flex flex-wrap items-center gap-x-2 text-[11px] text-sage-ink; }
-  .connected a { @apply underline underline-offset-2; }
-  .connected button { @apply ml-auto text-ink underline underline-offset-2 hover:text-coral-deep; }
+  .panel-tint .field-control { @apply bg-surface; }
+  .connected { @apply mt-2.5 flex flex-wrap items-center gap-x-2 text-sm text-success; }
+  .connected a { @apply font-semibold underline underline-offset-2; }
+  .connected button { @apply ml-auto rounded-full px-2 py-1 font-semibold text-heading underline underline-offset-2 hover:text-accent-ink; }
 }

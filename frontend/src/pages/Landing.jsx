@@ -12,20 +12,22 @@ export default function Landing() {
   const { publishedVideos, categories } = useLibrary()
 
   return <main>
-    <section className="shell hero">
-      <div>
-        <Eyebrow>A new way to learn together ✦</Eyebrow>
-        <h1 className="display display-xl">Find your<br /><em>sign.</em></h1>
-        <p className="hero-copy">{LOREM_SHORT}</p>
-        <div className="hero-actions">
-          <ButtonLink variant="outline" to="/demo">See how it works</ButtonLink>
-          <ButtonLink to={user ? '/home' : '/signup'}>{user ? 'Open library' : 'Get started'} <Arrow /></ButtonLink>
+    <section className="hero feature">
+      <div className="shell hero-inner">
+        <div>
+          <Eyebrow>A new way to learn together ✦</Eyebrow>
+          <h1 className="display display-xl">Find your<br /><em>sign.</em></h1>
+          <p className="hero-copy">{LOREM_SHORT}</p>
+          <div className="hero-actions">
+            <ButtonLink variant="outline" to="/demo">See how it works</ButtonLink>
+            <ButtonLink to={user ? '/home' : '/signup'}>{user ? 'Open library' : 'Get started'} <Arrow /></ButtonLink>
+          </div>
+          <p className="hero-proof">Lorem ipsum dolor sit amet, consectetur.</p>
         </div>
-        <p className="hero-proof">Lorem ipsum dolor sit amet, consectetur.</p>
-      </div>
-      <div className="hero-art">
-        <div className="hero-photo" role="img" aria-label="People collaborating around a table" />
-        <blockquote className="hero-quote">“Lorem ipsum dolor<br />sit amet.”<small>Consectetur adipiscing</small></blockquote>
+        <div className="hero-art">
+          <div className="hero-photo" role="img" aria-label="People collaborating around a table" />
+          <blockquote className="hero-quote">“Lorem ipsum dolor<br />sit amet.”<small>Consectetur adipiscing</small></blockquote>
+        </div>
       </div>
     </section>
 
@@ -64,7 +66,7 @@ export default function Landing() {
       <ContactForm />
     </section>
 
-    <section className="cta-band">
+    <section className="cta-band feature">
       <div className="cta-band-copy"><Eyebrow light>Your next chapter</Eyebrow><h2 className="display display-lg">Ready to make<br /><em>some space?</em></h2><ButtonLink variant="light" to={user ? '/home' : '/signup'}>{user ? 'Open library' : 'Create your account'} <Arrow /></ButtonLink></div>
       <div className="cta-band-art" role="img" aria-label="Hands signing" />
     </section>
