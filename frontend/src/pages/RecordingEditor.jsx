@@ -121,7 +121,7 @@ function Submitted({ video, next, navigate }) {
       <h1 className="display display-xl">Recording <em>submitted.</em></h1>
       <p className="lede">This lesson is marked done on your profile. Submitted recordings are locked, so they can't be watched, edited or deleted.</p>
       <div className="submitted-actions">
-        <Button onClick={() => navigate(next ? `/lesson/${next.id}` : `/library/${video.categoryId}`)}>{next ? 'Next video' : 'Back to lessons'} →</Button>
+        <Button onClick={() => navigate(next ? `/lesson/${next.id}` : `/library/${video.categoryId}`)}>{next ? 'Next video' : 'Back'} →</Button>
         <ButtonLink variant="outline" to={`/lesson/${video.id}`}>Back to video</ButtonLink>
         <ButtonLink variant="ghost" to="/profile">View progress ↗</ButtonLink>
       </div>
