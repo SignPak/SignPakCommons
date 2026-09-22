@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import { Arrow, Brand, ButtonLink } from './ui'
-import { Avatar } from './ui/Avatar'
+import { Avatar } from './ui'
 
 const publicLinks = [['How it works', '/demo'], ['About', '/#about'], ['Policy', '/#policy'], ['Contact', '/#contact']]
 const memberLinks = [['Library', '/home'], ['My space', '/profile']]
