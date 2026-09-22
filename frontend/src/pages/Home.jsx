@@ -19,13 +19,13 @@ export default function Home() {
         <h1 className="display display-xl">{greeting()}, <em>{user.firstName}.</em></h1>
         <p className="lede">What would you like to explore today?</p>
       </div>
-      <Link to="/profile" className="chip-link"><Avatar user={user} size="sm" />{user.firstName} {user.surname}</Link>
+      <Link to="/profile" className="chip-link"><Avatar user={user} size="sm" /></Link>
     </section>
 
     <section className="shell continue">
       {nextUp ? <>
         <div>
-          <Eyebrow>Continue learning ✦</Eyebrow>
+          <Eyebrow>Continue ✦</Eyebrow>
           <h2 className="display display-md">{nextUp.title}</h2>
           <p className="continue-meta">{nextCategory?.label} · {nextUp.level}</p>
           <div className="continue-progress"><ProgressBar value={percent} label="Overall progress" /><span>{doneCount} of {orderedPublished.length} lessons done</span></div>

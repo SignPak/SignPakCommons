@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
-import { Arrow, Brand, Button, ButtonLink } from './ui'
+import { Arrow, Brand, ButtonLink } from './ui'
+import { Avatar } from './ui/Avatar'
 
 const publicLinks = [['How it works', '/demo'], ['About', '/#about'], ['Policy', '/#policy'], ['Contact', '/#contact']]
 const memberLinks = [['Library', '/home'], ['My space', '/profile']]
@@ -22,7 +23,7 @@ export default function Header() {
       <div className="site-actions">
         <ThemeToggle />
         {user
-          ? <><Button variant="ghost" className="hide-on-mobile" onClick={handleLogout}>Log out</Button><ButtonLink to="/home">Open library <Arrow /></ButtonLink></>
+          ? <><Link to="/profile" className="chip-link"><Avatar user={user} size="sm" /></Link></>
           : <><ButtonLink variant="ghost" to="/login" className="hide-on-mobile">Log in</ButtonLink><ButtonLink to="/signup">Get started <Arrow /></ButtonLink></>}
         <button type="button" className="menu-toggle" aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen(!open)}>{open ? '✕' : '☰'}</button>
       </div>

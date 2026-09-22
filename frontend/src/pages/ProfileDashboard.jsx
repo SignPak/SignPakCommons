@@ -1,16 +1,14 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Field from '../components/Field'
-import { Alert, Arrow, Avatar, Badge, Button, ButtonLink, Eyebrow, ProgressBar, SectionHeading } from '../components/ui'
+import { Alert, Arrow, Badge, Button, ButtonLink, Eyebrow, ProgressBar, SectionHeading } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
 import { formatDate } from '../utils/format'
 import { normalizeGithub, normalizeLinkedin } from '../utils/validators'
 
 export default function ProfileDashboard() {
-  const { user, isAdmin, logout } = useAuth()
+  const { user, isAdmin } = useAuth()
   const { categories, videosIn, isDone, mySubmissions, publishedVideos, orderedPublished, doneCount } = useLibrary()
-  const navigate = useNavigate()
   const total = orderedPublished.length
   const percent = total ? Math.round((doneCount / total) * 100) : 0
   const recent = [...mySubmissions].filter((item) => publishedVideos.some((video) => video.id === item.videoId)).sort((a, b) => b.submittedAt - a.submittedAt)
@@ -20,26 +18,24 @@ export default function ProfileDashboard() {
       <div>
         <Eyebrow>Your space</Eyebrow>
         <h1 className="display display-xl">{user.firstName} <em>{user.surname}.</em></h1>
-        <p className="lede">{user.email} · Learning since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
-        <Button variant="ghost" className="profile-logout" onClick={async () => { await logout(); navigate('/') }}>Log out</Button>
+        <p className="lede">{user.email} · Contributing since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
       </div>
-      <Avatar user={user} size="lg" />
     </section>
 
     <section className="shell profile-grid">
       <div className="profile-main">
         <div className="panel">
-          <SectionHeading eyebrow="Your progress" title="Keep going." action={<b className="profile-count">{doneCount}/{total}</b>} />
-          <ProgressBar value={percent} label="Lessons complete" />
-          <div className="progress-caption"><span>Lessons complete</span><b>{percent}%</b></div>
+          <SectionHeading eyebrow="Your Contributions" title="Keep contributing." action={<b className="profile-count">{doneCount}/{total}</b>} />
+          <ProgressBar value={percent} label="Catagories complete" />
+          <div className="progress-caption"><span>Catagories complete</span><b>{percent}%</b></div>
           <ul className="path-progress">
             {categories.filter((category) => videosIn(category.id).length).map((category) => {
-              const lessons = videosIn(category.id)
-              const done = lessons.filter((lesson) => isDone(lesson.id)).length
-              return <li key={category.id}><span>{category.label}</span><ProgressBar value={(done / lessons.length) * 100} label={`${category.label} progress`} /><small>{done}/{lessons.length}</small></li>
+              const Catagories = videosIn(category.id)
+              const done = Catagories.filter((lesson) => isDone(lesson.id)).length
+              return <li key={category.id}><span>{category.label}</span><ProgressBar value={(done / Catagories.length) * 100} label={`${category.label} progress`} /><small>{done}/{Catagories.length}</small></li>
             })}
           </ul>
-          <ButtonLink variant="outline" to="/home" className="panel-action">Continue learning <Arrow /></ButtonLink>
+          <ButtonLink variant="outline" to="/home" className="panel-action">Continue <Arrow /></ButtonLink>
         </div>
 
         <div className="panel">
