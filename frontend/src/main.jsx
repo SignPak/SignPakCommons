@@ -6,17 +6,20 @@ import App from './App.jsx'
 import AuthProvider from './context/AuthProvider.jsx'
 import LibraryProvider from './context/LibraryProvider.jsx'
 import RecordingProvider from './context/RecordingProvider.jsx'
+import ThemeProvider from './context/ThemeProvider.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <LibraryProvider>
-          <RecordingProvider>
-            <App />
-          </RecordingProvider>
-        </LibraryProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <LibraryProvider>
+            <RecordingProvider>
+              <App />
+            </RecordingProvider>
+          </LibraryProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   </StrictMode>,
 )

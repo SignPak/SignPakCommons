@@ -5,7 +5,7 @@ import { demoSteps } from '../mock/lorem'
 
 export default function Demo() {
   const { user } = useAuth()
-  return <main className="demo">
+  return <main className="demo feature">
     <div className="shell demo-top">
       <ButtonLink variant="ghost" to="/">← Back home</ButtonLink>
       <ButtonLink to={user ? '/home' : '/signup'}>{user ? 'Open library' : 'Get started'} <Arrow /></ButtonLink>

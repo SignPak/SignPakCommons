@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import ThemeToggle from './ThemeToggle'
 import { Arrow, Brand, Button, ButtonLink } from './ui'
 
 const publicLinks = [['How it works', '/demo'], ['About', '/#about'], ['Policy', '/#policy'], ['Contact', '/#contact']]
@@ -19,6 +20,7 @@ export default function Header() {
       <Brand />
       <nav className="site-nav" aria-label="Main">{links.map(([label, to]) => <Link key={to} to={to}>{label}</Link>)}</nav>
       <div className="site-actions">
+        <ThemeToggle />
         {user
           ? <><Button variant="ghost" className="hide-on-mobile" onClick={handleLogout}>Log out</Button><ButtonLink to="/home">Open library <Arrow /></ButtonLink></>
           : <><ButtonLink variant="ghost" to="/login" className="hide-on-mobile">Log in</ButtonLink><ButtonLink to="/signup">Get started <Arrow /></ButtonLink></>}

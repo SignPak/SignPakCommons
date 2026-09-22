@@ -96,7 +96,7 @@ function ConnectForm() {
     return persist(next.github, next.linkedin, `${name === 'github' ? 'GitHub' : 'LinkedIn'} disconnected.`)
   }
 
-  return <form className="panel panel-sage" onSubmit={submit} noValidate>
+  return <form className="panel panel-tint" onSubmit={submit} noValidate>
     <Eyebrow>Connect</Eyebrow>
     <h2 className="display display-md">Bring your<br /><em>world in.</em></h2>
     <Field label="GitHub" name="github" value={values.github} onChange={change} error={errors.github} placeholder="username or github.com/username" autoComplete="off" />
