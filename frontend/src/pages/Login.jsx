@@ -22,7 +22,7 @@ export default function Login() {
     if (Object.keys(found).length) return
     setBusy(true)
     setFormError('')
-    try { await login(values.email, values.password) } // GuestOnly redirects once the session exists
+    try { await login(values.email, values.password) }
     catch (error) { setFormError(error.message); setBusy(false) }
   }
 

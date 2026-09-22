@@ -28,22 +28,22 @@ function PlayerScreen({ videoId }) {
   const goNext = () => navigate(next ? `/lesson/${next.id}` : `/library/${video.categoryId}`)
 
   return <main className="page">
-    <div className="shell player-top"><Link to={`/library/${video.categoryId}`}>← Back to lessons</Link><span>{video.level} · Lesson {String(number).padStart(2, '0')}</span></div>
+    <div className="shell player-top"><Link to={`/library/${video.categoryId}`}>← Back</Link><span>{video.level} · Lesson {String(number).padStart(2, '0')}</span></div>
     <section className="shell player-grid">
       <div>
         <BasePlayer video={video} videoRef={baseRef} />
         <div className="player-meta">
           <div><Eyebrow>{category?.label}</Eyebrow><h1 className="display display-lg">{video.title}</h1></div>
-          <Button variant="outline" onClick={goNext}>{next ? 'Next video →' : 'Back to lessons'}</Button>
+          <Button variant="outline" onClick={goNext}>{next ? 'Next video →' : '← Back'}</Button>
         </div>
       </div>
       <aside className="player-side">
         {done
           ? <div className="locked">
             <p className="recorder-status"><span aria-hidden="true">✓</span> Submitted</p>
-            <h2 className="display display-md">Lesson<br /><em>complete.</em></h2>
+            <h2 className="display display-md"><em>Complete.</em></h2>
             <p className="recorder-copy">Your recording was submitted, so it is locked. Submitted recordings can't be watched, edited or deleted.</p>
-            <Button block onClick={goNext}>{next ? 'Next video' : 'Back to lessons'} →</Button>
+            <Button block onClick={goNext}>{next ? 'Next video' : 'Back'} →</Button>
             <ButtonLink variant="outline" block to="/profile" className="locked-secondary">View my progress</ButtonLink>
           </div>
           : <RecorderPanel video={video} baseRef={baseRef} onSaveAndEdit={() => navigate(`/lesson/${video.id}/edit`)} />}
