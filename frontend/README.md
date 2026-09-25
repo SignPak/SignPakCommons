@@ -30,8 +30,8 @@ Anyone can also create a learner account on `/signup`. The **Open admin workspac
 | `/signup`, `/login`         | logged out | Account forms                                    |
 | `/home`                     | learner    | Categories                                       |
 | `/library/:categoryId`      | learner    | Videos in a category (search, filter, sort)      |
-| `/lesson/:videoId`          | learner    | Player and recorder                              |
-| `/lesson/:videoId/edit`     | learner    | Review, trim, submit                             |
+| `/watch?v=<videoId>`        | learner    | Player and recorder                              |
+| `/watch/edit?v=<videoId>`   | learner    | Review, trim, submit                             |
 | `/profile`                  | learner    | Progress, submissions, GitHub / LinkedIn         |
 | `/admin`                    | admin      | Dashboard                                        |
 | `/admin/videos`             | admin      | Upload, preview, edit, publish, delete           |
@@ -59,7 +59,7 @@ No inline utility classes in JSX. Components use semantic class names (`.btn`, `
 
 Every call goes through `src/services/api.js`, and every method is async and returns plain JSON. Replace the method bodies with `fetch()` calls and nothing else changes.
 
-- **Passwords** are stored in plain text in the mock only. The real API must hash them (bcrypt or argon2) and use a proper session or JWT.
+- **Passwords** are hashed in the mock only. The real API must use a password-specific hash (bcrypt or argon2) and a proper session or JWT.
 - **Recordings** are held in memory until submitted. On submit, `submissions.create` currently sends metadata only; the real call should upload the recorded `Blob` plus `trimStart` / `trimEnd` / `mirrored`, and the server does the cut (for example with ffmpeg). The browser does not re-encode.
 - **Base videos** uploaded by admins are kept in IndexedDB on that device. The real call should be a multipart upload.
 - **Seed videos** all use one public sample clip. Swap real URLs in `mock/data.js`, or just start uploading in the admin.
@@ -103,7 +103,7 @@ This is a video **data-collection** tool, not a learning platform: there's no cu
 ## Routing
 
 - **`src/routes/appRoutes.js`** — every client-side path the app links to, plus builders for the ones that take an id (`watchUrl(id)`, `watchEditUrl(id)`, `categoryUrl(id)`). Components import from here rather than writing `` `/watch?v=${id}` `` inline.
-- **A video's address is `/watch?v=<id>`**, not `/lesson/<id>` — the same shape YouTube uses. A query parameter keeps a video's URL independent of anything else about it (which category it's in, its position in a list), so links stay valid even if the catalog is reorganised. Editing a take is `/watch/edit?v=<id>`. Old `/lesson/:id` and `/lesson/:id/edit` links still resolve, redirected to the new shape, so nothing anyone bookmarked breaks.
+- **A video's address is `/watch?v=<id>`**, not `/lesson/<id>` — the same shape YouTube uses. A query parameter keeps a video's URL independent of anything else about it (which category it's in, its position in a list), so links stay valid even if the catalog is reorganised. Editing a take is `/watch/edit?v=<id>`.
 - **`src/services/apiRoutes.js`** — the real backend's endpoint paths (from `backend/README.md`), collected in one file for when `services/api.js` stops using `localStorage` and starts calling Express. Nothing imports this yet; it's ready for that day.
 
 ## SEO
