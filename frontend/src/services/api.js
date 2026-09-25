@@ -11,13 +11,23 @@ const readLocal = (key, fallback) => {
 
 const writeLocal = (key, value) => window.localStorage.setItem(PREFIX + key, JSON.stringify(value))
 const asTimestamp = (value) => value ? Date.parse(value) || value : value
+const apiOrigin = (import.meta.env.VITE_API_ORIGIN || '').replace(/\/$/, '')
 const normalize = (value) => {
   if (!value || typeof value !== 'object') return value
   const result = { ...value }
   for (const key of ['createdAt', 'updatedAt', 'submittedAt', 'readAt']) {
     if (result[key]) result[key] = asTimestamp(result[key])
   }
+  for (const key of ['videoUrl', 'poster']) {
+    if (result[key]?.startsWith('/')) result[key] = `${apiOrigin}${result[key]}`
+  }
   return result
+}
+
+const toBlob = async (value) => {
+  if (value instanceof Blob) return value
+  if (typeof value === 'string' && value.startsWith('data:')) return fetch(value).then((response) => response.blob())
+  return null
 }
 
 async function request(path, options = {}) {
@@ -79,7 +89,8 @@ export const api = {
     async create({ file, poster, title, categoryId, status, durationSec }) {
       const body = new FormData()
       body.append('video', file)
-      if (poster instanceof Blob) body.append('poster', poster, 'poster.webp')
+      const posterBlob = await toBlob(poster)
+      if (posterBlob) body.append('poster', posterBlob, 'poster.jpg')
       body.append('title', title)
       body.append('categoryId', categoryId || '')
       body.append('status', status)
