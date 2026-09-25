@@ -4,9 +4,9 @@ import { useAuth } from './AuthContext'
 import { NotificationContext } from './NotificationContext'
 
 /**
- * Per-user notifications, backed by the same mock storage as everything else so they
- * survive a reload. Read-only observers (like the cooldown timer in Player) call `notify`
- * to add one; the bell in the header renders whatever this holds.
+ * Per-user notifications are kept in the browser so they survive a reload. Read-only
+ * observers (like the cooldown timer in Player) call `notify` to add one; the bell in
+ * the header renders whatever this holds.
  */
 export default function NotificationProvider({ children }) {
   const { user } = useAuth()
