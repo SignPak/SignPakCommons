@@ -39,7 +39,7 @@ const contributorPerks = [
   {
     id: 3,
     title: "Certificate of Appreciation",
-    body: "Earn an official certificate of contribution from the NUST project team for your role in advancing PSL accessibility."
+    body: "We will provide a certificate of contribution for your role in advancing PSL accessibility."
   }
 ]
 
