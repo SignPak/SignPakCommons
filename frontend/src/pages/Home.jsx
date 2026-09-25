@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { Avatar, Eyebrow, ProgressBar, SectionHeading } from '../components/ui'
+import { Eyebrow, ProgressBar, SectionHeading } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
-import { categoryUrl, paths, watchUrl } from '../routes/appRoutes'
+import { categoryUrl, watchUrl } from '../routes/appRoutes'
 import { greeting } from '../utils/format'
 
 export default function Home() {
@@ -20,7 +20,6 @@ export default function Home() {
         <h1 className="display display-xl">{greeting()}, <em>{user.firstName}.</em></h1>
         <p className="lede">Which video would you like to contribute to today?</p>
       </div>
-      <Link to={paths.profile} className="chip-link"><Avatar user={user} size="sm" />{user.firstName} {user.surname}</Link>
     </section>
 
     <section className="shell continue">
@@ -28,7 +27,7 @@ export default function Home() {
         <div>
           <Eyebrow>Keep contributing ✦</Eyebrow>
           <h2 className="display display-md">{nextUp.title}</h2>
-          <p className="continue-meta">{nextCategory?.label} · {nextUp.level}</p>
+          <p className="continue-meta">{nextCategory?.label}</p>
           <div className="continue-progress"><ProgressBar value={percent} label="Coverage across the library" /><span>{contributedCount} of {orderedPublished.length} videos have a recording from you</span></div>
         </div>
         <Link to={watchUrl(nextUp.id)} className="continue-play" aria-label={`Open video: ${nextUp.title}`}>▶</Link>

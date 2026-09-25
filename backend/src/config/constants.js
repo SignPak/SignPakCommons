@@ -4,7 +4,6 @@ export const AUTH_COOKIE = 'signpak_token'
 export const ROLES = { USER: 'user', ADMIN: 'admin' }
 export const ROLE_LIST = Object.values(ROLES)
 
-export const LEVELS = ['Beginner', 'Practice', 'Intermediate', 'Advanced']
 export const TONES = ['yellow', 'blue', 'red', 'green']
 export const VIDEO_STATUS = { PUBLISHED: 'published', DRAFT: 'draft' }
 export const VIDEO_STATUS_LIST = Object.values(VIDEO_STATUS)

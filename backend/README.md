@@ -61,7 +61,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 | `GET /videos`, `GET /videos/:id` | anyone | Visitors and learners: published + categorised only. Admin: everything |
 | `GET /videos/:id/poster` | anyone (same visibility) | |
 | `GET /videos/:id/file` | logged in | Streams with Range support |
-| `POST /videos` | admin | `multipart/form-data`: `video` (required), `poster` (optional), `title`, `categoryId`, `level`, `status`, `durationSec` |
+| `POST /videos` | admin | `multipart/form-data`: `video` (required), `poster` (optional), `title`, `categoryId`, `status`, `durationSec` |
 | `PATCH`/`DELETE /videos/:id` | admin | Moving to another category appends to the end of that path |
 | `GET /submissions` | logged in | Learners: their own. Admin: all |
 | `POST /submissions` | logged in | `multipart/form-data`: `recording`, `videoId`, `trimStart`, `trimEnd`, `mirrored`, `duration` |

@@ -17,14 +17,11 @@ export default function CategoryBrowser() {
   const categoryId = safeRouteId(rawCategoryId)
   const { categories, videosIn, hasSubmission, submissionCount } = useLibrary()
   const [query, setQuery] = useState('')
-  const [level, setLevel] = useState('All levels')
   const [sort, setSort] = useState('path')
 
   const category = categories.find((item) => item.id === categoryId)
   const all = useMemo(() => (category ? videosIn(category.id) : []), [category, videosIn])
-  const levels = ['All levels', ...new Set(all.map((item) => item.level))]
   const videos = all
-    .filter((item) => level === 'All levels' || item.level === level)
     .filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase()))
     .sort(SORTS[sort].compare)
 
@@ -43,7 +40,6 @@ export default function CategoryBrowser() {
       <SectionHeading eyebrow={`${videos.length} showing`} title="Pick a video." action={
         <div className="filters">
           <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort videos">{Object.entries(SORTS).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select>
-          <select value={level} onChange={(event) => setLevel(event.target.value)} aria-label="Filter by level">{levels.map((item) => <option key={item}>{item}</option>)}</select>
         </div>
       } />
       <label className="search"><span>Search videos</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try “introduction”" /></label>
@@ -58,13 +54,13 @@ export default function CategoryBrowser() {
                 {hasSubmission(video.id) && <span className="video-card-done"><Badge tone="success">✓ {count} submitted</Badge></span>}
                 <i className="video-card-play" aria-hidden="true">▶</i>
               </VideoArtwork>
-              <p className="video-card-meta">{video.level} · {formatTime(video.durationSec)}</p>
+              <p className="video-card-meta">{formatTime(video.durationSec)}</p>
               <h3 className="display display-sm">{video.title}</h3>
               <span className="video-card-cta">{hasSubmission(video.id) ? 'Record another' : 'Open video'} ↗</span>
             </Link>
           })}
         </div>
-        : <p className="empty-note">{all.length ? 'No videos match those filters. ' : 'No videos in this category yet. '}{all.length > 0 && <button type="button" className="link-accent" onClick={() => { setQuery(''); setLevel('All levels') }}>Clear filters</button>}</p>}
+        : <p className="empty-note">{all.length ? 'No videos match that search. ' : 'No videos in this category yet. '}{all.length > 0 && <button type="button" className="link-accent" onClick={() => setQuery('')}>Clear search</button>}</p>}
     </section>
   </main>
 }
