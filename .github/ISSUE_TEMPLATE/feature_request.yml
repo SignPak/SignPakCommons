@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest a new feature or enhancement for the project
+title: "Feature Request"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please describe the idea and its value clearly.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Feature summary
+      description: A brief title for the idea
+      placeholder: e.g. Add category filters to the library page
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or need
+      description: What problem are you trying to solve?
+      placeholder: Describe the limitation or user need.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Explain the feature or workflow you want to add
+      placeholder: Describe the behavior or UI changes you expect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: What other approaches or workarounds have you considered?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add screenshots, user stories, references, or implementation ideas
+      placeholder: Add any extra context here.
+    validations:
+      required: false
