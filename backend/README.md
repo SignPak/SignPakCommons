@@ -33,6 +33,8 @@ Dependencies only point down. Controllers never touch models; services never see
 
 `src/app.js` builds the app (no port), `server.js` connects and listens, so tests can import `app` directly.
 
+Interactive API documentation is available at `http://localhost:5000/api/v1/docs` when the server is running. The raw OpenAPI document is at `/api/v1/docs.json`. See [docs/API.md](docs/API.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the human-readable reference.
+
 ## Responses
 
 ```jsonc
@@ -60,7 +62,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 | `POST /categories`, `PATCH`/`DELETE /categories/:id` | admin | Deleting unassigns its videos, it does not delete them |
 | `GET /videos`, `GET /videos/:id` | anyone | Visitors and contributors: published + categorised only. Admin: everything |
 | `GET /videos/:id/poster` | anyone (same visibility) | |
-| `GET /videos/:id/file` | logged in | Streams with Range support |
+| `GET /videos/:id/file` | anyone (same visibility) | Published reference videos stream with Range support |
 | `POST /videos` | admin | `multipart/form-data`: `video` (required), `poster` (optional), `title`, `categoryId`, `level`, `status`, `durationSec` |
 | `PATCH`/`DELETE /videos/:id` | admin | Moving to another category appends to the end of that path |
 | `GET /submissions` | logged in | Contributors: their own. Admin: all |
@@ -97,7 +99,6 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 ## Not built yet
 
 - **ffmpeg trimming and probing.** Submissions store `trimStart` / `trimEnd` / `mirrored` but the recording is saved untouched.
-- **Frontend hookup.** `frontend/src/services/api.js` still uses the mock. When it switches: add a Vite proxy for `/api` to `http://localhost:5000` (keeps the cookie same-origin), send `credentials: 'include'`, and note that lists now come back as `{ data: [...] }`.
 
 ## Housekeeping
 
