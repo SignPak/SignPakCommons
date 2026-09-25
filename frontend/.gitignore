@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Generated from src/seo/seoCatalog.mjs during the build.
+public/sitemap.xml
+public/robots.txt
+react-snap-routes.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
