@@ -129,7 +129,7 @@ export default function AdminDashboard() {
       <div className="panel">
         <SectionHeading eyebrow="By category" title="Which categories are active?" />
         <ul className="bar-list">
-          {perCategory.length ? perCategory.map(({ category, count, totalVideos }) => <li key={category.id}><span>{category.label}</span><div className="bar-track"><span className={`bar-fill tone-${category.tone}`} style={{ width: `${(count / topCount) * 100}%` }} /></div><b>{count}</b></li>) : <li className="empty-note">No categories yet.</li>}
+          {perCategory.length ? perCategory.map(({ category, count }) => <li key={category.id}><span>{category.label}</span><div className="bar-track"><span className={`bar-fill tone-${category.tone}`} style={{ width: `${(count / topCount) * 100}%` }} /></div><b>{count}</b></li>) : <li className="empty-note">No categories yet.</li>}
         </ul>
         <p className="panel-copy micro-copy">{selectedCategory === 'all' ? 'This shows the category mix across the selected range.' : `Category focus: ${categories.find((entry) => entry.id === selectedCategory)?.label || 'Selected category'}.`}</p>
       </div>
