@@ -1,7 +1,8 @@
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Arrow, ButtonLink, Eyebrow } from '../components/ui'
+import { Alert, Arrow, ButtonLink, Eyebrow } from '../components/ui'
+import { api } from '../services/api'
 import { paths } from '../routes/appRoutes'
-import { DEMO_VIDEO } from '../mock/data'
 
 const demoSteps = [
   {
@@ -20,6 +21,23 @@ const demoSteps = [
 
 export default function Demo() {
   const { user } = useAuth()
+  const [demoVideo, setDemoVideo] = useState(null)
+  const [videoState, setVideoState] = useState('loading')
+
+  useEffect(() => {
+    let active = true
+    api.videos.list()
+      .then((videos) => {
+        if (!active) return
+        setDemoVideo(videos[0] || null)
+        setVideoState(videos[0] ? 'ready' : 'empty')
+      })
+      .catch(() => {
+        if (active) setVideoState('error')
+      })
+    return () => { active = false }
+  }, [])
+
   return (
     <main className="demo feature">
       <div className="shell demo-top">
@@ -46,16 +64,20 @@ export default function Demo() {
           </ol>
         </div>
         <figure className="demo-video">
-          <video 
-            src={DEMO_VIDEO} 
-            controls 
-            playsInline 
-            preload="metadata" 
-            aria-label="Pakistan Sign Language dataset contribution walkthrough video" 
-          />
-          <figcaption>
-            A quick walkthrough on how to record, review, and upload your video samples to help build Pakistan's open PSL dataset.
-          </figcaption>
+          {videoState === 'loading' && <p role="status">Loading a reference video...</p>}
+          {videoState === 'error' && <Alert tone="error">Reference videos are temporarily unavailable.</Alert>}
+          {videoState === 'empty' && <p role="status">No published reference videos are available yet.</p>}
+          {demoVideo && <>
+            <video
+              src={demoVideo.videoUrl}
+              poster={demoVideo.poster || undefined}
+              controls
+              playsInline
+              preload="metadata"
+              aria-label={`${demoVideo.title} reference video`}
+            />
+            <figcaption>{demoVideo.title} · A real reference clip from the current PSL dataset.</figcaption>
+          </>}
         </figure>
       </section>
     </main>

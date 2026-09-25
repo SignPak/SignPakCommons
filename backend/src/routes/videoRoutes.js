@@ -12,12 +12,13 @@ import { videoUpload } from '../middlewares/upload.js'
 const router = Router()
 const adminOnly = [authenticate, requireRole(ROLES.ADMIN)]
 
-// Metadata and posters: anonymous visitors see published lessons only, admins see everything.
+// Metadata and posters: anonymous visitors see published videos only, admins see everything.
 router.get('/', optionalAuthenticate, videoController.list)
 router.get('/:id', optionalAuthenticate, validate({ params: idParams }), videoController.get)
 router.get('/:id/poster', optionalAuthenticate, validate({ params: idParams }), videoController.poster)
 
-// The video itself needs a session.
+// Published video files are public reference media; unpublished/admin media still requires visibility checks in the service.
+router.get('/:id/file', optionalAuthenticate, validate({ params: idParams }), videoController.file)
 router.get('/:id/file', authenticate, validate({ params: idParams }), videoController.file)
 
 // Order matters: log in, check role, then accept the upload, then validate the text fields that came with it.

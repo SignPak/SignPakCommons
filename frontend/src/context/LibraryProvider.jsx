@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { SUBMISSION_COOLDOWN_MS } from '../mock/data'
 import { api } from '../services/api'
 import { useAuth } from './AuthContext'
 import { LibraryContext } from './LibraryContext'
 
 const EMPTY = { ready: false, categories: [], videos: [], submissions: [] }
+const SUBMISSION_COOLDOWN_MS = Number(import.meta.env.VITE_SUBMISSION_COOLDOWN_MS || 30_000)
 
 export default function LibraryProvider({ children }) {
   const { user } = useAuth()
@@ -15,7 +15,7 @@ export default function LibraryProvider({ children }) {
     const [categories, videos, submissions] = await Promise.all([
       api.categories.list(),
       api.videos.list(),
-      api.submissions.list(user?.id, includeAll),
+      user ? api.submissions.list(user.id, includeAll) : Promise.resolve([]),
     ])
     setData({ ready: true, categories, videos, submissions })
   }, [user])
@@ -26,7 +26,7 @@ export default function LibraryProvider({ children }) {
     Promise.all([
       api.categories.list(),
       api.videos.list(),
-      api.submissions.list(user?.id, includeAll),
+      user ? api.submissions.list(user.id, includeAll) : Promise.resolve([]),
     ]).then(([categories, videos, submissions]) => {
       if (active) setData({ ready: true, categories, videos, submissions })
     })
@@ -68,7 +68,7 @@ export default function LibraryProvider({ children }) {
 
       async submitRecording(video, recording) {
         const submission = await api.submissions.create({
-          userId: user.id, videoId: video.id, trimStart: recording.edit.start, trimEnd: recording.edit.end,
+          videoId: video.id, recording: recording.blob, trimStart: recording.edit.start, trimEnd: recording.edit.end,
           mirrored: recording.edit.mirrored, duration: recording.duration, size: recording.blob.size, mimeType: recording.mimeType,
         })
         await refresh()

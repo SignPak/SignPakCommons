@@ -12,7 +12,7 @@ export const statsService = {
   /** Numbers for the admin dashboard. Days are UTC days. */
   async overview({ days }) {
     const start = startOfUtcDay(Date.now() - (days - 1) * DAY_MS)
-    const [learners, videos, published, submissions, categories, createdDates, perVideo, videoCategories, recent] = await Promise.all([
+    const [contributors, videos, published, submissions, categories, createdDates, perVideo, videoCategories, recent] = await Promise.all([
       userRepo.countByRole(ROLES.USER),
       videoRepo.count(),
       videoRepo.count({ status: VIDEO_STATUS.PUBLISHED }),
@@ -50,20 +50,20 @@ export const statsService = {
     const videoMap = byId(recentVideos)
     const categoryMap = byId(categories)
     const recentSubmissions = recent.map((item) => {
-      const learner = userMap.get(String(item.user))
+      const contributor = userMap.get(String(item.user))
       const video = videoMap.get(String(item.video))
       const category = video?.category && categoryMap.get(String(video.category))
       return {
         id: item.id,
         submittedAt: item.createdAt,
-        learner: learner ? { id: learner.id, name: `${learner.firstName} ${learner.surname}` } : null,
+        contributor: contributor ? { id: contributor.id, name: `${contributor.firstName} ${contributor.surname}` } : null,
         video: video ? { id: video.id, title: video.title } : null,
         category: category ? { id: category.id, label: category.label } : null,
       }
     })
 
     return {
-      totals: { learners, videos, publishedVideos: published, submissions, categories: categories.length },
+      totals: { contributors, videos, publishedVideos: published, submissions, categories: categories.length },
       activity,
       byCategory,
       recent: recentSubmissions,

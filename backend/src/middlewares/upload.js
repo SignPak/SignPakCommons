@@ -27,5 +27,5 @@ const build = ({ maxMb, rules, files }) => multer({
 export const videoUpload = build({ maxMb: env.MAX_VIDEO_UPLOAD_MB, rules: { video: 'video/', poster: 'image/' }, files: 2 })
   .fields([{ name: 'video', maxCount: 1 }, { name: 'poster', maxCount: 1 }])
 
-/** A learner's recording. */
+/** A contributor's recording. */
 export const recordingUpload = build({ maxMb: env.MAX_RECORDING_UPLOAD_MB, rules: { recording: 'video/' }, files: 1 }).single('recording')

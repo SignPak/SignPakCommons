@@ -1,12 +1,5 @@
-/**
- * Catalog of the real backend's endpoints (see backend/README.md), kept as one file so
- * services/api.js has a single place to read from once it stops talking to localStorage
- * and starts calling the Express API. Nothing in the app imports this yet: the mock layer
- * below is still the active implementation. Swapping in the real backend means replacing
- * each method body in services/api.js with a `fetch(apiRoutes...)` call and nothing else
- * in the app needs to change, since every screen already goes through that one file.
- */
-export const API_BASE = '/api/v1'
+const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || '').replace(/\/$/, '')
+export const API_BASE = `${API_ORIGIN}/api/v1`
 
 const qs = (params = {}) => {
   const search = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ''))
@@ -26,6 +19,7 @@ export const apiRoutes = {
 
   users: {
     me: () => `${API_BASE}/users/me`,
+    list: () => `${API_BASE}/admin/users`,
   },
 
   categories: {

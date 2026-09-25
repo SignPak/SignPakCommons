@@ -12,7 +12,7 @@ async function assertCategoryExists(categoryId) {
   if (categoryId && !(await categoryRepo.findById(categoryId))) throw validationError({ categoryId: 'That category does not exist.' })
 }
 
-/** Learners only get published videos that sit in a category; anything else looks like it does not exist. */
+/** Contributors only get published videos that sit in a category; anything else looks like it does not exist. */
 async function findVisible(id, requester) {
   const video = await videoRepo.findById(id)
   const visible = video && (isAdmin(requester) || (video.status === VIDEO_STATUS.PUBLISHED && video.category))
@@ -60,7 +60,7 @@ export const videoService = {
       }
       const order = input.categoryId ? (await videoRepo.maxOrder(input.categoryId)) + 1 : 1
       return await videoRepo.create({
-        title: input.title, status: input.status, durationSec: input.durationSec,
+        title: input.title, level: input.level, status: input.status, durationSec: input.durationSec,
         category: input.categoryId, order, videoFile, posterFile, createdBy: admin._id,
       })
     } catch (error) {
@@ -80,7 +80,7 @@ export const videoService = {
       // Moving into a category puts the video at the end of that path unless an order was given.
       if (moved && patch.categoryId && patch.order === undefined) video.order = (await videoRepo.maxOrder(patch.categoryId)) + 1
     }
-    for (const key of ['title', 'status', 'order']) {
+    for (const key of ['title', 'level', 'status', 'order']) {
       if (patch[key] !== undefined) video[key] = patch[key]
     }
     return videoRepo.save(video)
@@ -90,7 +90,7 @@ export const videoService = {
     const video = await videoRepo.findById(id)
     if (!video) throw notFound('That video does not exist.')
     await videoRepo.remove(video.id)
-    // Learners' past submissions are kept on record; only the base video's own files go.
+    // Contributors' past submissions are kept on record; only the base video's own files go.
     await Promise.all([storageService.remove(video.videoFile), storageService.remove(video.posterFile)])
   },
 

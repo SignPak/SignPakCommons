@@ -33,6 +33,8 @@ Dependencies only point down. Controllers never touch models; services never see
 
 `src/app.js` builds the app (no port), `server.js` connects and listens, so tests can import `app` directly.
 
+Interactive API documentation is available at `http://localhost:5000/api/v1/docs` when the server is running. The raw OpenAPI document is at `/api/v1/docs.json`. See [docs/API.md](docs/API.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the human-readable reference.
+
 ## Responses
 
 ```jsonc
@@ -50,7 +52,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 | Method + path | Who | Notes |
 | --- | --- | --- |
 | `GET /health` | anyone | 503 if the database is down |
-| `POST /auth/signup` | anyone | Always creates a learner. Sets the cookie |
+| `POST /auth/signup` | anyone | Always creates a contributor. Sets the cookie |
 | `POST /auth/login` | anyone | Sets the cookie |
 | `POST /auth/logout` | anyone | Clears the cookie |
 | `GET /auth/session` | anyone | `{ data: user }`, or `{ data: null }` for visitors |
@@ -58,14 +60,14 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 | `PATCH /users/me` | logged in | `{ connections: { github, linkedin } }`; a handle or a profile link; `null` disconnects |
 | `GET /categories` | anyone | |
 | `POST /categories`, `PATCH`/`DELETE /categories/:id` | admin | Deleting unassigns its videos, it does not delete them |
-| `GET /videos`, `GET /videos/:id` | anyone | Visitors and learners: published + categorised only. Admin: everything |
+| `GET /videos`, `GET /videos/:id` | anyone | Visitors and contributors: published + categorised only. Admin: everything |
 | `GET /videos/:id/poster` | anyone (same visibility) | |
-| `GET /videos/:id/file` | logged in | Streams with Range support |
-| `POST /videos` | admin | `multipart/form-data`: `video` (required), `poster` (optional), `title`, `categoryId`, `status`, `durationSec` |
+| `GET /videos/:id/file` | anyone (same visibility) | Published reference videos stream with Range support |
+| `POST /videos` | admin | `multipart/form-data`: `video` (required), `poster` (optional), `title`, `categoryId`, `level`, `status`, `durationSec` |
 | `PATCH`/`DELETE /videos/:id` | admin | Moving to another category appends to the end of that path |
-| `GET /submissions` | logged in | Learners: their own. Admin: all |
+| `GET /submissions` | logged in | Contributors: their own. Admin: all |
 | `POST /submissions` | logged in | `multipart/form-data`: `recording`, `videoId`, `trimStart`, `trimEnd`, `mirrored`, `duration` |
-| `GET /submissions/:id/recording` | admin | Learners can never play a submission back |
+| `GET /submissions/:id/recording` | admin | Contributors can never play a submission back |
 | `POST /contact` | anyone | Rate limited: 5 per hour per IP |
 | `GET /admin/users`, `/admin/stats?days=14`, `/admin/messages` | admin | |
 
@@ -77,7 +79,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 
 **Admin.** Created or promoted from `ADMIN_EMAIL` / `ADMIN_PASSWORD` on every start. Signup ignores any `role` in the body. Changing `ADMIN_PASSWORD` later does not reset an existing admin's password.
 
-**The lock rule.** A learner can submit a lesson once, ever. It is enforced twice: the service checks first, and a unique index on `(user, video)` settles races (three simultaneous submits produce exactly one, and the losers' files are cleaned up). There is no update or delete route for submissions.
+**The cooldown rule.** This is a data-collection tool, not a one-shot quiz: a contributor can submit the same video more than once (more varied takes make better training data), but not back to back. `SUBMISSION_COOLDOWN_MS` (default 30s, in `.env`) is the minimum gap between two submissions for the same `(user, video)`. It is enforced atomically, not by a simple read-then-write: `repositories/submissionRepo.js#claimCooldown` does a conditional `findOneAndUpdate` with `upsert: true` against a `SubmissionCooldown` collection that has a unique index on `(user, video)`. If a live cooldown already exists, the upsert's insert path collides with that unique index (`E11000`), which is treated as "still cooling down" — so three simultaneous submissions for the same video still produce exactly one success (verified: `tests/api.test.js`'s concurrent-submit test). A submission that fails after claiming the cooldown (a storage or DB error) releases it, so a failed attempt never costs the contributor their next try. Regardless of timing, no submission can ever be edited or deleted once made, and only an admin can watch one back.
 
 **Uploads.** Multer writes to `uploads/tmp`, the service checks the file's real type from its first bytes (MP4, WebM or MOV; JPEG, PNG or WebP for posters; the browser-supplied type is not trusted), then hands it to storage. Failures at any step leave no files behind.
 
@@ -89,7 +91,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 
 ## Testing
 
-`npm test` runs `tests/api.test.js` (30 tests): auth, roles, uploads, Range streaming, the lock rule, stats, contact, cleanup of temp files. It calls the real HTTP stack.
+`npm test` runs `tests/api.test.js` (31 tests): auth, roles, uploads, Range streaming, the cooldown rule (including a real elapsed-cooldown resubmission, sped up via `SUBMISSION_COOLDOWN_MS=200` in `tests/helpers.js`), stats, contact, cleanup of temp files. It calls the real HTTP stack.
 
 - Set `MONGODB_URI_TEST` to run against a MongoDB you already have (it uses that database and **drops it**, so point it at a throwaway one).
 - Otherwise it starts `mongodb-memory-server`, which downloads a MongoDB binary on first use.
@@ -97,7 +99,6 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 ## Not built yet
 
 - **ffmpeg trimming and probing.** Submissions store `trimStart` / `trimEnd` / `mirrored` but the recording is saved untouched.
-- **Frontend hookup.** `frontend/src/services/api.js` still uses the mock. When it switches: add a Vite proxy for `/api` to `http://localhost:5000` (keeps the cookie same-origin), send `credentials: 'include'`, and note that lists now come back as `{ data: [...] }`.
 
 ## Housekeeping
 

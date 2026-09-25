@@ -34,7 +34,7 @@ export const categoryService = {
     }
   },
 
-  /** Deleting a category keeps its videos; they become unassigned (and hidden from learners). */
+  /** Deleting a category keeps its videos; they become unassigned (and hidden from contributors). */
   async remove(id) {
     const category = await categoryRepo.findById(id)
     if (!category) throw notFound('That category does not exist.')

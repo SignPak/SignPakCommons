@@ -35,7 +35,7 @@ export default function BasePlayer({ video, videoRef }) {
   return <div className="base-player" ref={frame}>
     <div className="base-player-stage">
       <video
-        ref={videoRef} src={video.videoUrl} poster={video.poster} className="base-player-video" playsInline autoPlay
+        ref={videoRef} src={video.videoUrl} poster={video.poster} crossOrigin="use-credentials" className="base-player-video" playsInline autoPlay
         onClick={toggle} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
         onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
         onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}

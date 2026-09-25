@@ -16,6 +16,8 @@ Object.assign(process.env, {
   UPLOAD_DIR: uploadDir,
   MAX_VIDEO_UPLOAD_MB: '5',
   MAX_RECORDING_UPLOAD_MB: '5',
+  // Short enough that the "cooldown elapses" test does not have to wait 30 real seconds.
+  SUBMISSION_COOLDOWN_MS: '200',
 })
 
 export const webm = (size = 2000) => Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(size, 7)])
@@ -53,7 +55,7 @@ export class Client {
 export const videoForm = (fields, { video = webm(), poster } = {}) => {
   const form = new FormData()
   for (const [key, value] of Object.entries(fields)) form.append(key, value)
-  if (video) form.append('video', new Blob([video], { type: 'video/webm' }), 'lesson.webm')
+  if (video) form.append('video', new Blob([video], { type: 'video/webm' }), 'video.webm')
   if (poster) form.append('poster', new Blob([poster], { type: 'image/jpeg' }), 'poster.jpg')
   return form
 }

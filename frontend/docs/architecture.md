@@ -122,17 +122,11 @@ The frontend is designed around a service boundary rather than direct fetch call
 
 The project expects data access to happen through service modules under `src/services/`.
 
-That boundary is important because the app currently contains mock/local behavior while the backend is still being integrated. In practice, the app intentionally centralizes access patterns so that the UI layer does not care whether the source is mock storage, local storage, or a live API.
+That boundary keeps the UI independent from transport details while the app uses the live Express API. Browser-local state is limited to preferences and intentionally local notifications.
 
-### Mock-first strategy
+### Live API strategy
 
-This frontend is currently built with a mock data model and browser persistence patterns, including:
-
-- localStorage for session and preferences
-- IndexedDB for generated or uploaded local media assets
-- in-browser mock API behavior for likes, submissions, and demo data
-
-This keeps the UX functional without a backend, which is useful for product iteration and UI validation.
+Core users, categories, videos, submissions, and contact messages are managed by the backend API. The frontend keeps only theme/preferences and notifications in browser storage.
 
 ## Styling Architecture
 
@@ -193,7 +187,7 @@ frontend/
     seo/                       # metadata and SEO catalog
     styles/                    # theme and shared CSS
     utils/                     # helpers and shared utilities
-    mock/                      # demo data and local-generated state
+    config/                    # production UI constants
   docs/
     architecture.md           # this document
   scripts/
@@ -211,4 +205,4 @@ frontend/
 
 ## Summary
 
-The frontend is a modular React application organized around a clear provider-based state model, route-driven screens, reusable UI shells, and a mock-first data layer. Its architecture is intentionally structured so it can evolve from a browser-only prototype into a real backend-backed app without major changes to the screen composition or route design.
+The frontend is a modular React application organized around a clear provider-based state model, route-driven screens, reusable UI shells, and a live backend service boundary.
