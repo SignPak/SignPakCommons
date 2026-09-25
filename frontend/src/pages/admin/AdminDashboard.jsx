@@ -27,7 +27,17 @@ function ActivityChart({ counts, labels }) {
 export default function AdminDashboard() {
   const { categories, videos, submissions } = useLibrary()
   const [users, setUsers] = useState([])
-  useEffect(() => { api.users.list().then(setUsers) }, [])
+  const [usersError, setUsersError] = useState('')
+  const [usersLoading, setUsersLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    api.users.list()
+      .then((list) => { if (active) { setUsers(list); setUsersError('') } })
+      .catch(() => { if (active) setUsersError('Unable to load contributor data right now. Try refreshing the page.') })
+      .finally(() => { if (active) setUsersLoading(false) })
+    return () => { active = false }
+  }, [])
 
   const contributors = users.filter((user) => user.role === 'user')
   const published = videos.filter((video) => video.status === 'published').length
@@ -52,14 +62,16 @@ export default function AdminDashboard() {
   ]
 
   return <>
+    {usersError && <div className="admin-alert"><p className="alert alert-error">{usersError} <button type="button" className="inline-link" onClick={() => window.location.reload()}>Refresh</button></p></div>}
+
     <section className="stat-grid" aria-label="Key numbers">
       {stats.map(([label, value, note]) => <div key={label} className="stat-card"><span>{label}</span><b className="display">{value}</b><small>{note}</small></div>)}
     </section>
 
     <section className="admin-split">
       <div className="panel">
-        <SectionHeading eyebrow="Activity" title="Learning in motion." action={<span className="panel-note">Last {DAYS} days</span>} />
-        <ActivityChart counts={counts} labels={labels} />
+        <SectionHeading eyebrow="Activity" title="Contributions in motion." action={<span className="panel-note">Last {DAYS} days</span>} />
+        {usersLoading ? <div className="skeleton-chart" aria-label="Loading contributions data" /> : <ActivityChart counts={counts} labels={labels} />}
       </div>
       <div className="panel">
         <SectionHeading eyebrow="By category" title="Where it happens." />
@@ -84,7 +96,7 @@ export default function AdminDashboard() {
             </tr>
           })}</tbody>
         </table></div>
-        : <p className="empty-note">No submissions yet.</p>}
+        : <p className="empty-note">No submissions yet. As soon as contributors upload recordings, they will appear here.</p>}
     </section>
   </>
 }

@@ -111,9 +111,11 @@ export const api = {
 
   categories: {
     async list() { return read('categories', []) },
-    async create({ label, copy, tone }) {
-      const category = { id: uid('cat'), label: label.trim(), copy: copy.trim(), tone }
-      write('categories', [...read('categories', []), category])
+    async create({ label, copy, tone, archived = false, order = null }) {
+      const categories = read('categories', [])
+      const nextOrder = order ?? (Math.max(0, ...categories.map((item) => item.order || 0)) + 1)
+      const category = { id: uid('cat'), label: label.trim(), copy: copy.trim(), tone, archived, order: nextOrder }
+      write('categories', [...categories, category])
       return category
     },
     async update(id, patch) {

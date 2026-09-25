@@ -8,6 +8,10 @@
   .admin-split { @apply grid grid-cols-1 gap-6 lg:grid-cols-[1.25fr_.75fr]; }
   .admin-split-categories { @apply lg:grid-cols-[.8fr_1.2fr]; }
   .admin-body .panel + .panel, .admin-split .panel + .panel { @apply mt-0; }
+  .admin-toolbar { @apply flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between; }
+  .admin-alert { @apply mb-4; }
+  .inline-link { @apply ml-2 inline-flex items-center rounded-full bg-transparent px-2 py-1 text-sm font-bold text-accent-ink underline underline-offset-4; }
+  .skeleton-chart { @apply h-48 w-full animate-pulse rounded-2xl bg-panel; }
 
   .stat-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4; }
   .stat-card { @apply relative flex flex-col overflow-hidden rounded-3xl border border-line bg-surface p-6 shadow-soft; }
@@ -39,6 +43,8 @@
   .table tbody tr:hover { @apply bg-panel; }
 
   .inline-input { @apply w-full min-w-40 py-2.5 text-sm sm:w-64; }
+  .bulk-actions { @apply mt-4 flex flex-col gap-3 rounded-2xl border border-line bg-panel p-4 sm:flex-row sm:items-end; }
+  .bulk-actions .field { @apply mb-0 flex-1; }
 
   .upload { @apply grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_.9fr]; }
   .upload-drop { @apply min-w-0; }
@@ -52,6 +58,8 @@
   .video-list { @apply m-0 list-none p-0; }
   .video-row { @apply border-t border-line py-5; }
   .video-row-main { @apply flex flex-wrap items-center gap-x-4 gap-y-3; }
+  .row-select { @apply inline-flex items-center; }
+  .row-select input { @apply h-4 w-4 rounded border-line-strong accent-brand; }
   .video-row-thumb { @apply h-14 w-24 shrink-0 rounded-xl bg-panel; }
   .video-row-info { @apply min-w-0 flex-1 basis-44; }
   .video-row-info b { @apply block font-display text-2xl font-bold leading-none text-heading; }
@@ -62,14 +70,20 @@
   .video-row-preview { @apply mt-4 block aspect-video w-full max-w-xl rounded-2xl bg-black; }
   .video-row-edit { @apply mt-2 grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
   .row-form-actions { @apply mt-6 flex flex-wrap gap-2 sm:col-span-2; }
+  .admin-inline-move { @apply mt-2 sm:col-span-2; }
 
   .category-list { @apply mt-8 grid list-none gap-1.5 border-t border-line p-0 pt-5; }
+  .category-list-archive { @apply mt-4; }
   .category-list-item { @apply flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-ui text-base font-bold text-heading transition hover:bg-panel; }
   .category-list-item.is-active { @apply bg-secondary-soft; }
   .category-list-item small { @apply ml-auto text-sm text-muted; }
   .swatch { @apply h-4 w-4 shrink-0 rounded-full; }
+  .category-stats { @apply mb-6 mt-4 grid gap-3 rounded-2xl border border-line bg-panel px-4 py-3 text-sm text-muted sm:grid-cols-3; }
+  .category-stats b { @apply block font-ui text-lg font-bold text-heading; }
   .category-edit { @apply mt-2 grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
   .field-wide { @apply sm:col-span-2; }
+  .category-order-actions { @apply mt-4 flex flex-wrap gap-2; }
+  .category-archive-block { @apply mt-8; }
   .assign-title { @apply mb-2 mt-10 flex items-center gap-3; }
   .assign-list { @apply m-0 list-none p-0; }
   .assign-list li { @apply flex items-center justify-between gap-4 border-t border-line py-3.5; }
