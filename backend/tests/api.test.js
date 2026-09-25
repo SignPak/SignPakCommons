@@ -48,8 +48,12 @@ describe('basics', () => {
     const root = await new Client(origin).get('/')
     assert.equal(root.status, 200)
     assert.equal(root.body.data.api, '/api/v1')
-    assert.equal(root.body.data.docs, '/api/v1/docs')
+    assert.equal(root.body.data.docs, '/docs')
     assert.equal((await new Client(origin).get('/favicon.ico')).status, 204)
+    assert.equal((await new Client(origin).get('/docs')).status, 200)
+    assert.equal((await new Client(origin).get('/api-docs')).status, 200)
+    assert.equal((await new Client(origin).get('/docs.json')).body.openapi, '3.0.3')
+    assert.equal((await new Client(origin).get('/api-docs.json')).body.openapi, '3.0.3')
   })
 
   test('health check reports the database', async () => {

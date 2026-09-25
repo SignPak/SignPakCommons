@@ -3,7 +3,9 @@
 The interactive API reference is available while the backend is running:
 
 - Swagger UI: `http://localhost:5000/api/v1/docs`
+- Swagger UI aliases: `http://localhost:5000/docs` or `http://localhost:5000/api-docs`
 - OpenAPI JSON: `http://localhost:5000/api/v1/docs.json`
+- OpenAPI JSON aliases: `/docs.json` or `/api-docs.json`
 - API base URL: `http://localhost:5000/api/v1`
 
 The OpenAPI document is maintained in [`src/docs/openapi.js`](../src/docs/openapi.js). Keep it synchronized with the route files and validators when changing the API.
