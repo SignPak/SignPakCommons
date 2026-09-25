@@ -1,0 +1,106 @@
+/* Shared building blocks used across pages. */
+@layer components {
+  /* ---------- Type ---------- */
+  /* Barlow Condensed for headlines and big numbers, Quicksand for UI chrome, Inter for reading. */
+  .display { @apply font-display font-bold text-heading; line-height: 0.96; letter-spacing: 0; }
+  .display em { font-style: normal; color: var(--em); }
+  .display-xl { font-size: clamp(3.5rem, 9vw, 6.75rem); line-height: 0.9; }
+  .display-lg { font-size: clamp(2.5rem, 5.2vw, 4rem); }
+  .display-md { font-size: clamp(2rem, 3.6vw, 2.75rem); }
+  .display-sm { font-size: 1.75rem; line-height: 1.05; }
+  .lede { @apply mt-4 max-w-xl text-lg leading-relaxed text-muted; }
+  .eyebrow { @apply mb-4 inline-flex items-center gap-3 font-ui text-[0.8125rem] font-bold uppercase tracking-[.14em] text-secondary-ink; }
+  .eyebrow::before { content: ''; @apply h-0.5 w-6 bg-current; }
+  .eyebrow-light { color: var(--color-turquoise); }
+  .link-accent { @apply cursor-pointer text-sm font-semibold text-accent-ink underline underline-offset-4 decoration-2 decoration-transparent transition-colors hover:decoration-current; }
+  .empty-note { @apply py-6 text-base text-muted; }
+
+  /* ---------- Brand ---------- */
+  .brand { @apply flex items-center gap-2.5 font-ui text-2xl font-bold tracking-tight text-heading; }
+  .brand-mark { @apply grid h-9 w-9 place-items-center rounded-full bg-deep font-display text-xl font-bold leading-none text-turquoise; }
+  :root[data-theme='dark'] .brand-mark { background: var(--color-turquoise); color: var(--color-deep); }
+  .brand-accent { @apply text-secondary-ink; }
+  .brand-light { color: #fff; }
+  .brand-light .brand-mark { background: var(--color-turquoise); color: var(--color-deep); }
+  .brand-light .brand-accent { color: var(--color-turquoise); }
+
+  /* ---------- Buttons ---------- */
+  .btn { @apply inline-flex min-h-11 items-center justify-center gap-2.5 rounded-full border-2 border-transparent px-6 py-2.5 font-ui text-[0.9375rem] font-bold leading-none tracking-[.01em] transition duration-150 disabled:opacity-50; }
+  .btn:hover:not(:disabled) { transform: translateY(-1px); }
+  .btn:active:not(:disabled) { transform: translateY(0); }
+  .btn-block { @apply flex w-full justify-between text-left; }
+  .btn-arrow { @apply text-lg leading-none; }
+  .btn-dark { @apply bg-brand text-brand-ink shadow-soft hover:bg-brand-hover; }
+  .btn-light { @apply bg-white text-deep shadow-soft hover:bg-turquoise; }
+  .btn-outline { @apply border-line-strong text-heading hover:border-accent-ink hover:bg-surface; }
+  .btn-ghost { @apply px-4 text-heading hover:bg-panel; }
+  .btn-danger { @apply bg-danger text-danger-ink hover:brightness-110; }
+
+  /* ---------- Forms ---------- */
+  .field { @apply mt-5 block; }
+  .field-label { @apply mb-2 block font-ui text-sm font-bold text-heading; }
+  .field-control, .filters select, .search input, .inline-input {
+    @apply block w-full rounded-xl border-[1.5px] border-line-strong bg-surface px-4 py-3 text-base text-ink outline-none transition placeholder:text-faint;
+  }
+  .field-control:focus, .filters select:focus, .search input:focus, .inline-input:focus {
+    border-color: var(--focus);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 24%, transparent);
+  }
+  .field-control[aria-invalid='true'] { border-color: var(--danger); }
+  .field-textarea { @apply min-h-28 resize-y leading-relaxed; }
+  .field-select, .filters select { @apply cursor-pointer; }
+  .field-row { @apply grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
+  .field-error { @apply mt-2 text-sm font-medium text-danger; }
+  .field-hint { @apply mt-2 text-sm text-faint; }
+
+  .alert { @apply mt-5 rounded-xl border-l-4 px-4 py-3 text-sm leading-6; }
+  .alert-info { @apply border-accent bg-accent-soft text-ink; }
+  .alert-success { @apply border-success bg-success-soft text-success; }
+  .alert-error { @apply border-danger bg-danger-soft text-danger; }
+
+  /* ---------- Small pieces ---------- */
+  .progress { @apply h-2.5 w-full overflow-hidden rounded-full bg-line; }
+  .progress-bar { @apply block h-full rounded-full transition-[width] duration-500; background: var(--progress); }
+  .avatar { @apply grid shrink-0 place-items-center rounded-full bg-secondary-soft font-ui font-bold text-heading; }
+  .avatar-sm { @apply h-10 w-10 text-sm; }
+  .avatar-md { @apply h-12 w-12 text-base; }
+  .avatar-lg { @apply h-24 w-24 text-3xl; }
+  .badge { @apply inline-block rounded-full px-3 py-1 font-ui text-xs font-bold uppercase tracking-wider; }
+  .badge-neutral { @apply bg-panel text-muted; }
+  .badge-success { @apply bg-success-soft text-success; }
+  .chip-link { @apply flex items-center gap-3 rounded-full border border-line bg-surface py-1.5 pl-1.5 pr-5 text-sm font-semibold transition hover:border-accent-ink hover:shadow-soft; }
+
+  .panel { @apply rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8; }
+  .panel-outline { @apply bg-transparent shadow-none; }
+  .panel-tint { @apply border-transparent bg-secondary-soft; }
+  .panel-copy { @apply mt-3 text-base leading-relaxed text-muted; }
+  .panel-note { @apply text-sm text-muted; }
+  .panel-action { @apply mt-6; }
+  .panel + .panel { @apply mt-6; }
+
+  .section-heading { @apply mb-8 flex flex-wrap items-end justify-between gap-5; }
+
+  /* Video artwork. The image itself is set from data; everything else lives here. */
+  .media { @apply relative overflow-hidden bg-cover bg-center; }
+  .tone-yellow { background-color: var(--tone-yellow); }
+  .tone-blue { background-color: var(--tone-blue); }
+  .tone-red { background-color: var(--tone-red); }
+  .tone-green { background-color: var(--tone-green); }
+
+  .confirm { @apply mt-5 rounded-2xl border border-danger bg-danger-soft p-4 text-sm leading-6 text-ink; }
+  .confirm-actions { @apply mt-3 flex flex-wrap gap-2; }
+
+  /* ---------- Feature blocks: always deep green, so their contents use fixed light colours ---------- */
+  .feature { background-color: var(--feature); color: #fff; }
+  .feature .display { color: #fff; }
+  .feature .display em { color: var(--color-turquoise); }
+  .feature .eyebrow { color: var(--color-turquoise); }
+  .feature .lede { color: rgb(255 255 255 / 0.82); }
+  .feature .btn-dark { background-color: var(--color-turquoise); color: var(--color-deep); }
+  .feature .btn-dark:hover:not(:disabled) { background-color: #7bebdf; }
+  .feature .btn-outline { border-color: rgb(255 255 255 / 0.55); color: #fff; }
+  .feature .btn-outline:hover:not(:disabled) { border-color: #fff; background-color: rgb(255 255 255 / 0.1); }
+  .feature .btn-ghost { color: #fff; }
+  .feature .btn-ghost:hover:not(:disabled) { background-color: rgb(255 255 255 / 0.12); }
+  .feature :focus-visible { outline-color: var(--color-turquoise); }
+}

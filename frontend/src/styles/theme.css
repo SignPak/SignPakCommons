@@ -1,0 +1,138 @@
+/*
+ * Design tokens.
+ *
+ * Palette (analogous: green -> turquoise -> blue)
+ *   Deep green  #00401A  dominant   ~60%  surfaces, hero/footer blocks, headings, primary buttons
+ *   Turquoise   #40E0D0  secondary  ~30%  highlights, fills, gradients, dark-theme buttons
+ *   Cyan blue   #0096FF  accent     ~10%  focus, links, active states, progress and chart ends
+ *   White       #FFFFFF  text on green, cards, contrast
+ *
+ * Cyan cannot carry small text on white (3.1:1), so text and links use --accent-ink, a deeper
+ * shade in light mode and a lighter one in dark mode. Every text pair was checked for WCAG AA (4.5:1).
+ *
+ * Components only ever use the semantic names below (bg-surface, text-muted...), never raw hex,
+ * so a theme is just a second set of values for the same names.
+ */
+
+@theme inline {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-ui: 'Quicksand', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', Impact, sans-serif;
+
+  /* Theme-aware (change between light and dark) */
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-feature: var(--feature);
+  --color-ink: var(--ink);
+  --color-heading: var(--heading);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-ink: var(--brand-ink);
+  --color-secondary: var(--secondary);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-secondary-ink: var(--secondary-ink);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-focus: var(--focus);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+
+  /* Fixed (identical in both themes) */
+  --color-deep: #00401a;
+  --color-night: #00260f;
+  --color-turquoise: #40e0d0;
+  --color-cyan: #0096ff;
+
+  --shadow-soft: var(--elev-1);
+  --shadow-lift: var(--elev-2);
+}
+
+:root {
+  color-scheme: light;
+  --page: #f3faf6;
+  --surface: #ffffff;
+  --panel: #e6f4ec;
+  --feature: #00401a;
+  --header-bg: rgb(243 250 246 / 0.86);
+
+  --ink: #0b2b1a;
+  --heading: #00401a;
+  --muted: #45604f;
+  --faint: #56705f;
+  --line: #cbe3d5;
+  --line-strong: #6e9683;
+
+  --brand: #00401a;
+  --brand-hover: #005e27;
+  --brand-ink: #ffffff;
+  --secondary: #40e0d0;
+  --secondary-soft: #d3f6f1;
+  --secondary-ink: #00695f;
+  --accent: #0096ff;
+  --accent-soft: #daeeff;
+  --accent-ink: #0069b4;
+  --em: #0069b4;
+  --focus: #0072cc;
+
+  --danger: #b3261e;
+  --danger-soft: #fdecea;
+  --danger-ink: #ffffff;
+  --success: #0b6b34;
+  --success-soft: #ddf3e5;
+
+  --elev-1: 0 1px 2px rgb(0 64 26 / 0.06), 0 6px 20px rgb(0 64 26 / 0.07);
+  --elev-2: 0 2px 4px rgb(0 64 26 / 0.06), 0 16px 40px rgb(0 64 26 / 0.14);
+  --progress: linear-gradient(90deg, #40e0d0, #0096ff);
+
+  /* Category tile colours. Keys stay yellow/blue/red/green because they are stored in the database. */
+  --tone-yellow: #c4f27a;
+  --tone-blue: #8fcbff;
+  --tone-red: #40e0d0;
+  --tone-green: #8fe3b0;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --page: #00401a;
+  --surface: #004d21;
+  --panel: #00330f;
+  --feature: #002e12;
+  --header-bg: rgb(0 64 26 / 0.88);
+
+  --ink: #f2fbf6;
+  --heading: #ffffff;
+  --muted: #b9dcc8;
+  --faint: #9cc7b0;
+  --line: #1f6f45;
+  --line-strong: #4fa07a;
+
+  --brand: #40e0d0;
+  --brand-hover: #7bebdf;
+  --brand-ink: #00401a;
+  --secondary: #40e0d0;
+  --secondary-soft: #05594a;
+  --secondary-ink: #40e0d0;
+  --accent: #0096ff;
+  --accent-soft: #04517f;
+  --accent-ink: #66bbff;
+  --em: #40e0d0;
+  --focus: #40e0d0;
+
+  --danger: #ff9a8f;
+  --danger-soft: #4a2420;
+  --danger-ink: #3b0d08;
+  --success: #7be0a0;
+  --success-soft: #0a5a34;
+
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px rgb(0 20 8 / 0.35);
+  --elev-2: 0 2px 4px rgb(0 0 0 / 0.3), 0 18px 44px rgb(0 20 8 / 0.5);
+}

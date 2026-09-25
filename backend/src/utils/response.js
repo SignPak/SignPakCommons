@@ -1,0 +1,4 @@
+// One success shape for the whole API: { data }.
+export const ok = (res, data, status = 200) => res.status(status).json({ data })
+export const created = (res, data) => ok(res, data, 201)
+export const noContent = (res) => res.status(204).end()

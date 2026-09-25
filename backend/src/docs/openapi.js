@@ -1,0 +1,142 @@
+const envelope = (schema = {}) => ({
+  type: 'object',
+  properties: { data: schema },
+})
+
+const idParameter = {
+  name: 'id',
+  in: 'path',
+  required: true,
+  schema: { type: 'string', pattern: '^[a-f0-9]{24}$' },
+}
+
+const errorResponse = {
+  description: 'Error response',
+  content: {
+    'application/json': {
+      schema: {
+        type: 'object',
+        properties: {
+          error: {
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              fields: { type: 'object', additionalProperties: { type: 'string' } },
+            },
+          },
+        },
+      },
+    },
+  },
+}
+
+const userSecurity = [{ cookieAuth: [] }]
+const adminSecurity = userSecurity
+
+export const openapi = {
+  openapi: '3.0.3',
+  info: {
+    title: 'SignPak Commons API',
+    version: '1.0.0',
+    description: 'API for the SignPak Commons Pakistan Sign Language dataset contribution platform.',
+  },
+  servers: [{ url: '/api/v1', description: 'Current API server' }],
+  tags: [
+    { name: 'Health' },
+    { name: 'Auth' },
+    { name: 'Users' },
+    { name: 'Categories' },
+    { name: 'Videos' },
+    { name: 'Submissions' },
+    { name: 'Contact' },
+    { name: 'Admin' },
+  ],
+  components: {
+    securitySchemes: {
+      cookieAuth: { type: 'apiKey', in: 'cookie', name: 'token', description: 'HTTP-only JWT cookie set by login or signup.' },
+    },
+    schemas: {
+      Category: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }, label: { type: 'string' }, copy: { type: 'string' }, tone: { type: 'string', enum: ['yellow', 'blue', 'red', 'green'] },
+        },
+      },
+      Video: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }, title: { type: 'string' }, status: { type: 'string', enum: ['draft', 'published'] },
+          categoryId: { type: 'string', nullable: true }, order: { type: 'integer' }, durationSec: { type: 'number' },
+          videoUrl: { type: 'string' }, poster: { type: 'string', nullable: true }, size: { type: 'integer' },
+        },
+      },
+      User: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }, firstName: { type: 'string' }, surname: { type: 'string' }, email: { type: 'string', format: 'email' },
+          role: { type: 'string', enum: ['user', 'admin'] }, connections: { type: 'object', additionalProperties: { type: 'string', nullable: true } },
+        },
+      },
+      AuthInput: {
+        type: 'object', required: ['email', 'password'],
+        properties: {
+          firstName: { type: 'string', maxLength: 60 }, surname: { type: 'string', maxLength: 60 },
+          email: { type: 'string', format: 'email' }, password: { type: 'string', format: 'password', minLength: 8 }, confirmPassword: { type: 'string' },
+        },
+      },
+      Submission: {
+        type: 'object',
+        properties: { id: { type: 'string' }, videoId: { type: 'string' }, submittedAt: { type: 'string', format: 'date-time' }, duration: { type: 'number' }, mirrored: { type: 'boolean' } },
+      },
+      Error: { type: 'object', properties: { error: { type: 'object' } } },
+    },
+  },
+  paths: {
+    '/health': {
+      get: { tags: ['Health'], summary: 'Check API and database health', responses: { 200: { description: 'Healthy', content: { 'application/json': { schema: envelope({ type: 'object' }) } } }, 503: { description: 'Database unavailable' } } },
+    },
+    '/docs.json': { get: { tags: ['Health'], summary: 'Get the OpenAPI document', responses: { 200: { description: 'OpenAPI JSON document' } } } },
+    '/auth/signup': {
+      post: { tags: ['Auth'], summary: 'Create an account', requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthInput' } } } }, responses: { 201: { description: 'Account created' }, 400: errorResponse } },
+    },
+    '/auth/login': {
+      post: { tags: ['Auth'], summary: 'Log in and set the HTTP-only cookie', requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthInput' } } } }, responses: { 200: { description: 'Logged in' }, 401: errorResponse } },
+    },
+    '/auth/logout': { post: { tags: ['Auth'], summary: 'Clear the session cookie', responses: { 204: { description: 'Logged out' } } } },
+    '/auth/session': { get: { tags: ['Auth'], summary: 'Get the current session', responses: { 200: { description: 'Session state' } } } },
+    '/users/me': {
+      get: { tags: ['Users'], summary: 'Get the current user', security: userSecurity, responses: { 200: { description: 'Current user' }, 401: errorResponse } },
+      patch: { tags: ['Users'], summary: 'Update profile connections', security: userSecurity, requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { connections: { type: 'object' } } } } } }, responses: { 200: { description: 'Updated user' }, 400: errorResponse } },
+    },
+    '/categories': {
+      get: { tags: ['Categories'], summary: 'List categories', responses: { 200: { description: 'Categories', content: { 'application/json': { schema: envelope({ type: 'array', items: { $ref: '#/components/schemas/Category' } }) } } } } },
+      post: { tags: ['Categories'], summary: 'Create a category', security: adminSecurity, requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/Category' } } } }, responses: { 201: { description: 'Created' }, 403: errorResponse } },
+    },
+    '/categories/{id}': {
+      parameters: [idParameter],
+      patch: { tags: ['Categories'], summary: 'Update a category', security: adminSecurity, requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/Category' } } } }, responses: { 200: { description: 'Updated' }, 404: errorResponse } },
+      delete: { tags: ['Categories'], summary: 'Delete a category', security: adminSecurity, responses: { 204: { description: 'Deleted' }, 404: errorResponse } },
+    },
+    '/videos': {
+      get: { tags: ['Videos'], summary: 'List visible videos', description: 'Anonymous callers receive published videos assigned to a category. Admins receive all videos.', responses: { 200: { description: 'Videos', content: { 'application/json': { schema: envelope({ type: 'array', items: { $ref: '#/components/schemas/Video' } }) } } } } },
+      post: { tags: ['Videos'], summary: 'Upload a base video', security: adminSecurity, requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['video', 'title'], properties: { video: { type: 'string', format: 'binary' }, poster: { type: 'string', format: 'binary' }, title: { type: 'string' }, categoryId: { type: 'string' }, status: { type: 'string', enum: ['draft', 'published'] }, durationSec: { type: 'number' } } } } } }, responses: { 201: { description: 'Created' }, 400: errorResponse } },
+    },
+    '/videos/{id}': {
+      parameters: [idParameter],
+      get: { tags: ['Videos'], summary: 'Get one visible video', responses: { 200: { description: 'Video' }, 404: errorResponse } },
+      patch: { tags: ['Videos'], summary: 'Update video metadata', security: adminSecurity, requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/Video' } } } }, responses: { 200: { description: 'Updated' }, 404: errorResponse } },
+      delete: { tags: ['Videos'], summary: 'Delete a video and its files', security: adminSecurity, responses: { 204: { description: 'Deleted' }, 404: errorResponse } },
+    },
+    '/videos/{id}/file': { parameters: [idParameter], get: { tags: ['Videos'], summary: 'Stream a visible video file', responses: { 200: { description: 'Video stream', content: { 'video/mp4': {} } }, 404: errorResponse } } },
+    '/videos/{id}/poster': { parameters: [idParameter], get: { tags: ['Videos'], summary: 'Stream a visible video poster', responses: { 200: { description: 'Image stream' }, 404: errorResponse } } },
+    '/submissions': {
+      get: { tags: ['Submissions'], summary: 'List the current user submissions', security: userSecurity, responses: { 200: { description: 'Submissions' }, 401: errorResponse } },
+      post: { tags: ['Submissions'], summary: 'Submit a recording', security: userSecurity, requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['recording', 'videoId'], properties: { recording: { type: 'string', format: 'binary' }, videoId: { type: 'string' }, trimStart: { type: 'number' }, trimEnd: { type: 'number' }, mirrored: { type: 'boolean' }, duration: { type: 'number' } } } } } }, responses: { 201: { description: 'Created' }, 400: errorResponse } },
+    },
+    '/submissions/{id}/recording': { parameters: [idParameter], get: { tags: ['Submissions'], summary: 'Stream a submission recording', security: adminSecurity, responses: { 200: { description: 'Recording stream' }, 403: errorResponse } } },
+    '/contact': { post: { tags: ['Contact'], summary: 'Send a contact message', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name', 'email', 'message'], properties: { name: { type: 'string' }, email: { type: 'string', format: 'email' }, message: { type: 'string' } } } } } }, responses: { 201: { description: 'Message sent' }, 400: errorResponse } } },
+    '/admin/users': { get: { tags: ['Admin'], summary: 'List all users', security: adminSecurity, responses: { 200: { description: 'Users' }, 403: errorResponse } } },
+    '/admin/stats': { get: { tags: ['Admin'], summary: 'Get dashboard statistics', security: adminSecurity, parameters: [{ name: 'days', in: 'query', schema: { type: 'integer', minimum: 7, maximum: 90, default: 14 } }], responses: { 200: { description: 'Statistics' }, 403: errorResponse } } },
+    '/admin/messages': { get: { tags: ['Admin'], summary: 'List contact messages', security: adminSecurity, parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } }], responses: { 200: { description: 'Messages' }, 403: errorResponse } } },
+  },
+}
