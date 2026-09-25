@@ -26,6 +26,7 @@ export const apiRoutes = {
 
   users: {
     me: () => `${API_BASE}/users/me`,
+    list: () => `${API_BASE}/admin/users`,
   },
 
   categories: {
