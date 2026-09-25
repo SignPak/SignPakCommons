@@ -43,6 +43,15 @@ after(async () => {
 })
 
 describe('basics', () => {
+  test('root advertises the API and favicon is ignored', async () => {
+    const origin = new URL(base).origin
+    const root = await new Client(origin).get('/')
+    assert.equal(root.status, 200)
+    assert.equal(root.body.data.api, '/api/v1')
+    assert.equal(root.body.data.docs, '/api/v1/docs')
+    assert.equal((await new Client(origin).get('/favicon.ico')).status, 204)
+  })
+
   test('health check reports the database', async () => {
     const res = await new Client(base).get('/health')
     assert.equal(res.status, 200)

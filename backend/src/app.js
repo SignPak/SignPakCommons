@@ -33,6 +33,14 @@ app.use(compression())
 app.use(express.json({ limit: '100kb' }))
 app.use(cookieParser())
 
+app.get('/', (req, res) => res.json({ data: {
+  name: 'SignPak Commons API',
+  api: API_PREFIX,
+  health: `${API_PREFIX}/health`,
+  docs: `${API_PREFIX}/docs`,
+} }))
+app.get('/favicon.ico', (req, res) => res.status(204).end())
+
 app.use(API_PREFIX, apiLimiter, verifyOrigin, routes)
 
 app.use(notFoundHandler)
