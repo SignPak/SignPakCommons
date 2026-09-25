@@ -34,8 +34,8 @@ export function createLocalDriver(rootDir) {
       await fs.mkdir(path.join(root, 'tmp'), { recursive: true })
     },
 
-    async save({ tempPath, ext = '', folder }) {
-      const key = `${folder}/${randomUUID()}${ext}`
+    async save({ tempPath, ext = '', folder, fileName }) {
+      const key = `${folder}/${fileName || `${randomUUID()}${ext}`}`
       const destination = resolveKey(key)
       await fs.mkdir(path.dirname(destination), { recursive: true })
       try {

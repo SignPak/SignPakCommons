@@ -1,6 +1,6 @@
 # SignPakCommons: backend
 
-Express + Node.js + MongoDB (Mongoose). Cookie-based auth, local file storage (Google Drive ready), layered architecture.
+Express + Node.js + MongoDB (Mongoose). Cookie-based auth, local base-video storage, optional append-only Google Drive recording archives, layered architecture.
 
 ## Run it
 
@@ -67,7 +67,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 | `PATCH`/`DELETE /videos/:id` | admin | Moving to another category appends to the end of that path |
 | `GET /submissions` | logged in | Contributors: their own. Admin: all |
 | `POST /submissions` | logged in | `multipart/form-data`: `recording`, `videoId`, `trimStart`, `trimEnd`, `mirrored`, `duration` |
-| `GET /submissions/:id/recording` | admin | Contributors can never play a submission back |
+| `GET /submissions/:id/recording` | none | Deliberately unavailable; submissions are append-only archives |
 | `POST /contact` | anyone | Rate limited: 5 per hour per IP |
 | `GET /admin/users`, `/admin/stats?days=14`, `/admin/messages` | admin | |
 
@@ -79,11 +79,11 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 
 **Admin.** Created or promoted from `ADMIN_EMAIL` / `ADMIN_PASSWORD` on every start. Signup ignores any `role` in the body. Changing `ADMIN_PASSWORD` later does not reset an existing admin's password.
 
-**The cooldown rule.** This is a data-collection tool, not a one-shot quiz: a contributor can submit the same video more than once (more varied takes make better training data), but not back to back. `SUBMISSION_COOLDOWN_MS` (default 30s, in `.env`) is the minimum gap between two submissions for the same `(user, video)`. It is enforced atomically, not by a simple read-then-write: `repositories/submissionRepo.js#claimCooldown` does a conditional `findOneAndUpdate` with `upsert: true` against a `SubmissionCooldown` collection that has a unique index on `(user, video)`. If a live cooldown already exists, the upsert's insert path collides with that unique index (`E11000`), which is treated as "still cooling down" — so three simultaneous submissions for the same video still produce exactly one success (verified: `tests/api.test.js`'s concurrent-submit test). A submission that fails after claiming the cooldown (a storage or DB error) releases it, so a failed attempt never costs the contributor their next try. Regardless of timing, no submission can ever be edited or deleted once made, and only an admin can watch one back.
+**The cooldown rule.** This is a data-collection tool, not a one-shot quiz: a contributor can submit the same video more than once (more varied takes make better training data), but not back to back. `SUBMISSION_COOLDOWN_MS` (default 30s, in `.env`) is the minimum gap between two submissions for the same `(user, video)`. It is enforced atomically, not by a simple read-then-write: `repositories/submissionRepo.js#claimCooldown` does a conditional `findOneAndUpdate` with `upsert: true` against a `SubmissionCooldown` collection that has a unique index on `(user, video)`. If a live cooldown already exists, the upsert's insert path collides with that unique index (`E11000`), which is treated as "still cooling down" — so three simultaneous submissions for the same video still produce exactly one success (verified: `tests/api.test.js`'s concurrent-submit test). A submission that fails after claiming the cooldown (a storage or DB error) releases it, so a failed attempt never costs the contributor their next try. Regardless of timing, no submission can ever be edited, deleted, or read back once archived. Admins receive archive metadata only.
 
 **Uploads.** Multer writes to `uploads/tmp`, the service checks the file's real type from its first bytes (MP4, WebM or MOV; JPEG, PNG or WebP for posters; the browser-supplied type is not trusted), then hands it to storage. Failures at any step leave no files behind.
 
-**Storage and Google Drive.** MongoDB stores only `{ driver, key, mimeType, size }`. `services/storage/localDriver.js` documents a four-method contract (`save`, `stat`, `createReadStream`, `remove`). To add Google Drive: write `googleDriveDriver.js` with those four methods (Drive's `files.get` with `alt=media` accepts Range headers), register it in `services/storage/index.js`, and allow `gdrive` in `STORAGE_DRIVER`. Files already stored keep working, because each one remembers which driver holds it.
+**Storage and Google Drive.** Base videos use the readable storage driver selected by `STORAGE_DRIVER`. Submission recordings use the separate append-only driver selected by `ARCHIVE_STORAGE_DRIVER`; set it to `gdrive` with `GOOGLE_SERVICE_ACCOUNT_JSON` and `GOOGLE_DRIVE_FOLDER_ID`. MongoDB stores the archive pointer and metadata, while the API never reads, updates, or deletes the archived recording. Existing file records keep working because each one remembers its driver.
 
 **Stats.** Per-category counts only include submissions whose video still exists. Totals and daily activity always count everything. Days are UTC. Per-day bucketing is done in code from a timestamps-only query; if submissions reach hundreds of thousands, move it to a MongoDB aggregation.
 

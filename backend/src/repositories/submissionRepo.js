@@ -7,6 +7,7 @@ export const submissionRepo = {
   findById: (id) => Submission.findById(id),
   list: ({ userId } = {}) => Submission.find(userId ? { user: userId } : {}).sort({ createdAt: -1 }),
   recent: (limit) => Submission.find().sort({ createdAt: -1 }).limit(limit),
+  countForPair: (userId, videoId) => Submission.countDocuments({ user: userId, video: videoId }),
   count: () => Submission.countDocuments(),
   // Just the timestamps, for bucketing into days.
   createdSince: (date) => Submission.find({ createdAt: { $gte: date } }).select('createdAt').lean(),

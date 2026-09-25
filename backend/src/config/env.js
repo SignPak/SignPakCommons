@@ -25,8 +25,11 @@ const schema = z.object({
   ADMIN_FIRST_NAME: z.string().min(1).default('Admin'),
   ADMIN_SURNAME: z.string().min(1).default('Signpak'),
 
-  STORAGE_DRIVER: z.enum(['local']).default('local'),
+  STORAGE_DRIVER: z.enum(['local', 'gdrive']).default('local'),
+  ARCHIVE_STORAGE_DRIVER: z.enum(['local', 'gdrive']).default('local'),
   UPLOAD_DIR: z.string().default('uploads'),
+  GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
   MAX_VIDEO_UPLOAD_MB: z.coerce.number().positive().default(300),
   MAX_RECORDING_UPLOAD_MB: z.coerce.number().positive().default(100),
 
@@ -36,6 +39,14 @@ const schema = z.object({
   // minimum gap enforced between two submissions for the same (user, video). Overridable
   // (like BCRYPT_ROUNDS) so tests do not have to wait 30 real seconds.
   SUBMISSION_COOLDOWN_MS: z.coerce.number().int().positive().default(30_000),
+}).superRefine((data, context) => {
+  const needsGoogle = data.STORAGE_DRIVER === 'gdrive' || data.ARCHIVE_STORAGE_DRIVER === 'gdrive'
+  if (needsGoogle && !data.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    context.addIssue({ code: 'custom', path: ['GOOGLE_SERVICE_ACCOUNT_JSON'], message: 'Required when STORAGE_DRIVER=gdrive.' })
+  }
+  if (needsGoogle && !data.GOOGLE_DRIVE_FOLDER_ID) {
+    context.addIssue({ code: 'custom', path: ['GOOGLE_DRIVE_FOLDER_ID'], message: 'Required when STORAGE_DRIVER=gdrive.' })
+  }
 })
 
 const parsed = schema.safeParse(process.env)

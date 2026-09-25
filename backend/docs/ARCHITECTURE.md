@@ -45,7 +45,9 @@ The authentication token is stored in the `httpOnly` `signpak_token` cookie. The
 
 MongoDB stores users, categories, videos, submissions, cooldown records, and contact messages. Video and recording bytes are stored through the storage driver; MongoDB stores a driver reference, key, MIME type, and size rather than file contents.
 
-Published videos assigned to a category are visible to anonymous visitors. Their metadata, posters, and reference files can be read by the public demo and library. Draft or unassigned videos remain restricted to admins. Contributor recordings are never publicly playable; only admins can access a submission recording.
+Published videos assigned to a category are visible to anonymous visitors. Their metadata, posters, and reference files can be read by the public demo and library. Draft or unassigned videos remain restricted to admins. Contributor recordings are never publicly playable.
+
+Submission recordings use a separate append-only archive path when `ARCHIVE_STORAGE_DRIVER=gdrive`: `commons/{userId}_{sequence}/{category_slug}/{video_slug}/{video_slug}.{ext}`. The API creates the archive object and stores its metadata in MongoDB, but exposes no read, update, or delete operation for the recording. Admin submission responses include the archive path for operational access; contributor responses do not.
 
 Uploads are first written to a temporary directory, checked by file signatures, and moved into storage only after validation. Failure cleanup removes temporary and already-stored files where necessary.
 
@@ -56,7 +58,7 @@ Uploads are first written to a temporary directory, checked by file signatures, 
 - SameSite HTTP-only JWT cookies plus origin verification for state-changing requests.
 - Global and operation-specific rate limits.
 - Zod validation for JSON, multipart fields, route IDs, and query parameters.
-- Role checks for admin routes and submission recording playback.
+- Role checks for admin routes and archive metadata access.
 - File type sniffing instead of trusting browser-provided MIME types.
 
 ## Testing and extension points
