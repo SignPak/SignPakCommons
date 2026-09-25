@@ -303,7 +303,7 @@ describe('submissions and the cooldown rule', () => {
     assert.equal(submission.mirrored, true)
     assert.equal(submission.trimEnd, 2.5)
     assert.equal(submission.recording, undefined)
-    assert.equal(filesIn('recordings').length, 1)
+    assert.equal(filesIn('commons').length, 1)
     const mine = await contributor.get('/submissions')
     assert.equal(mine.body.data.length, 1)
     assert.equal((await other.get('/submissions')).body.data.length, 0)
@@ -314,14 +314,14 @@ describe('submissions and the cooldown rule', () => {
     const again = await contributor.upload('/submissions', recordingForm(good(), { file: mp4() }))
     assert.equal(again.status, 409)
     assert.match(again.body.error.message, /wait \d+s/i)
-    assert.equal(filesIn('recordings').length, 1)
+    assert.equal(filesIn('commons').length, 1)
     assert.deepEqual(filesIn('tmp'), [])
   })
 
   test('COOLDOWN: concurrent double-submits for the same video produce exactly one submission', async () => {
     const results = await Promise.all([1, 2, 3].map(() => other.upload('/submissions', recordingForm({ ...good(), videoId: video2.id }))))
     assert.deepEqual(results.map((r) => r.status).sort(), [201, 409, 409])
-    assert.equal(filesIn('recordings').length, 2, 'losing uploads must not leave orphaned files')
+    assert.equal(filesIn('commons').length, 2, 'losing uploads must not leave orphaned archive folders')
     assert.equal((await other.get('/submissions')).body.data.length, 1)
   })
 
@@ -334,20 +334,11 @@ describe('submissions and the cooldown rule', () => {
     assert.equal(mine.body.data.length, 2, 'both recordings for this video are kept, not merged or replaced')
   })
 
-  test('a submission can never be edited or deleted once made, and contributors cannot watch their own back', async () => {
+  test('a submission can never be edited, deleted, or read once archived', async () => {
     assert.equal((await contributor.patch(`/submissions/${submission.id}`, { trimEnd: 1 })).status, 404)
     assert.equal((await contributor.delete(`/submissions/${submission.id}`)).status, 404)
-    assert.equal((await contributor.get(`/submissions/${submission.id}/recording`)).status, 403)
-    assert.equal((await other.get(`/submissions/${submission.id}/recording`)).status, 403)
-  })
-
-  test('admins can watch a submission (with Range), and it is not cacheable', async () => {
-    const res = await admin.get(`/submissions/${submission.id}/recording`, { raw: true })
-    assert.equal(res.status, 200)
-    assert.deepEqual(res.body, webm(3000))
-    assert.match(res.headers.get('cache-control'), /no-store/)
-    const part = await admin.get(`/submissions/${submission.id}/recording`, { raw: true, headers: { range: 'bytes=0-3' } })
-    assert.equal(part.status, 206)
+    assert.equal((await contributor.get(`/submissions/${submission.id}/recording`)).status, 404)
+    assert.equal((await admin.get(`/submissions/${submission.id}/recording`)).status, 404)
   })
 
   test('deleting a base video keeps contributors\' submissions on record', async () => {

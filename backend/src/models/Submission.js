@@ -18,6 +18,7 @@ const submissionSchema = new mongoose.Schema({
     ret.submittedAt = ret.createdAt
     ret.size = ret.recording?.size ?? 0
     ret.mimeType = ret.recording?.mimeType
+    ret.archivePath = ret.recording?.archivePath ?? null
     for (const key of ['user', 'video', 'recording', 'createdAt', 'updatedAt']) delete ret[key]
     return ret
   }),

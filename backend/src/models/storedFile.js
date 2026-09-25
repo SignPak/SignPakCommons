@@ -10,4 +10,5 @@ export const storedFileSchema = new mongoose.Schema({
   mimeType: { type: String, required: true },
   size: { type: Number, required: true, min: 0 },
   originalName: { type: String, default: '' },
+  archivePath: { type: String, default: null },
 }, { _id: false })

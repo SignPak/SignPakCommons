@@ -1,13 +1,14 @@
 import { MAX_RECORDING_SECONDS, ROLES, TRIM_TOLERANCE_SECONDS, VIDEO_STATUS } from '../config/constants.js'
 import { env } from '../config/env.js'
 import { submissionRepo } from '../repositories/submissionRepo.js'
+import { categoryRepo } from '../repositories/categoryRepo.js'
 import { videoRepo } from '../repositories/videoRepo.js'
 import { conflict, notFound, validationError } from '../utils/AppError.js'
 import { sniffVideo } from '../utils/files.js'
-import { logger } from '../utils/logger.js'
 import { storageService } from './storage/index.js'
 
 const cooling = (remainingMs) => conflict(`Wait ${Math.ceil(remainingMs / 1000)}s before recording this video again.`)
+const archiveSlug = (value) => String(value).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'untitled'
 
 function assertTrimIsSane({ trimStart, trimEnd, duration }) {
   if (duration <= 0 || duration > MAX_RECORDING_SECONDS) throw validationError({ duration: `A recording must be between 0 and ${MAX_RECORDING_SECONDS} seconds.` })
@@ -33,35 +34,40 @@ export const submissionService = {
 
     const video = await videoRepo.findById(input.videoId)
     if (!video || video.status !== VIDEO_STATUS.PUBLISHED || !video.category) throw notFound('That video is not available.')
+    const category = await categoryRepo.findById(video.category)
+    if (!category) throw notFound('That video category is not available.')
 
     const claimed = await submissionRepo.claimCooldown(user._id, video._id, env.SUBMISSION_COOLDOWN_MS)
     if (!claimed) throw cooling(await submissionRepo.cooldownRemaining(user._id, video._id))
 
-    const recording = await storageService.save({ tempPath: upload.path, originalName: upload.originalname, mimeType: kind.mimeType, ext: kind.ext }, { folder: 'recordings' })
+    const sequence = await submissionRepo.countForPair(user._id, video._id)
+    const categoryName = archiveSlug(category.label)
+    const videoName = archiveSlug(video.title)
+    const archiveFolder = `commons/${user._id}_${sequence}/${categoryName}/${videoName}`
+    const recording = await storageService.archive({
+      tempPath: upload.path, originalName: upload.originalname, mimeType: kind.mimeType, ext: kind.ext,
+      folder: archiveFolder, fileName: `${videoName}${kind.ext}`,
+    })
     try {
       return await submissionRepo.create({
         user: user._id, video: video._id, trimStart: input.trimStart, trimEnd: input.trimEnd,
         mirrored: input.mirrored, duration: input.duration, recording,
       })
     } catch (error) {
-      await storageService.remove(recording)
       await submissionRepo.releaseCooldown(user._id, video._id) // this attempt never landed, so it should not cost the contributor their cooldown
       throw error
     }
   },
 
   /** Contributors see their own submissions; admins see all of them. */
-  list: (user) => submissionRepo.list(user.role === ROLES.ADMIN ? {} : { userId: user._id }),
-
-  /** Admin only (enforced by the route). Contributors can never play their own submission back. */
-  async getRecording(id) {
-    const submission = await submissionRepo.findById(id)
-    if (!submission) throw notFound('That submission does not exist.')
-    try {
-      return await storageService.describe(submission.recording)
-    } catch (error) {
-      logger.error({ err: error, key: submission.recording.key }, 'Recording file could not be read')
-      throw notFound('That recording file is missing.')
-    }
+  async list(user) {
+    const isAdmin = user.role === ROLES.ADMIN
+    const submissions = await submissionRepo.list(isAdmin ? {} : { userId: user._id })
+    return submissions.map((submission) => {
+      const result = submission.toJSON()
+      if (!isAdmin) delete result.archivePath
+      return result
+    })
   },
+
 }

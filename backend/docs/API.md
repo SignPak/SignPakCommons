@@ -55,7 +55,7 @@ Errors use a structured object suitable for form-level and field-level messages:
 | GET | `/videos/:id/poster` | Public when published | Stream a published poster. |
 | POST/PATCH/DELETE | `/videos`, `/videos/:id` | Admin | Upload and manage base videos. |
 | GET/POST | `/submissions` | User | List or create contributor recordings. |
-| GET | `/submissions/:id/recording` | Admin | Stream a contributor recording. |
+| GET | `/submissions/:id/recording` | None | Deliberately unavailable; submission archives are append-only. |
 | POST | `/contact` | Public | Send a contact message. |
 | GET | `/admin/users` | Admin | List users. |
 | GET | `/admin/stats` | Admin | Read dashboard statistics. |
@@ -72,5 +72,6 @@ The server validates file signatures, size limits, metadata, and route IDs. Clie
 - Anonymous users see only published videos assigned to a category.
 - Admins can list and manage draft, published, and unassigned videos.
 - Contributor submissions are private to their owner in `/submissions`.
-- Only admins can stream submission recordings.
+- Submission recordings are never readable through the API, including by admins. Admins can access the MongoDB submission record and its archive metadata.
+- Archive paths follow `commons/{userId}_{sequence}/{category_slug}/{video_slug}/{video_slug}.{ext}`. A repeated submission for the same user and video increments `sequence` instead of overwriting the previous file.
 - Video reference files are public only when the corresponding video passes the same published visibility check.
