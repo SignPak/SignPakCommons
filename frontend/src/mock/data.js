@@ -13,14 +13,18 @@ export const TONE_LABELS = { yellow: 'Lime', blue: 'Sky', red: 'Turquoise', gree
 
 export const DEMO_ADMIN = { email: 'admin@signpak.dev', password: 'Admin@123' }
 
+// A contributor can record the same video again, but not back to back: this is how long
+// they must wait after one upload before the next one for that same video is accepted.
+export const SUBMISSION_COOLDOWN_MS = 30_000
+
 const day = 24 * 60 * 60 * 1000
 const now = Date.now()
 
 export const seedUsers = [
   { id: 'user_admin', email: DEMO_ADMIN.email, password: DEMO_ADMIN.password, firstName: 'Admin', surname: 'Signpak', role: 'admin', createdAt: now - 60 * day, connections: {} },
-  { id: 'user_maya', email: 'maya@example.com', password: 'Learner@123', firstName: 'Maya', surname: 'Rivera', role: 'user', createdAt: now - 40 * day, connections: {} },
-  { id: 'user_omar', email: 'omar@example.com', password: 'Learner@123', firstName: 'Omar', surname: 'Khan', role: 'user', createdAt: now - 25 * day, connections: {} },
-  { id: 'user_ayesha', email: 'ayesha@example.com', password: 'Learner@123', firstName: 'Ayesha', surname: 'Malik', role: 'user', createdAt: now - 12 * day, connections: {} },
+  { id: 'user_maya', email: 'maya@example.com', password: 'Contributor@123', firstName: 'Maya', surname: 'Rivera', role: 'user', createdAt: now - 40 * day, connections: {} },
+  { id: 'user_omar', email: 'omar@example.com', password: 'Contributor@123', firstName: 'Omar', surname: 'Khan', role: 'user', createdAt: now - 25 * day, connections: {} },
+  { id: 'user_ayesha', email: 'ayesha@example.com', password: 'Contributor@123', firstName: 'Ayesha', surname: 'Malik', role: 'user', createdAt: now - 12 * day, connections: {} },
 ]
 
 export const seedCategories = [
@@ -46,7 +50,7 @@ export const seedVideos = [
   video(7, 1, 'A story in motion', 'Advanced', 310, 'stories', 'photo-1531058020387-3be344556be6'),
 ]
 
-// A few past submissions from the demo learners so the admin dashboard has something to chart.
+// A few past submissions from the demo contributors so the admin dashboard has something to chart.
 export function buildSeedSubmissions() {
   const plan = [
     ['user_maya', 'video_1', 13], ['user_maya', 'video_2', 11], ['user_maya', 'video_3', 8], ['user_maya', 'video_4', 6],

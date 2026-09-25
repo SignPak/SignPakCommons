@@ -3,7 +3,7 @@ import { formatTime } from '../utils/format'
 
 const SPEEDS = [0.5, 0.75, 1]
 
-/** Base lesson player: play/pause, replay, seek, speed and fullscreen. The parent owns the <video> ref. */
+/** Base video player: play/pause, replay, seek, speed and fullscreen. The parent owns the <video> ref. */
 export default function BasePlayer({ video, videoRef }) {
   const frame = useRef(null)
   const [playing, setPlaying] = useState(false)
@@ -42,7 +42,7 @@ export default function BasePlayer({ video, videoRef }) {
         onError={() => setFailed(true)}
       />
       {failed
-        ? <p className="base-player-error" role="alert">This video could not be loaded. Try again later or pick another lesson.</p>
+        ? <p className="base-player-error" role="alert">This video could not be loaded. Try again later or pick another video.</p>
         : !playing && <button type="button" className="base-player-big" onClick={toggle} aria-label="Play video">▶</button>}
     </div>
     <div className="base-player-controls">

@@ -11,7 +11,7 @@ function describeError(error) {
   return 'We could not start the camera. Check your browser permissions and try again.'
 }
 
-/** Camera + MediaRecorder for one lesson. The finished take is stored in RecordingContext. */
+/** Camera + MediaRecorder for one video. The finished take is stored in RecordingContext. */
 export function useRecorder(videoId) {
   const { recordings, saveRecording, removeRecording } = useRecordings()
   const [status, setStatus] = useState('idle') // idle | requesting | recording
