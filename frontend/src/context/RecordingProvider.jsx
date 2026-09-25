@@ -5,7 +5,7 @@ import { RecordingContext } from './RecordingContext'
 const revoke = (recording) => { if (recording?.url) URL.revokeObjectURL(recording.url) }
 
 /**
- * Holds unsubmitted recordings in memory, keyed by video id, so a learner can move
+ * Holds unsubmitted recordings in memory, keyed by video id, so a contributor can move
  * between the player and the editor without losing their take. Nothing is persisted:
  * a recording exists only until it is submitted, deleted, or the tab is closed.
  */

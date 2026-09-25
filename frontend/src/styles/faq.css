@@ -1,0 +1,14 @@
+/* FAQ page. */
+@layer components {
+  .faq-head { @apply max-w-2xl py-16 sm:py-24; }
+  .faq-body { @apply pb-24; }
+  .faq-list { @apply max-w-3xl border-t border-line; }
+  .faq-item { @apply border-b border-line py-5; }
+  .faq-item summary { @apply flex cursor-pointer list-none items-center justify-between gap-6 font-ui text-lg font-bold text-heading marker:content-none; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line-strong text-xl leading-none text-muted transition-transform; }
+  .faq-item[open] .faq-item-icon { @apply rotate-45 border-accent-ink text-accent-ink; }
+  .faq-item p { @apply mt-4 max-w-2xl text-base leading-relaxed text-muted; }
+  .faq-cta { @apply mt-16 flex flex-col items-start gap-4 rounded-3xl border border-line bg-panel p-8 sm:flex-row sm:items-center sm:justify-between; }
+  .faq-cta p { @apply font-display text-2xl font-bold text-heading; }
+}

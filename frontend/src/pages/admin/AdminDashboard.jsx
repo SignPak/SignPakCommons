@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([])
   useEffect(() => { api.users.list().then(setUsers) }, [])
 
-  const learners = users.filter((user) => user.role === 'user')
+  const contributors = users.filter((user) => user.role === 'user')
   const published = videos.filter((video) => video.status === 'published').length
   const startOfToday = new Date().setHours(0, 0, 0, 0)
   const counts = Array.from({ length: DAYS }, (_, index) => {
@@ -45,10 +45,10 @@ export default function AdminDashboard() {
   const topCount = Math.max(1, ...perCategory.map((item) => item.count))
   const recent = [...submissions].sort((a, b) => b.submittedAt - a.submittedAt).slice(0, 6)
   const stats = [
-    ['Learners', learners.length, 'signed up'],
+    ['Contributors', contributors.length, 'signed up'],
     ['Base videos', videos.length, `${published} published`],
-    ['Recordings submitted', submissions.length, 'across all lessons'],
-    ['Categories', categories.length, 'learning paths'],
+    ['Recordings submitted', submissions.length, 'across all videos'],
+    ['Categories', categories.length, 'topic groups'],
   ]
 
   return <>
@@ -73,13 +73,13 @@ export default function AdminDashboard() {
       <SectionHeading eyebrow="Latest" title="Recent submissions." />
       {recent.length
         ? <div className="table-wrap"><table className="table">
-          <thead><tr><th>Learner</th><th>Lesson</th><th>Category</th><th>Submitted</th><th><span className="sr-only">Status</span></th></tr></thead>
+          <thead><tr><th>Contributor</th><th>Video</th><th>Category</th><th>Submitted</th><th><span className="sr-only">Status</span></th></tr></thead>
           <tbody>{recent.map((item) => {
-            const learner = users.find((user) => user.id === item.userId)
+            const contributor = users.find((user) => user.id === item.userId)
             const video = videos.find((entry) => entry.id === item.videoId)
             const category = categories.find((entry) => entry.id === video?.categoryId)
             return <tr key={item.id}>
-              <td>{learner ? `${learner.firstName} ${learner.surname}` : 'Unknown learner'}</td>
+              <td>{contributor ? `${contributor.firstName} ${contributor.surname}` : 'Unknown contributor'}</td>
               <td>{video?.title || 'Removed video'}</td><td>{category?.label || '—'}</td><td>{formatDate(item.submittedAt)}</td><td><Badge tone="success">Done</Badge></td>
             </tr>
           })}</tbody>

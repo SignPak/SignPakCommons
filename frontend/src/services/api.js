@@ -8,7 +8,7 @@
  * Storage: localStorage for records, IndexedDB (utils/blobStore) for uploaded base videos.
  * Passwords are stored in plain text HERE ONLY because this is a local mock. The real backend must hash them (bcrypt/argon2).
  */
-import { buildSeedSubmissions, seedCategories, seedUsers, seedVideos } from '../mock/data'
+import { buildSeedSubmissions, seedCategories, seedUsers, seedVideos, SUBMISSION_COOLDOWN_MS } from '../mock/data'
 import { blobStore } from '../utils/blobStore'
 
 const PREFIX = 'signpak:v1:'
@@ -121,10 +121,25 @@ export const api = {
 
   submissions: {
     async list() { return read('submissions', []) },
-    /** Metadata only. With a real backend, also send the recorded Blob plus trimStart/trimEnd so the server can cut it. */
+    /** The most recent submission this user has for this video, or null. Powers the cooldown countdown. */
+    async lastFor(userId, videoId) {
+      const mine = read('submissions', []).filter((item) => item.userId === userId && item.videoId === videoId)
+      return mine.length ? mine.reduce((latest, item) => (item.submittedAt > latest.submittedAt ? item : latest)) : null
+    },
+    /**
+     * Metadata only. With a real backend, also send the recorded Blob plus trimStart/trimEnd so the server can cut it.
+     * A contributor can send more than one recording for the same video over time (this is a data-collection tool,
+     * not a one-shot quiz), but not back to back: a fresh upload for a video they just submitted is refused until
+     * SUBMISSION_COOLDOWN_MS has passed, checked here as a defensive backstop even though the UI already hides the
+     * recorder during that window.
+     */
     async create({ userId, videoId, trimStart, trimEnd, mirrored, duration, size, mimeType }) {
       const submissions = read('submissions', [])
-      if (submissions.some((item) => item.userId === userId && item.videoId === videoId)) fail('You have already submitted this lesson.')
+      const last = submissions.filter((item) => item.userId === userId && item.videoId === videoId).sort((a, b) => b.submittedAt - a.submittedAt)[0]
+      if (last) {
+        const remaining = SUBMISSION_COOLDOWN_MS - (Date.now() - last.submittedAt)
+        if (remaining > 0) fail(`Wait ${Math.ceil(remaining / 1000)}s before recording this video again.`)
+      }
       const submission = { id: uid('sub'), userId, videoId, submittedAt: Date.now(), trimStart, trimEnd, mirrored, duration, size, mimeType }
       write('submissions', [...submissions, submission])
       return submission
@@ -134,6 +149,21 @@ export const api = {
   contact: {
     async send(payload) {
       write('messages', [...read('messages', []), { id: uid('msg'), ...payload, sentAt: Date.now() }])
+    },
+  },
+
+  notifications: {
+    async list(userId) { return read('notifications', []).filter((item) => item.userId === userId).sort((a, b) => b.createdAt - a.createdAt) },
+    async create(userId, { type, title, body, href = null }) {
+      const notification = { id: uid('note'), userId, type, title, body, href, createdAt: Date.now(), readAt: null }
+      write('notifications', [...read('notifications', []), notification])
+      return notification
+    },
+    async markRead(userId, id) {
+      write('notifications', read('notifications', []).map((item) => (item.id === id && item.userId === userId && !item.readAt ? { ...item, readAt: Date.now() } : item)))
+    },
+    async markAllRead(userId) {
+      write('notifications', read('notifications', []).map((item) => (item.userId === userId && !item.readAt ? { ...item, readAt: Date.now() } : item)))
     },
   },
 }

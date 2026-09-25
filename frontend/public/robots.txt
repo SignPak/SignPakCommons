@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /login
+Disallow: /signup
+Disallow: /profile
+Disallow: /home
+Disallow: /library
+Disallow: /watch
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://signpakcommons.example/sitemap.xml

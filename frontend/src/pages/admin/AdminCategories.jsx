@@ -31,7 +31,7 @@ export default function AdminCategories() {
       <h2 className="display display-md">New path.</h2>
       <form onSubmit={create} noValidate>
         <Field label="Name" name="label" value={form.label} onChange={change} placeholder="e.g. Everyday life" error={error} />
-        <Field as="textarea" label="Description" name="copy" value={form.copy} onChange={change} rows={3} placeholder="One sentence learners will see." />
+        <Field as="textarea" label="Description" name="copy" value={form.copy} onChange={change} rows={3} placeholder="One sentence contributors will see." />
         <Field as="select" label="Colour" name="tone" value={form.tone} onChange={change}>{TONES.map((tone) => <option key={tone} value={tone}>{TONE_LABELS[tone]}</option>)}</Field>
         <Button type="submit" block className="panel-action">Add category</Button>
       </form>
@@ -74,7 +74,7 @@ function CategoryDetail({ category, onDeleted }) {
         : <Button variant="outline" onClick={() => setConfirming(true)}>Delete category</Button>}
     </div>
     {saved && <Alert tone="success">Category saved.</Alert>}
-    {confirming && <Alert tone="info">{assigned.length ? `Its ${assigned.length} video${assigned.length === 1 ? '' : 's'} will become unassigned and hidden from learners.` : 'This category has no videos.'}</Alert>}
+    {confirming && <Alert tone="info">{assigned.length ? `Its ${assigned.length} video${assigned.length === 1 ? '' : 's'} will become unassigned and hidden from contributors.` : 'This category has no videos.'}</Alert>}
 
     <h3 className="display display-sm assign-title">Videos in this category <Badge>{assigned.length}</Badge></h3>
     {assigned.length

@@ -1,35 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import TrimSlider from '../components/TrimSlider'
 import { Alert, Arrow, Button, ButtonLink, Eyebrow, PageState } from '../components/ui'
 import { useLibrary } from '../context/LibraryContext'
+import { useNotifications } from '../context/NotificationContext'
 import { useRecordings } from '../context/RecordingContext'
+import { watchUrl } from '../routes/appRoutes'
 import { formatTime } from '../utils/format'
 
 export default function RecordingEditor() {
-  const { videoId } = useParams()
+  const [params] = useSearchParams()
+  const videoId = params.get('v')
   return <EditScreen key={videoId} videoId={videoId} />
 }
 
 function EditScreen({ videoId }) {
-  const { publishedVideos, isDone, nextVideo, submitRecording } = useLibrary()
+  const { publishedVideos, submitRecording } = useLibrary()
+  const { notify } = useNotifications()
   const { recordings, removeRecording, updateEdit } = useRecordings()
   const navigate = useNavigate()
   const video = publishedVideos.find((item) => item.id === videoId)
   const recording = recordings[videoId]
 
-  if (!video) return <PageState eyebrow="Not found" title="That lesson isn't available." action={<ButtonLink to="/home">Back to library</ButtonLink>}>It may have been unpublished or removed.</PageState>
-
-  const next = nextVideo(video)
-  if (isDone(video.id)) return <Submitted video={video} next={next} navigate={navigate} />
-  if (!recording) return <PageState eyebrow="Nothing to edit" title="Record a take first." action={<ButtonLink to={`/lesson/${video.id}`}>Back to video</ButtonLink>}>You need a recording before you can trim it.</PageState>
+  if (!video) return <PageState eyebrow="Not found" title="That video isn't available." action={<ButtonLink to="/home">Back to library</ButtonLink>}>It may have been unpublished or removed.</PageState>
+  if (!recording) return <PageState eyebrow="Nothing to edit" title="Record a take first." action={<ButtonLink to={watchUrl(video.id)}>Back to video</ButtonLink>}>You need a recording before you can trim it.</PageState>
 
   return <Editor
     video={video} recording={recording}
     onEdit={(patch) => updateEdit(video.id, patch)}
     onSubmit={async () => {
-      await submitRecording(video, recording) // marks the lesson done, which swaps this screen for <Submitted />
+      await submitRecording(video, recording)
       removeRecording(video.id)
+      await notify({ type: 'submission', title: 'Recording submitted', body: video.title, href: watchUrl(video.id) })
+      navigate(watchUrl(video.id), { state: { justSubmitted: true } })
     }}
   />
 }
@@ -79,7 +82,7 @@ function Editor({ video, recording, onEdit, onSubmit }) {
   }
 
   return <main className="page">
-    <nav className="shell breadcrumb" aria-label="Breadcrumb"><Link to={`/lesson/${video.id}`}>← Back to video</Link><span>/</span><b>Edit your recording</b></nav>
+    <nav className="shell breadcrumb" aria-label="Breadcrumb"><Link to={watchUrl(video.id)}>← Back to video</Link><span>/</span><b>Edit your recording</b></nav>
     <section className="shell editor-grid">
       <div>
         <Eyebrow>{video.title}</Eyebrow>
@@ -103,28 +106,12 @@ function Editor({ video, recording, onEdit, onSubmit }) {
         {error && <Alert tone="error">{error}</Alert>}
         {confirming
           ? <div className="confirm">
-            <p>Submit this recording? Once submitted, you can't watch, edit or delete it.</p>
+            <p>Submit this recording? Once submitted it can't be watched, edited or deleted, but you can record this video again after a short cooldown.</p>
             <div className="confirm-actions"><Button onClick={submit} disabled={busy}>{busy ? 'Submitting…' : 'Yes, submit'}</Button><Button variant="outline" onClick={() => setConfirming(false)} disabled={busy}>Keep editing</Button></div>
           </div>
           : <Button block className="editor-submit" onClick={() => setConfirming(true)}>Submit recording <Arrow /></Button>}
-        <Link to={`/lesson/${video.id}`} className="editor-back">Back to player</Link>
+        <Link to={watchUrl(video.id)} className="editor-back">Back to player</Link>
       </aside>
-    </section>
-  </main>
-}
-
-function Submitted({ video, next, navigate }) {
-  return <main className="page">
-    <section className="shell submitted">
-      <span className="submitted-check" aria-hidden="true">✓</span>
-      <Eyebrow>{video.title}</Eyebrow>
-      <h1 className="display display-xl">Recording <em>submitted.</em></h1>
-      <p className="lede">This lesson is marked done on your profile. Submitted recordings are locked, so they can't be watched, edited or deleted.</p>
-      <div className="submitted-actions">
-        <Button onClick={() => navigate(next ? `/lesson/${next.id}` : `/library/${video.categoryId}`)}>{next ? 'Next video' : 'Back'} →</Button>
-        <ButtonLink variant="outline" to={`/lesson/${video.id}`}>Back to video</ButtonLink>
-        <ButtonLink variant="ghost" to="/profile">View progress ↗</ButtonLink>
-      </div>
     </section>
   </main>
 }

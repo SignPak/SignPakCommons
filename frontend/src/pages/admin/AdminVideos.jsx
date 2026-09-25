@@ -59,7 +59,7 @@ function UploadPanel() {
     setBusy(true)
     try {
       await addVideo({ file, ...form, ...meta })
-      setMessage({ tone: 'success', text: `“${form.title.trim()}” uploaded${form.status === 'published' && form.categoryId ? ' and live for learners.' : '. Assign a category and publish it to make it visible.'}` })
+      setMessage({ tone: 'success', text: `“${form.title.trim()}” uploaded${form.status === 'published' && form.categoryId ? ' and live for contributors.' : '. Assign a category and publish it to make it visible.'}` })
       URL.revokeObjectURL(previewUrl)
       setFile(null); setPreviewUrl(''); setForm({ title: '', categoryId: '', level: LEVELS[0], status: 'published' })
     } catch {
@@ -82,7 +82,7 @@ function UploadPanel() {
           <Field as="select" label="Category" name="categoryId" value={form.categoryId} onChange={change}><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Field>
           <Field as="select" label="Level" name="level" value={form.level} onChange={change}>{LEVELS.map((item) => <option key={item}>{item}</option>)}</Field>
         </div>
-        <Field as="select" label="Visibility" name="status" value={form.status} onChange={change}><option value="published">Published: learners can see it</option><option value="draft">Draft: only admins can see it</option></Field>
+        <Field as="select" label="Visibility" name="status" value={form.status} onChange={change}><option value="published">Published: contributors can see it</option><option value="draft">Draft: only admins can see it</option></Field>
         {message && <Alert tone={message.tone}>{message.text}</Alert>}
         <Button type="submit" block disabled={busy || !file}>{busy ? 'Uploading…' : 'Upload video'}</Button>
       </div>
@@ -123,7 +123,7 @@ function VideoRow({ video, categories }) {
       <div className="row-form-actions"><Button onClick={save}>Save changes</Button><Button variant="outline" onClick={() => setMode('view')}>Cancel</Button></div>
     </div>}
     {mode === 'delete' && <div className="confirm">
-      <p>Delete “{video.title}”? Learners will no longer see it. Their past submissions stay on record.</p>
+      <p>Delete “{video.title}”? Contributors will no longer see it. Their past submissions stay on record.</p>
       <div className="confirm-actions"><Button variant="danger" onClick={() => deleteVideo(video.id)}>Delete video</Button><Button variant="outline" onClick={() => setMode('view')}>Keep it</Button></div>
     </div>}
   </li>

@@ -3,7 +3,7 @@ import { useRecorder } from '../hooks/useRecorder'
 import { formatTime } from '../utils/format'
 import { Alert, Arrow, Button } from './ui'
 
-/** Camera preview, record/stop, delete and re-record for one lesson. */
+/** Camera preview, record/stop, delete and re-record for one video. */
 export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
   const { recording, status, error, elapsed, stream, start, stop, discard } = useRecorder(video.id)
   const live = useRef(null)
@@ -12,7 +12,7 @@ export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
   const isRecording = status === 'recording'
   const busy = status === 'requesting'
 
-  // Recording starts the base video too, so learners can sign along while watching.
+  // Recording starts the base video too, so contributors can sign along while watching.
   const begin = async () => {
     const started = await start()
     const base = baseRef.current

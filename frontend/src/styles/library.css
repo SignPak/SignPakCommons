@@ -34,16 +34,16 @@
   .search { @apply mb-10 block max-w-md font-ui text-sm font-bold text-heading; }
   .search input { @apply mt-2 font-sans font-normal; }
 
-  .lesson-grid { @apply grid grid-cols-1 gap-x-7 gap-y-10 sm:grid-cols-2 lg:grid-cols-3; }
-  .lesson-card { @apply block rounded-3xl text-left; }
-  .lesson-card-art { @apply h-64 rounded-3xl shadow-soft transition duration-200; }
-  .lesson-card-art::after { content: ''; @apply pointer-events-none absolute inset-0; background: linear-gradient(to top, rgb(0 30 12 / 0.55), transparent 55%); }
-  .lesson-card:hover .lesson-card-art { @apply -translate-y-1 shadow-lift; }
-  .lesson-card-index { @apply absolute left-5 top-5 z-10 rounded-full bg-black/45 px-3 py-1 font-ui text-sm font-bold text-white backdrop-blur-sm; }
-  .lesson-card-done { @apply absolute right-4 top-4 z-10; }
-  .lesson-card-play { @apply absolute bottom-4 right-4 z-10 grid h-12 w-12 place-items-center rounded-full bg-turquoise text-sm not-italic text-deep transition-transform; }
-  .lesson-card:hover .lesson-card-play { @apply scale-110; }
-  .lesson-card-meta { @apply mt-5 font-ui text-sm font-bold uppercase tracking-wider text-faint; }
-  .lesson-card h3 { @apply mt-1.5; }
-  .lesson-card-cta { @apply mt-3 block font-ui text-[0.9375rem] font-bold text-accent-ink; }
+  .video-grid { @apply grid grid-cols-1 gap-x-7 gap-y-10 sm:grid-cols-2 lg:grid-cols-3; }
+  .video-card { @apply block rounded-3xl text-left; }
+  .video-card-art { @apply h-64 rounded-3xl shadow-soft transition duration-200; }
+  .video-card-art::after { content: ''; @apply pointer-events-none absolute inset-0; background: linear-gradient(to top, rgb(0 30 12 / 0.55), transparent 55%); }
+  .video-card:hover .video-card-art { @apply -translate-y-1 shadow-lift; }
+  .video-card-index { @apply absolute left-5 top-5 z-10 rounded-full bg-black/45 px-3 py-1 font-ui text-sm font-bold text-white backdrop-blur-sm; }
+  .video-card-done { @apply absolute right-4 top-4 z-10; }
+  .video-card-play { @apply absolute bottom-4 right-4 z-10 grid h-12 w-12 place-items-center rounded-full bg-turquoise text-sm not-italic text-deep transition-transform; }
+  .video-card:hover .video-card-play { @apply scale-110; }
+  .video-card-meta { @apply mt-5 font-ui text-sm font-bold uppercase tracking-wider text-faint; }
+  .video-card h3 { @apply mt-1.5; }
+  .video-card-cta { @apply mt-3 block font-ui text-[0.9375rem] font-bold text-accent-ink; }
 }

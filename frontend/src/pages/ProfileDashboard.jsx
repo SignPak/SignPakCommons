@@ -1,16 +1,19 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Field from '../components/Field'
-import { Alert, Arrow, Badge, Button, ButtonLink, Eyebrow, ProgressBar, SectionHeading } from '../components/ui'
+import { Alert, Arrow, Avatar, Badge, Button, ButtonLink, Eyebrow, ProgressBar, SectionHeading } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
+import { paths } from '../routes/appRoutes'
 import { formatDate } from '../utils/format'
 import { normalizeGithub, normalizeLinkedin } from '../utils/validators'
 
 export default function ProfileDashboard() {
-  const { user, isAdmin } = useAuth()
-  const { categories, videosIn, isDone, mySubmissions, publishedVideos, orderedPublished, doneCount } = useLibrary()
+  const { user, isAdmin, logout } = useAuth()
+  const { categories, videosIn, hasSubmission, mySubmissions, publishedVideos, orderedPublished, contributedCount, totalSubmissionCount } = useLibrary()
+  const navigate = useNavigate()
   const total = orderedPublished.length
-  const percent = total ? Math.round((doneCount / total) * 100) : 0
+  const percent = total ? Math.round((contributedCount / total) * 100) : 0
   const recent = [...mySubmissions].filter((item) => publishedVideos.some((video) => video.id === item.videoId)).sort((a, b) => b.submittedAt - a.submittedAt)
 
   return <main className="page">
@@ -19,36 +22,38 @@ export default function ProfileDashboard() {
         <Eyebrow>Your space</Eyebrow>
         <h1 className="display display-xl">{user.firstName} <em>{user.surname}.</em></h1>
         <p className="lede">{user.email} · Contributing since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+        <Button variant="ghost" className="profile-logout" onClick={async () => { await logout(); navigate('/') }}>Log out</Button>
       </div>
+      <Avatar user={user} size="lg" />
     </section>
 
     <section className="shell profile-grid">
       <div className="profile-main">
         <div className="panel">
-          <SectionHeading eyebrow="Your Contributions" title="Keep contributing." action={<b className="profile-count">{doneCount}/{total}</b>} />
-          <ProgressBar value={percent} label="Catagories complete" />
-          <div className="progress-caption"><span>Catagories complete</span><b>{percent}%</b></div>
+          <SectionHeading eyebrow="Your coverage" title="Keep contributing." action={<b className="profile-count">{contributedCount}/{total}</b>} />
+          <ProgressBar value={percent} label="Videos with a recording from you" />
+          <div className="progress-caption"><span>Videos covered · {totalSubmissionCount} {totalSubmissionCount === 1 ? 'recording' : 'recordings'} submitted in total</span><b>{percent}%</b></div>
           <ul className="path-progress">
             {categories.filter((category) => videosIn(category.id).length).map((category) => {
-              const Catagories = videosIn(category.id)
-              const done = Catagories.filter((lesson) => isDone(lesson.id)).length
-              return <li key={category.id}><span>{category.label}</span><ProgressBar value={(done / Catagories.length) * 100} label={`${category.label} progress`} /><small>{done}/{Catagories.length}</small></li>
+              const videos = videosIn(category.id)
+              const contributed = videos.filter((video) => hasSubmission(video.id)).length
+              return <li key={category.id}><span>{category.label}</span><ProgressBar value={(contributed / videos.length) * 100} label={`${category.label} coverage`} /><small>{contributed}/{videos.length}</small></li>
             })}
           </ul>
-          <ButtonLink variant="outline" to="/home" className="panel-action">Continue <Arrow /></ButtonLink>
+          <ButtonLink variant="outline" to={paths.library} className="panel-action">Keep contributing <Arrow /></ButtonLink>
         </div>
 
         <div className="panel">
           <Eyebrow>Your recordings</Eyebrow>
-          <h2 className="display display-md">Recent work.</h2>
+          <h2 className="display display-md">Recent submissions.</h2>
           {recent.length
             ? <ul className="submission-list">
               {recent.map((item) => {
                 const video = publishedVideos.find((entry) => entry.id === item.videoId)
-                return <li key={item.id}><span className="submission-icon" aria-hidden="true">✓</span><div><b>{video.title}</b><small>Submitted {formatDate(item.submittedAt)}</small></div><Badge tone="success">Done</Badge></li>
+                return <li key={item.id}><span className="submission-icon" aria-hidden="true">✓</span><div><b>{video.title}</b><small>Submitted {formatDate(item.submittedAt)}</small></div><Badge tone="success">Submitted</Badge></li>
               })}
             </ul>
-            : <p className="empty-note">Your submitted recordings will show up here, marked as done.</p>}
+            : <p className="empty-note">Your submitted recordings will show up here.</p>}
         </div>
       </div>
 
@@ -57,8 +62,8 @@ export default function ProfileDashboard() {
         {isAdmin && <div className="panel panel-outline">
           <Eyebrow>Workspace</Eyebrow>
           <h2 className="display display-sm">For the team.</h2>
-          <p className="panel-copy">Manage base videos, categories and see how learners are doing.</p>
-          <ButtonLink to="/admin" variant="outline" className="panel-action">Open admin workspace <Arrow /></ButtonLink>
+          <p className="panel-copy">Manage base videos, categories and monitor incoming submissions.</p>
+          <ButtonLink to={paths.admin} variant="outline" className="panel-action">Open admin workspace <Arrow /></ButtonLink>
         </div>}
       </aside>
     </section>

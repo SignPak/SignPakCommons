@@ -80,7 +80,7 @@
 
   .section-heading { @apply mb-8 flex flex-wrap items-end justify-between gap-5; }
 
-  /* Lesson artwork. The image itself is set from data; everything else lives here. */
+  /* Video artwork. The image itself is set from data; everything else lives here. */
   .media { @apply relative overflow-hidden bg-cover bg-center; }
   .tone-yellow { background-color: var(--tone-yellow); }
   .tone-blue { background-color: var(--tone-blue); }

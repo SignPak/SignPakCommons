@@ -1,4 +1,4 @@
-/* Lesson player, recorder and recording editor. */
+/* Video player, recorder and recording editor. */
 @layer components {
   .player-top { @apply flex items-center justify-between gap-4 py-7 text-sm text-muted; }
   .player-top a { @apply font-ui text-[0.9375rem] font-bold text-heading underline-offset-4 hover:text-accent-ink hover:underline; }
@@ -22,7 +22,7 @@
   .recorder-status span { @apply text-accent-ink; }
   .recorder-status.is-live { @apply bg-danger-soft text-danger; }
   .recorder-status.is-live span { @apply animate-pulse text-danger; }
-  .recorder .display, .locked .display { @apply mt-5; }
+  .recorder .display, .cooldown .display { @apply mt-5; }
   .recorder-copy { @apply mt-4 text-base leading-relaxed text-muted; }
   .recorder-stage { @apply relative my-6 grid aspect-video place-items-center overflow-hidden rounded-2xl border border-dashed border-line-strong bg-panel text-sm text-muted; }
   .recorder-video { @apply absolute inset-0 h-full w-full -scale-x-100 bg-black object-cover; }
@@ -32,8 +32,13 @@
   .rec-dot { @apply mr-1 text-danger; }
   .recorder-delete { @apply mx-auto my-4 block rounded-full px-3 py-1 text-sm font-semibold text-muted underline underline-offset-4 hover:text-danger; }
   .recorder-save { @apply mt-2; }
-  .locked .btn-block { @apply mt-6; }
-  .locked-secondary { @apply mt-3; }
+  .cooldown .btn-block { @apply mt-6; }
+  .cooldown-copy, .cooldown .recorder-copy { @apply mt-4 max-w-xs text-base leading-relaxed text-muted; }
+  .cooldown-ring { @apply relative mx-auto my-7 grid h-32 w-32 place-items-center; }
+  .cooldown-ring svg { @apply h-full w-full -rotate-90; }
+  .cooldown-track { fill: none; stroke: var(--line); stroke-width: 6; }
+  .cooldown-progress { fill: none; stroke: var(--color-cyan); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 276.5; transition: stroke-dashoffset 0.25s linear; }
+  .cooldown-ring span { @apply absolute font-display text-4xl font-bold text-heading; }
 
   /* Editor */
   .editor-grid { @apply grid grid-cols-1 gap-10 pt-12 lg:grid-cols-[1.5fr_.75fr]; }

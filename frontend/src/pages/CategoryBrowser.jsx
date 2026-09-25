@@ -1,122 +1,68 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Badge, ButtonLink, Eyebrow, PageState, VideoArtwork } from '../components/ui'
+import { Badge, ButtonLink, Eyebrow, PageState, SectionHeading, VideoArtwork } from '../components/ui'
 import { useLibrary } from '../context/LibraryContext'
+import { paths, watchUrl } from '../routes/appRoutes'
 import { formatTime } from '../utils/format'
 
 const SORTS = {
-  All: { label: 'All signs' },
-  Done: { label: 'Recorded first' },
-  Not_Done: { label: 'Unrecorded first' },
+  path: { label: 'Category order', compare: (a, b) => (a.order || 0) - (b.order || 0) },
+  newest: { label: 'Newest first', compare: (a, b) => b.createdAt - a.createdAt },
+  shortest: { label: 'Shortest first', compare: (a, b) => a.durationSec - b.durationSec },
 }
 
 export default function CategoryBrowser() {
   const { categoryId } = useParams()
-  const { categories, videosIn, isDone } = useLibrary()
+  const { categories, videosIn, hasSubmission, submissionCount } = useLibrary()
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('All')
+  const [level, setLevel] = useState('All levels')
+  const [sort, setSort] = useState('path')
 
   const category = categories.find((item) => item.id === categoryId)
   const all = useMemo(() => (category ? videosIn(category.id) : []), [category, videosIn])
-
-  const videos = useMemo(() => {
-    return all
-      .filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase()))
-      .sort((a, b) => {
-        const aDone = isDone(a.id)
-        const bDone = isDone(b.id)
-        if (sort === 'Done') return aDone && !bDone ? -1 : !aDone && bDone ? 1 : 0
-        if (sort === 'Not_Done') return !aDone && bDone ? -1 : aDone && !bDone ? 1 : 0
-        return 0
-      })
-  }, [all, query, sort, isDone])
+  const levels = ['All levels', ...new Set(all.map((item) => item.level))]
+  const videos = all
+    .filter((item) => level === 'All levels' || item.level === level)
+    .filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase()))
+    .sort(SORTS[sort].compare)
 
   if (!category) {
-    return (
-      <PageState
-        eyebrow="Not found"
-        title="We couldn't find that category."
-        action={<ButtonLink to="/home">Back to library</ButtonLink>}
-      >
-        It may have been renamed or removed.
-      </PageState>
-    )
+    return <PageState eyebrow="Not found" title="We couldn't find that category." action={<ButtonLink to={paths.library}>Back to library</ButtonLink>}>It may have been renamed or removed.</PageState>
   }
 
-  return (
-    <main className="page">
-      <nav className="shell breadcrumb" aria-label="Breadcrumb">
-        <Link to="/home">Library</Link>
-        <span>/</span>
-        <b>{category.label}</b>
-      </nav>
+  return <main className="page">
+    <nav className="shell breadcrumb" aria-label="Breadcrumb"><Link to={paths.library}>Library</Link><span>/</span><b>{category.label}</b></nav>
+    <section className="shell category-head">
+      <div><Eyebrow>Category · {all.length} {all.length === 1 ? 'video' : 'videos'}</Eyebrow><h1 className="display display-xl">{category.label}<br /><em>starts here.</em></h1></div>
+      <p className="category-copy">{category.copy}</p>
+    </section>
 
-      <section className="shell category-head">
-        <div>
-          <Eyebrow>Category · {all.length} {all.length === 1 ? 'sign' : 'signs'}</Eyebrow>
-          <h1 className="display display-xl">
-            {category.label}<br />
-            <em>starts here.</em>
-          </h1>
+    <section className="shell category-body">
+      <SectionHeading eyebrow={`${videos.length} showing`} title="Pick a video." action={
+        <div className="filters">
+          <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort videos">{Object.entries(SORTS).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select>
+          <select value={level} onChange={(event) => setLevel(event.target.value)} aria-label="Filter by level">{levels.map((item) => <option key={item}>{item}</option>)}</select>
         </div>
-        <p className="category-copy">{category.copy}</p>
-      </section>
+      } />
+      <label className="search"><span>Search videos</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try “introduction”" /></label>
 
-      <section className="shell category-body">
-        <div className="filter-bar" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
-          <label className="search" style={{ flex: '1', minWidth: '240px' }}>
-            <span>Search signs</span>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Try “hello” or “thank you”"
-            />
-          </label>
-
-          <label className="sort-select">
-            <span>Sort by</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value)}>
-              {Object.entries(SORTS).map(([key, { label }]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+      {videos.length
+        ? <div className="video-grid">
+          {videos.map((video) => {
+            const count = submissionCount(video.id)
+            return <Link key={video.id} to={watchUrl(video.id)} className="video-card">
+              <VideoArtwork video={video} className={`video-card-art tone-${category.tone}`}>
+                <span className="video-card-index">{String(all.indexOf(video) + 1).padStart(2, '0')}</span>
+                {hasSubmission(video.id) && <span className="video-card-done"><Badge tone="success">✓ {count} submitted</Badge></span>}
+                <i className="video-card-play" aria-hidden="true">▶</i>
+              </VideoArtwork>
+              <p className="video-card-meta">{video.level} · {formatTime(video.durationSec)}</p>
+              <h3 className="display display-sm">{video.title}</h3>
+              <span className="video-card-cta">{hasSubmission(video.id) ? 'Record another' : 'Open video'} ↗</span>
+            </Link>
+          })}
         </div>
-
-        {videos.length ? (
-          <div className="category-grid">
-            {videos.map((video) => {
-              const done = isDone(video.id)
-              return (
-                <Link key={video.id} to={`/video/${video.id}`} className="category-card">
-                  <VideoArtwork video={video} className={`category-card-art tone-${video.tone}`}>
-                    <span className="category-card-index">
-                      {String(all.indexOf(video) + 1).padStart(2, '0')}
-                    </span>
-                    {done && (
-                      <span className="category-card-done">
-                        <Badge tone="success">Recorded ✓</Badge>
-                      </span>
-                    )}
-                    <i className="category-card-play" aria-hidden="true">▶</i>
-                  </VideoArtwork>
-                  <p className="category-card-meta">
-                    {video.level} · {formatTime(video.durationSec)}
-                  </p>
-                  <h3 className="display display-sm">{video.title}</h3>
-                  <span className="category-card-cta">
-                    {done ? 'View submission' : 'Record sign'} ↗
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="empty-note">No signs match your search. Try a different keyword.</p>
-        )}
-      </section>
-    </main>
-  )
+        : <p className="empty-note">{all.length ? 'No videos match those filters. ' : 'No videos in this category yet. '}{all.length > 0 && <button type="button" className="link-accent" onClick={() => { setQuery(''); setLevel('All levels') }}>Clear filters</button>}</p>}
+    </section>
+  </main>
 }
