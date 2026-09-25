@@ -10,6 +10,6 @@ export const userService = {
     return userRepo.save(user)
   },
 
-  listLearners: () => userRepo.list({ role: ROLES.USER }),
+  listContributors: () => userRepo.list({ role: ROLES.USER }),
   listAll: () => userRepo.list(),
 }

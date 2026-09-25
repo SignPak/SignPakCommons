@@ -31,6 +31,11 @@ const schema = z.object({
   MAX_RECORDING_UPLOAD_MB: z.coerce.number().positive().default(100),
 
   RATE_LIMIT_ENABLED: bool.default(true),
+
+  // A contributor can submit a video more than once, but not back to back: this is the
+  // minimum gap enforced between two submissions for the same (user, video). Overridable
+  // (like BCRYPT_ROUNDS) so tests do not have to wait 30 real seconds.
+  SUBMISSION_COOLDOWN_MS: z.coerce.number().int().positive().default(30_000),
 })
 
 const parsed = schema.safeParse(process.env)

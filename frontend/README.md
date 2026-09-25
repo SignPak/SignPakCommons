@@ -12,15 +12,6 @@ npm run lint
 npm run build
 ```
 
-## Demo accounts
-
-| Role    | Email               | Password      |
-| ------- | ------------------- | ------------- |
-| Admin   | admin@signpak.dev   | Admin@123     |
-| Learner | maya@example.com    | Learner@123   |
-
-Anyone can also create a learner account on `/signup`. The **Open admin workspace** button on the profile page only appears for admins.
-
 ## Routes
 
 | Path                        | Who        | What                                             |
@@ -39,7 +30,6 @@ Anyone can also create a learner account on `/signup`. The **Open admin workspac
 
 ## Folder layout
 
-```
 src/
   components/   shared UI (Header, Footer, Field, players, route guards)
   context/      Auth, Library and Recording state
@@ -49,7 +39,6 @@ src/
   services/     api.js: the only file that talks to "the server"
   styles/       all styling; index.css just imports these
   utils/        formatting, validation, IndexedDB and video helpers
-```
 
 ## Styling
 
@@ -78,6 +67,7 @@ Light and dark, both derived from the same analogous palette (deep green → tur
 ## Fonts
 
 Google Fonts, loaded in `index.html`:
+
 - **Barlow Condensed** (600/700) — headlines and big numbers (`.display`)
 - **Quicksand** (500/600/700) — buttons, labels, nav, anything UI chrome (`font-ui`)
 - **Inter** (400–700) — body copy, the readable default
@@ -85,6 +75,7 @@ Google Fonts, loaded in `index.html`:
 ## Verifying this yourself
 
 This redesign was checked, not just eyeballed:
+
 - **axe-core** ran against all 14 pages/states in both themes: 0 accessibility violations (contrast, labels, roles).
 - The existing 74-check Playwright journey suite (signup → record → trim → submit → admin) still passes after the restyle.
 - 26 additional checks cover theme switching (OS-follow, persistence, no-flash-on-load, keyboard operation) and font loading.

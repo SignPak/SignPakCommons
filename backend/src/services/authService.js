@@ -17,7 +17,7 @@ export const authService = {
     if (await userRepo.findByEmail(email)) throw emailTaken()
     const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
     try {
-      // `role` is never read from the request: everyone who signs up is a learner.
+      // `role` is never read from the request: everyone who signs up is a contributor.
       const user = await userRepo.create({ email, firstName, surname, passwordHash, role: ROLES.USER })
       return { user, token: signToken(user.id) }
     } catch (error) {

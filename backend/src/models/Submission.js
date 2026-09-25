@@ -23,8 +23,11 @@ const submissionSchema = new mongoose.Schema({
   }),
 })
 
-// The lock rule, enforced by the database: one submission per learner per lesson, ever.
-submissionSchema.index({ user: 1, video: 1 }, { unique: true })
+// Not unique: a contributor may submit the same video more than once over time (see
+// SubmissionCooldown for what actually stops two submissions from landing back to back).
+// Compound, not just on (user, video), because the cooldown check's only query is
+// "this user's most recent submission for this video", sorted by time.
+submissionSchema.index({ user: 1, video: 1, createdAt: -1 })
 submissionSchema.index({ createdAt: -1 })
 
 export const Submission = mongoose.model('Submission', submissionSchema)

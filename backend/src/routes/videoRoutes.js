@@ -12,7 +12,7 @@ import { videoUpload } from '../middlewares/upload.js'
 const router = Router()
 const adminOnly = [authenticate, requireRole(ROLES.ADMIN)]
 
-// Metadata and posters: anonymous visitors see published lessons only, admins see everything.
+// Metadata and posters: anonymous visitors see published videos only, admins see everything.
 router.get('/', optionalAuthenticate, videoController.list)
 router.get('/:id', optionalAuthenticate, validate({ params: idParams }), videoController.get)
 router.get('/:id/poster', optionalAuthenticate, validate({ params: idParams }), videoController.poster)
