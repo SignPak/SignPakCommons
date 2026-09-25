@@ -8,7 +8,7 @@ import { formatTime } from '../../utils/format'
 const NEW_CATEGORY = { label: '', copy: '', tone: TONES[0] }
 
 export default function AdminCategories() {
-  const { categories, videos, submissions, addCategory } = useLibrary()
+  const { categories, videos, addCategory } = useLibrary()
   const [selectedId, setSelectedId] = useState(categories[0]?.id || null)
   const [form, setForm] = useState({ ...NEW_CATEGORY, archived: false })
   const [error, setError] = useState('')
@@ -40,7 +40,6 @@ export default function AdminCategories() {
         <Field label="Name" name="label" value={form.label} onChange={change} placeholder="e.g. Everyday life" error={error} />
         <Field as="textarea" label="Description" name="copy" value={form.copy} onChange={change} rows={3} placeholder="One sentence contributors will see." />
         <Field as="select" label="Colour" name="tone" value={form.tone} onChange={change}>{TONES.map((tone) => <option key={tone} value={tone}>{TONE_LABELS[tone]}</option>)}</Field>
-        <Field label="Archive category" name="archived" type="checkbox" checked={form.archived} onChange={change} />
         <Button type="submit" block className="panel-action">Add category</Button>
       </form>
 
@@ -83,20 +82,6 @@ function CategoryDetail({ category, onDeleted }) {
   }
   const unassign = (video) => editVideo(video.id, { categoryId: null })
 
-  const moveCategoryOrder = async (direction) => {
-    const ordered = [...categories].sort((a, b) => (a.order || 0) - (b.order || 0))
-    const index = ordered.findIndex((item) => item.id === category.id)
-    const targetIndex = index + direction
-    if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) return
-    const target = ordered[targetIndex]
-    const currentOrder = category.order || 0
-    const nextOrder = target.order || 0
-    await Promise.all([
-      editCategory(category.id, { order: nextOrder }),
-      editCategory(target.id, { order: currentOrder }),
-    ])
-  }
-
   return <div className="panel">
     <Eyebrow>Edit category</Eyebrow>
     <h2 className="display display-md">{category.label}</h2>
@@ -109,11 +94,6 @@ function CategoryDetail({ category, onDeleted }) {
       <Field label="Name" name="label" value={draft.label} onChange={change} />
       <Field as="select" label="Colour" name="tone" value={draft.tone} onChange={change}>{TONES.map((tone) => <option key={tone} value={tone}>{TONE_LABELS[tone]}</option>)}</Field>
       <Field as="textarea" label="Description" name="copy" value={draft.copy} onChange={change} rows={2} className="field-wide" />
-      <Field label="Archive category" name="archived" type="checkbox" checked={draft.archived} onChange={change} className="field-wide" />
-    </div>
-    <div className="category-order-actions">
-      <Button variant="outline" onClick={() => moveCategoryOrder(-1)} disabled={category.order === 0 || !categories.length}>Move up</Button>
-      <Button variant="outline" onClick={() => moveCategoryOrder(1)}>Move down</Button>
     </div>
     <div className="row-form-actions">
       <Button onClick={async () => { if (draft.label.trim()) { await editCategory(category.id, { ...draft, label: draft.label.trim(), archived: !!draft.archived }); setSaved(true) } }}>Save changes</Button>

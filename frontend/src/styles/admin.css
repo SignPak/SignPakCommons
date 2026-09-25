@@ -10,8 +10,13 @@
   .admin-body .panel + .panel, .admin-split .panel + .panel { @apply mt-0; }
   .admin-toolbar { @apply flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between; }
   .admin-alert { @apply mb-4; }
+  .admin-filters { @apply mb-6 grid grid-cols-1 gap-4 md:grid-cols-3; }
+  .admin-filters .field { @apply mb-0; }
+  .admin-filters .field-control { @apply min-h-12; }
   .inline-link { @apply ml-2 inline-flex items-center rounded-full bg-transparent px-2 py-1 text-sm font-bold text-accent-ink underline underline-offset-4; }
   .skeleton-chart { @apply h-48 w-full animate-pulse rounded-2xl bg-panel; }
+  .panel-copy { @apply mt-4 text-sm text-muted; }
+  .micro-copy { @apply text-xs; }
 
   .stat-grid { @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4; }
   .stat-card { @apply relative flex flex-col overflow-hidden rounded-3xl border border-line bg-surface p-6 shadow-soft; }
@@ -29,6 +34,7 @@
 
   .bar-list { @apply m-0 grid list-none gap-5 p-0; }
   .bar-list li { @apply grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 text-sm font-semibold; }
+  .smooth-list li { @apply text-xs; }
   .bar-list b { @apply font-ui text-base; }
   .bar-track { @apply h-3.5 overflow-hidden rounded-full bg-panel; }
   .bar-fill { @apply block h-full min-w-1 rounded-full; }
@@ -82,8 +88,6 @@
   .category-stats b { @apply block font-ui text-lg font-bold text-heading; }
   .category-edit { @apply mt-2 grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
   .field-wide { @apply sm:col-span-2; }
-  .category-order-actions { @apply mt-4 flex flex-wrap gap-2; }
-  .category-archive-block { @apply mt-8; }
   .assign-title { @apply mb-2 mt-10 flex items-center gap-3; }
   .assign-list { @apply m-0 list-none p-0; }
   .assign-list li { @apply flex items-center justify-between gap-4 border-t border-line py-3.5; }
