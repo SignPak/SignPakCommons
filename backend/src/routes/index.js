@@ -1,5 +1,7 @@
 import { Router } from 'express'
+import swaggerUi from 'swagger-ui-express'
 import { isDbReady } from '../config/db.js'
+import { openapi } from '../docs/openapi.js'
 import adminRoutes from './adminRoutes.js'
 import authRoutes from './authRoutes.js'
 import categoryRoutes from './categoryRoutes.js'
@@ -14,6 +16,9 @@ router.get('/health', (req, res) => {
   const db = isDbReady()
   res.status(db ? 200 : 503).json({ data: { status: db ? 'ok' : 'degraded', database: db ? 'connected' : 'disconnected', uptime: Math.round(process.uptime()) } })
 })
+
+router.get('/docs.json', (req, res) => res.json(openapi))
+router.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }))
 
 router.use('/auth', authRoutes)
 router.use('/users', userRoutes)

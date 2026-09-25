@@ -225,9 +225,8 @@ describe('videos', () => {
     assert.equal((await admin.get(`/videos/${draft.id}`)).status, 200)
   })
 
-  test('the file streams with Range support, and needs a session', async () => {
-    assert.equal((await new Client(base).get(`/videos/${video1.id}/file`)).status, 401)
-    const full = await contributor.get(`/videos/${video1.id}/file`, { raw: true })
+  test('published files stream publicly with Range support', async () => {
+    const full = await new Client(base).get(`/videos/${video1.id}/file`, { raw: true })
     assert.equal(full.status, 200)
     assert.equal(full.headers.get('accept-ranges'), 'bytes')
     assert.equal(full.headers.get('content-type'), 'video/webm')
