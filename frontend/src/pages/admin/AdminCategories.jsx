@@ -65,21 +65,16 @@ export default function AdminCategories() {
 }
 
 function CategoryDetail({ category, onDeleted }) {
-  const { categories, videos, submissions, editCategory, deleteCategory, editVideo } = useLibrary()
+  const { videos, submissions, editCategory, deleteCategory, editVideo } = useLibrary()
   const [draft, setDraft] = useState({ label: category.label, copy: category.copy, tone: category.tone, archived: !!category.archived })
   const [saved, setSaved] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const assigned = videos.filter((video) => video.categoryId === category.id).sort((a, b) => (a.order || 0) - (b.order || 0))
-  const others = videos.filter((video) => video.categoryId !== category.id)
   const change = (event) => { const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value; setSaved(false); setDraft((current) => ({ ...current, [event.target.name]: value })) }
 
   const categorySubmissionCount = submissions.filter((item) => assigned.some((video) => video.id === item.videoId)).length
   const publishedCount = assigned.filter((video) => video.status === 'published').length
 
-  const assign = async (video) => {
-    const nextOrder = Math.max(0, ...assigned.map((item) => item.order || 0)) + 1
-    await editVideo(video.id, { categoryId: category.id, order: nextOrder })
-  }
   const unassign = (video) => editVideo(video.id, { categoryId: null })
 
   return <div className="panel">
@@ -108,10 +103,5 @@ function CategoryDetail({ category, onDeleted }) {
     {assigned.length
       ? <ul className="assign-list">{assigned.map((video) => <li key={video.id}><span><b>{video.title}</b><small>{formatTime(video.durationSec)} · {video.status}</small></span><button type="button" onClick={() => unassign(video)}>Remove</button></li>)}</ul>
       : <p className="empty-note">No videos yet. Add some from the list below.</p>}
-
-    <h3 className="display display-sm assign-title">Add a video</h3>
-    {others.length
-      ? <ul className="assign-list">{others.map((video) => <li key={video.id}><span><b>{video.title}</b><small>Now in: {categories.find((item) => item.id === video.categoryId)?.label || 'Unassigned'}</small></span><button type="button" onClick={() => assign(video)}>Add here</button></li>)}</ul>
-      : <p className="empty-note">Every video is already in this category.</p>}
   </div>
 }
