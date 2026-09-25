@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run seo:generate",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "seo:generate": "node scripts/generateSeoAssets.js",
-    "postbuild": "npm run seo:generate",
     "snap": "node scripts/runReactSnap.js"
   },
   "dependencies": {
