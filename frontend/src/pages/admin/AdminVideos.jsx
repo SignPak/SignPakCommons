@@ -2,7 +2,6 @@ import { useState } from 'react'
 import Field from '../../components/Field'
 import { Alert, Badge, Button, SectionHeading, VideoArtwork } from '../../components/ui'
 import { useLibrary } from '../../context/LibraryContext'
-import { LEVELS } from '../../mock/data'
 import { formatBytes, formatTime } from '../../utils/format'
 import { inspectVideoFile } from '../../utils/media'
 
@@ -76,7 +75,7 @@ function UploadPanel() {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState('')
   const [meta, setMeta] = useState({ durationSec: 0, poster: '' })
-  const [form, setForm] = useState({ title: '', categoryId: '', level: LEVELS[0], status: 'published' })
+  const [form, setForm] = useState({ title: '', categoryId: '', status: 'published' })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null)
   const change = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
@@ -106,7 +105,7 @@ function UploadPanel() {
       await addVideo({ file, ...form, ...meta })
       setMessage({ tone: 'success', text: `“${form.title.trim()}” uploaded${form.status === 'published' && form.categoryId ? ' and live for contributors.' : '. Assign a category and publish it to make it visible.'}` })
       URL.revokeObjectURL(previewUrl)
-      setFile(null); setPreviewUrl(''); setForm({ title: '', categoryId: '', level: LEVELS[0], status: 'published' })
+      setFile(null); setPreviewUrl(''); setForm({ title: '', categoryId: '', status: 'published' })
     } catch (error) {
       setMessage({ tone: 'error', text: error?.message || 'The upload failed. Check that your browser has storage space and try again.' })
     } finally { setBusy(false) }
@@ -136,7 +135,7 @@ function UploadPanel() {
 function VideoRow({ video, videos, categories, selected, onToggleSelect }) {
   const { editVideo, deleteVideo } = useLibrary()
   const [mode, setMode] = useState('view') // view | edit | preview | delete
-  const [draft, setDraft] = useState({ title: video.title, level: video.level, categoryId: video.categoryId || '', status: video.status })
+  const [draft, setDraft] = useState({ title: video.title, categoryId: video.categoryId || '', status: video.status })
   const category = categories.find((item) => item.id === video.categoryId)
   const change = (event) => setDraft((current) => ({ ...current, [event.target.name]: event.target.value }))
 
@@ -161,7 +160,7 @@ function VideoRow({ video, videos, categories, selected, onToggleSelect }) {
     <div className="video-row-main">
       <label className="row-select"><input type="checkbox" checked={selected} onChange={() => onToggleSelect(video.id)} aria-label={`Select ${video.title}`} /></label>
       <VideoArtwork video={video} className="video-row-thumb" />
-      <div className="video-row-info"><b className="display display-sm">{video.title}</b><small>{category?.label || 'Unassigned'} · {video.level} · {formatTime(video.durationSec)}</small></div>
+      <div className="video-row-info"><b className="display display-sm">{video.title}</b><small>{category?.label || 'Unassigned'} · {formatTime(video.durationSec)}</small></div>
       <Badge tone={video.status === 'published' ? 'success' : 'neutral'}>{video.status === 'published' ? 'Published' : 'Draft'}</Badge>
       <div className="row-actions">
         <button type="button" onClick={() => setMode(mode === 'preview' ? 'view' : 'preview')}>{mode === 'preview' ? 'Close preview' : 'Preview'}</button>
@@ -174,7 +173,6 @@ function VideoRow({ video, videos, categories, selected, onToggleSelect }) {
     {mode === 'edit' && <div className="video-row-edit">
       <Field label="Title" name="title" value={draft.title} onChange={change} />
       <Field as="select" label="Category" name="categoryId" value={draft.categoryId} onChange={change}><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Field>
-      <Field as="select" label="Level" name="level" value={draft.level} onChange={change}>{LEVELS.map((item) => <option key={item}>{item}</option>)}</Field>
       <Field as="select" label="Visibility" name="status" value={draft.status} onChange={change}><option value="published">Published</option><option value="draft">Draft</option></Field>
       <div className="row-form-actions"><Button onClick={save}>Save changes</Button><Button variant="outline" onClick={() => setMode('view')}>Cancel</Button></div>
       <div className="field-wide admin-inline-move"><label className="field-label">Quick move</label><div className="inline-action-row"><select value={video.categoryId || ''} onChange={(event) => { moveToCategory(event.target.value); setMode('view') }} className="field-control"><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div></div>

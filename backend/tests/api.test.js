@@ -181,7 +181,7 @@ describe('videos', () => {
     const fake = await admin.upload('/videos', videoForm({ title: 'Fake' }, { video: Buffer.from('this is just text, not a video at all') }))
     assert.equal(fake.status, 422)
     assert.match(fake.body.error.fields.video, /MP4, WebM or MOV/)
-    const noTitle = await admin.upload('/videos', videoForm({ level: 'Beginner' }))
+    const noTitle = await admin.upload('/videos', videoForm({}))
     assert.equal(noTitle.status, 422)
     assert.ok(noTitle.body.error.fields.title)
     const missingCategory = await admin.upload('/videos', videoForm({ title: 'Ghost cat', categoryId: '64b7f0f0f0f0f0f0f0f0f0f0' }))
@@ -193,7 +193,7 @@ describe('videos', () => {
   })
 
   test('admin uploads with and without a poster; the API hides storage internals', async () => {
-    const a = await admin.upload('/videos', videoForm({ title: 'Nice to meet you', categoryId: daily.id, level: 'Beginner', durationSec: '134' }, { poster: jpeg() }))
+    const a = await admin.upload('/videos', videoForm({ title: 'Nice to meet you', categoryId: daily.id, durationSec: '134' }, { poster: jpeg() }))
     assert.equal(a.status, 201, JSON.stringify(a.body))
     lesson1 = a.body.data
     assert.equal(lesson1.categoryId, daily.id)

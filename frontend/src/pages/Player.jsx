@@ -61,7 +61,7 @@ function PlayerScreen({ videoId }) {
   const seconds = Math.ceil(remaining / 1000)
 
   return <main className="page">
-    <div className="shell player-top"><Link to={categoryUrl(video.categoryId)}>← Back to videos</Link><span>{video.level} · Video {String(number).padStart(2, '0')}</span></div>
+    <div className="shell player-top"><Link to={categoryUrl(video.categoryId)}>← Back to videos</Link><span>Video {String(number).padStart(2, '0')}</span></div>
     <section className="shell player-grid">
       <div>
         <BasePlayer video={video} videoRef={baseRef} />

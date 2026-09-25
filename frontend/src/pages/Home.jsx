@@ -27,7 +27,7 @@ export default function Home() {
         <div>
           <Eyebrow>Keep contributing ✦</Eyebrow>
           <h2 className="display display-md">{nextUp.title}</h2>
-          <p className="continue-meta">{nextCategory?.label} · {nextUp.level}</p>
+          <p className="continue-meta">{nextCategory?.label}</p>
           <div className="continue-progress"><ProgressBar value={percent} label="Coverage across the library" /><span>{contributedCount} of {orderedPublished.length} videos have a recording from you</span></div>
         </div>
         <Link to={watchUrl(nextUp.id)} className="continue-play" aria-label={`Open video: ${nextUp.title}`}>▶</Link>

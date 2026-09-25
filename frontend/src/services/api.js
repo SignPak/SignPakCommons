@@ -130,13 +130,13 @@ export const api = {
   videos: {
     async list() { return Promise.all(read('videos', []).map(withPlayableUrl)) },
     /** `file` is the uploaded base video. With a real backend this becomes a multipart upload. */
-    async create({ file, title, categoryId, level, status, durationSec, poster }) {
+    async create({ file, title, categoryId, status, durationSec, poster }) {
       const videos = read('videos', [])
       const id = uid('video')
       const blobKey = `blob_${id}`
       await blobStore.put(blobKey, file)
       const order = Math.max(0, ...videos.filter((item) => item.categoryId === categoryId).map((item) => item.order || 0)) + 1
-      const video = { id, title: title.trim(), level, status, categoryId: categoryId || null, order, durationSec, poster, blobKey, size: file.size, createdAt: Date.now() }
+      const video = { id, title: title.trim(), status, categoryId: categoryId || null, order, durationSec, poster, blobKey, size: file.size, createdAt: Date.now() }
       write('videos', [...videos, video])
       return video
     },

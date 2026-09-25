@@ -6,7 +6,6 @@ export const SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/
 // Replace with your own file, e.g. '/demo/how-it-works.mp4' placed in frontend/public/demo/
 export const DEMO_VIDEO = SAMPLE_VIDEO
 
-export const LEVELS = ['Beginner', 'Practice', 'Intermediate', 'Advanced']
 export const TONES = ['yellow', 'blue', 'red', 'green']
 // The keys are stored in the database, so they stay. These are the colours people actually see.
 export const TONE_LABELS = { yellow: 'Lime', blue: 'Sky', red: 'Turquoise', green: 'Mint' }
@@ -35,19 +34,19 @@ export const seedCategories = [
 ]
 
 const poster = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=85`
-const video = (id, order, title, level, durationSec, categoryId, image) => ({
-  id: `video_${id}`, title, level, durationSec, categoryId, order,
+const video = (id, order, title, durationSec, categoryId, image) => ({
+  id: `video_${id}`, title, durationSec, categoryId, order,
   poster: poster(image), videoUrl: SAMPLE_VIDEO, status: 'published', createdAt: now - (30 - id) * day,
 })
 
 export const seedVideos = [
-  video(1, 1, 'Nice to meet you', 'Beginner', 134, 'daily', 'photo-1551836022-d5d88e9218df'),
-  video(2, 2, 'A warm introduction', 'Beginner', 188, 'daily', 'photo-1521737711867-e3b97375f902'),
-  video(3, 3, 'Where are you from?', 'Practice', 102, 'daily', 'photo-1529156069898-49953e39b3ac'),
-  video(4, 1, 'The team check-in', 'Practice', 260, 'work', 'photo-1556761175-b413da4baf72'),
-  video(5, 2, 'Could you show me?', 'Intermediate', 171, 'work', 'photo-1543269865-cbf427effbad'),
-  video(6, 1, 'Finding your way', 'Beginner', 212, 'travel', 'photo-1530789253388-582c481c54b0'),
-  video(7, 1, 'A story in motion', 'Advanced', 310, 'stories', 'photo-1531058020387-3be344556be6'),
+  video(1, 1, 'Nice to meet you', 134, 'daily', 'photo-1551836022-d5d88e9218df'),
+  video(2, 2, 'A warm introduction', 188, 'daily', 'photo-1521737711867-e3b97375f902'),
+  video(3, 3, 'Where are you from?', 102, 'daily', 'photo-1529156069898-49953e39b3ac'),
+  video(4, 1, 'The team check-in', 260, 'work', 'photo-1556761175-b413da4baf72'),
+  video(5, 2, 'Could you show me?', 171, 'work', 'photo-1543269865-cbf427effbad'),
+  video(6, 1, 'Finding your way', 212, 'travel', 'photo-1530789253388-582c481c54b0'),
+  video(7, 1, 'A story in motion', 310, 'stories', 'photo-1531058020387-3be344556be6'),
 ]
 
 // A few past submissions from the demo contributors so the admin dashboard has something to chart.

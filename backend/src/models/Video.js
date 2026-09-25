@@ -1,11 +1,10 @@
 import mongoose from 'mongoose'
-import { API_PREFIX, LEVELS, VIDEO_STATUS, VIDEO_STATUS_LIST } from '../config/constants.js'
+import { API_PREFIX, VIDEO_STATUS, VIDEO_STATUS_LIST } from '../config/constants.js'
 import { jsonOptions } from '../utils/mongoose.js'
 import { storedFileSchema } from './storedFile.js'
 
 const videoSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 120 },
-  level: { type: String, enum: LEVELS, default: LEVELS[0] },
   status: { type: String, enum: VIDEO_STATUS_LIST, default: VIDEO_STATUS.PUBLISHED },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
   order: { type: Number, default: 1, min: 0 },

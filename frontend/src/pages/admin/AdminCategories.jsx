@@ -126,7 +126,7 @@ function CategoryDetail({ category, onDeleted }) {
 
     <h3 className="display display-sm assign-title">Videos in this category <Badge>{assigned.length}</Badge></h3>
     {assigned.length
-      ? <ul className="assign-list">{assigned.map((video) => <li key={video.id}><span><b>{video.title}</b><small>{video.level} · {formatTime(video.durationSec)} · {video.status}</small></span><button type="button" onClick={() => unassign(video)}>Remove</button></li>)}</ul>
+      ? <ul className="assign-list">{assigned.map((video) => <li key={video.id}><span><b>{video.title}</b><small>{formatTime(video.durationSec)} · {video.status}</small></span><button type="button" onClick={() => unassign(video)}>Remove</button></li>)}</ul>
       : <p className="empty-note">No videos yet. Add some from the list below.</p>}
 
     <h3 className="display display-sm assign-title">Add a video</h3>
