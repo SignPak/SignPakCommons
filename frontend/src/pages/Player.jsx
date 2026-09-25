@@ -4,11 +4,12 @@ import BasePlayer from '../components/BasePlayer'
 import RecorderPanel from '../components/RecorderPanel'
 import { Alert, Button, ButtonLink, Eyebrow, PageState } from '../components/ui'
 import { useLibrary } from '../context/LibraryContext'
-import { categoryUrl, watchEditUrl, watchUrl } from '../routes/appRoutes'
+import { categoryUrl, paths, watchEditUrl, watchUrl } from '../routes/appRoutes'
+import { safeRouteId } from '../utils/validators'
 
 export default function Player() {
   const [params] = useSearchParams()
-  const videoId = params.get('v')
+  const videoId = safeRouteId(params.get('v'))
   // Keyed so switching videos (Next video, another category) resets the player and the camera.
   return <PlayerScreen key={videoId} videoId={videoId} />
 }
@@ -49,7 +50,7 @@ function PlayerScreen({ videoId }) {
   }, [remaining, refresh])
 
   if (!video) {
-    return <PageState eyebrow="Not found" title="That video isn't available." action={<ButtonLink to="/home">Back to library</ButtonLink>}>It may have been unpublished or removed.</PageState>
+    return <PageState eyebrow="Not found" title="That video isn't available." action={<ButtonLink to={paths.library}>Back to library</ButtonLink>}>It may have been unpublished or removed.</PageState>
   }
 
   const category = categories.find((item) => item.id === video.categoryId)

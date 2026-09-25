@@ -55,7 +55,7 @@ export default function Faq() {
     <section className="shell faq-head">
       <Eyebrow>Questions, answered</Eyebrow>
       <h1 className="display display-xl">Frequently asked<br /><em>questions.</em></h1>
-      <p className="lede">Everything you need to know about contributing videos to Signpak Commons. Still stuck? <a className="link-accent" href="/#contact">Contact us</a> or head back to the <Link className="link-accent" to={paths.home}>home page</Link>.</p>
+      <p className="lede">Everything you need to know about contributing videos to Signpak Commons. Still stuck? <Link className="link-accent" to={paths.contact}>Contact us</Link> or head back to the <Link className="link-accent" to={paths.home}>home page</Link>.</p>
     </section>
 
     <section className="shell faq-body">

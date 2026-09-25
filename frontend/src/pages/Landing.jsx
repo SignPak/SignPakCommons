@@ -5,6 +5,7 @@ import Field from '../components/Field'
 import Footer from '../components/Footer'
 import { Alert, Arrow, Button, ButtonLink, Eyebrow } from '../components/ui'
 import { api } from '../services/api'
+import { paths } from '../routes/appRoutes'
 
 // Guidelines & Policy items for PSL dataset collection
 const policyItems = [
@@ -62,10 +63,10 @@ export default function Landing() {
               Help us build the first open-source model for PSL. Your video contributions make communication accessible for millions across Pakistan.
             </p>
             <div className="hero-actions">
-              <ButtonLink variant="outline" to="/demo">
+              <ButtonLink variant="outline" to={paths.demo}>
                 See how to contribute
               </ButtonLink>
-              <ButtonLink to={user ? '/home' : '/signup'}>
+              <ButtonLink to={user ? paths.library : paths.signup}>
                 {user ? 'Open library' : 'Get started'} <Arrow />
               </ButtonLink>
             </div>
@@ -166,7 +167,7 @@ export default function Landing() {
             Ready to contribute<br />
             <em>your signs?</em>
           </h2>
-          <ButtonLink variant="light" to={user ? '/home' : '/signup'}>
+          <ButtonLink variant="light" to={user ? paths.library : paths.signup}>
             {user ? 'Open library' : 'Create your account'} <Arrow />
           </ButtonLink>
         </div>

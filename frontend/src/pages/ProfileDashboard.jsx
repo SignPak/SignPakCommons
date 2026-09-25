@@ -22,7 +22,7 @@ export default function ProfileDashboard() {
         <Eyebrow>Your space</Eyebrow>
         <h1 className="display display-xl">{user.firstName} <em>{user.surname}.</em></h1>
         <p className="lede">{user.email} · Contributing since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
-        <Button variant="ghost" className="profile-logout" onClick={async () => { await logout(); navigate('/') }}>Log out</Button>
+        <Button variant="ghost" className="profile-logout" onClick={async () => { await logout(); navigate(paths.home) }}>Log out</Button>
       </div>
       <Avatar user={user} size="lg" />
     </section>

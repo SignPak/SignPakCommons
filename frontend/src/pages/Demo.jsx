@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext'
 import { Arrow, ButtonLink, Eyebrow } from '../components/ui'
+import { paths } from '../routes/appRoutes'
 import { DEMO_VIDEO } from '../mock/data'
 
 const demoSteps = [
@@ -22,7 +23,7 @@ export default function Demo() {
   return (
     <main className="demo feature">
       <div className="shell demo-top">
-        <ButtonLink variant="ghost" to="/">← Back home</ButtonLink>
+        <ButtonLink variant="ghost" to={paths.home}>← Back home</ButtonLink>
         <ButtonLink to={user ? '/home' : '/signup'}>
           {user ? 'Open library' : 'Get started'} <Arrow />
         </ButtonLink>

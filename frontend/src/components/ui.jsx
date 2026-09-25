@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 import { initialsOf } from '../utils/format'
+import { paths } from '../routes/appRoutes'
 
 const join = (...parts) => parts.filter(Boolean).join(' ')
 
-export function Brand({ light = false, to = '/' }) {
+export function Brand({ light = false, to = paths.home }) {
   return <Link to={to} className={join('brand', light && 'brand-light')}><span className="brand-mark">S</span><span>sign<span className="brand-accent">pak</span></span></Link>
 }
 

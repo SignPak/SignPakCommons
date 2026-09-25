@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Brand } from './ui'
+import { paths } from '../routes/appRoutes'
 
 export default function Footer() {
   return (
@@ -14,16 +15,16 @@ export default function Footer() {
         <div>
           <p className="footer-title">Explore</p>
           <div className="footer-links">
-            <Link to="/demo">How it works</Link>
-            <Link to="/#about">About</Link>
-            <Link to="/signup">Create an account</Link>
+            <Link to={paths.demo}>How it works</Link>
+            <Link to={paths.about}>About</Link>
+            <Link to={paths.signup}>Create an account</Link>
           </div>
         </div>
         <div>
           <p className="footer-title">Good to know</p>
           <div className="footer-links">
-            <Link to="/#policy">Policy</Link>
-            <Link to="/#contact">Contact us</Link>
+            <Link to={paths.policy}>Policy</Link>
+            <Link to={paths.contact}>Contact us</Link>
           </div>
         </div>
       </div>

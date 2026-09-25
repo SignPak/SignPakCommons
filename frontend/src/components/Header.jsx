@@ -6,7 +6,7 @@ import NotificationBell from './NotificationBell'
 import ThemeToggle from './ThemeToggle'
 import { Arrow, Avatar, Brand, ButtonLink } from './ui'
 
-const publicLinks = [['How it works', paths.demo], ['About', '/#about'], ['FAQ', paths.faq], ['Contact', '/#contact']]
+const publicLinks = [['How it works', paths.demo], ['About', paths.about], ['FAQ', paths.faq], ['Contact', paths.contact]]
 const memberLinks = [['Library', paths.library], ['FAQ', paths.faq], ['My space', paths.profile]]
 
 export default function Header() {
@@ -15,7 +15,7 @@ export default function Header() {
   const [open, setOpen] = useState(false)
   const links = user ? memberLinks : publicLinks
   const close = () => setOpen(false)
-  const handleLogout = async () => { close(); await logout(); navigate('/') }
+  const handleLogout = async () => { close(); await logout(); navigate(paths.home) }
 
   return <header className="site-header">
     <div className="site-header-bar">

@@ -5,12 +5,13 @@ import { Alert, Arrow, Button, ButtonLink, Eyebrow, PageState } from '../compone
 import { useLibrary } from '../context/LibraryContext'
 import { useNotifications } from '../context/NotificationContext'
 import { useRecordings } from '../context/RecordingContext'
-import { watchUrl } from '../routes/appRoutes'
+import { paths, watchUrl } from '../routes/appRoutes'
 import { formatTime } from '../utils/format'
+import { safeRouteId } from '../utils/validators'
 
 export default function RecordingEditor() {
   const [params] = useSearchParams()
-  const videoId = params.get('v')
+  const videoId = safeRouteId(params.get('v'))
   return <EditScreen key={videoId} videoId={videoId} />
 }
 
@@ -22,7 +23,7 @@ function EditScreen({ videoId }) {
   const video = publishedVideos.find((item) => item.id === videoId)
   const recording = recordings[videoId]
 
-  if (!video) return <PageState eyebrow="Not found" title="That video isn't available." action={<ButtonLink to="/home">Back to library</ButtonLink>}>It may have been unpublished or removed.</PageState>
+  if (!video) return <PageState eyebrow="Not found" title="That video isn't available." action={<ButtonLink to={paths.library}>Back to library</ButtonLink>}>It may have been unpublished or removed.</PageState>
   if (!recording) return <PageState eyebrow="Nothing to edit" title="Record a take first." action={<ButtonLink to={watchUrl(video.id)}>Back to video</ButtonLink>}>You need a recording before you can trim it.</PageState>
 
   return <Editor

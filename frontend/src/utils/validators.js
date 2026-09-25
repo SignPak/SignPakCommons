@@ -1,8 +1,10 @@
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const GITHUB_USER = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i
 const LINKEDIN_SLUG = /^[\w\-%]{3,100}$/
+const ROUTE_ID = /^[A-Za-z0-9_-]{1,128}$/
 
 export const isEmail = (value) => EMAIL.test(value.trim())
+export const safeRouteId = (value) => typeof value === 'string' && ROUTE_ID.test(value) ? value : null
 
 export function validateLogin({ email, password }) {
   const errors = {}
