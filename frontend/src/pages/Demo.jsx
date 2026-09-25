@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext'
 import { Arrow, ButtonLink, Eyebrow } from '../components/ui'
+import { DEMO_VIDEO } from '../config/constants'
 import { paths } from '../routes/appRoutes'
-import { DEMO_VIDEO } from '../mock/data'
 
 const demoSteps = [
   {

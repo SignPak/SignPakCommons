@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { SUBMISSION_COOLDOWN_MS } from '../mock/data'
 import { api } from '../services/api'
 import { useAuth } from './AuthContext'
 import { LibraryContext } from './LibraryContext'
 
 const EMPTY = { ready: false, categories: [], videos: [], submissions: [] }
+const SUBMISSION_COOLDOWN_MS = Number(import.meta.env.VITE_SUBMISSION_COOLDOWN_MS || 30_000)
 
 export default function LibraryProvider({ children }) {
   const { user } = useAuth()

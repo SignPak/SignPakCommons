@@ -1,6 +1,6 @@
 # SignPakCommons: frontend
 
-React 19 + Vite + Tailwind CSS v4 + React Router. Backend (Express + MongoDB) comes next; until then the app runs on a mock API that stores data in the browser.
+React 19 + Vite + Tailwind CSS v4 + React Router. The frontend uses the Express + MongoDB backend through `src/services/api.js`.
 
 ## Run it
 
@@ -34,7 +34,7 @@ src/
   components/   shared UI (Header, Footer, Field, players, route guards)
   context/      Auth, Library and Recording state
   hooks/        useRecorder (camera + MediaRecorder)
-  mock/         seed data and placeholder (lorem) copy
+  config/       production constants used by the UI
   pages/        one file per screen, admin/ for the workspace
   services/     api.js: the only file that talks to "the server"
   styles/       all styling; index.css just imports these
@@ -44,17 +44,15 @@ src/
 
 No inline utility classes in JSX. Components use semantic class names (`.btn`, `.lesson-card`, `.recorder`...) defined in `src/styles/*.css` with Tailwind's `@apply`. Colours and fonts are tokens in `styles/theme.css`, so a palette change is one file.
 
-## Connecting the backend
+## Backend integration
 
-Every call goes through `src/services/api.js`, and every method is async and returns plain JSON. Replace the method bodies with `fetch()` calls and nothing else changes.
+Every server call goes through `src/services/api.js`. Requests use the `/api/v1` backend routes, include the HTTP-only session cookie, unwrap the `{ data }` response envelope, and support multipart video and recording uploads.
 
-- **Passwords** are hashed in the mock only. The real API must use a password-specific hash (bcrypt or argon2) and a proper session or JWT.
-- **Recordings** are held in memory until submitted. On submit, `submissions.create` currently sends metadata only; the real call should upload the recorded `Blob` plus `trimStart` / `trimEnd` / `mirrored`, and the server does the cut (for example with ffmpeg). The browser does not re-encode.
-- **Base videos** uploaded by admins are kept in IndexedDB on that device. The real call should be a multipart upload.
-- **Seed videos** all use one public sample clip. Swap real URLs in `mock/data.js`, or just start uploading in the admin.
-- **Demo page video**: set `DEMO_VIDEO` in `mock/data.js`, for example `/demo/how-it-works.mp4` placed in `public/demo/`.
-
-To reset all mock data, clear this site's localStorage and IndexedDB in browser dev tools.
+- Set `VITE_API_ORIGIN` when the deployed frontend and backend use different origins. Leave it empty during local development to use the Vite `/api` proxy.
+- Backend environment values are documented in `../backend/.env.example`.
+- Admin video uploads are stored by the backend; the browser does not keep the base library in IndexedDB.
+- Recording submissions upload the recorded `Blob` with trim metadata. The backend enforces the submission cooldown.
+- Notifications remain browser-local until a persisted backend notification API is added.
 
 ## Theming
 
@@ -87,9 +85,7 @@ These checks used local test scripts, not shipped in this codebase.
 
 This is a video **data-collection** tool, not a learning platform: there's no curriculum, no "complete this lesson," nothing to finish. Terminology reflects that throughout — a **category** groups **videos** by topic, and a **contributor** can record any video as many times as they like.
 
-**Recording again — the 30-second cooldown.** A contributor can submit more than one recording for the same video (more takes make better training data), but not back-to-back: after a submission, that video's recorder is replaced with a countdown for `SUBMISSION_COOLDOWN_MS` (30s, in `src/mock/data.js`) before they can record it again. This is enforced twice, the same defence-in-depth pattern as the rest of the mock API: the Player UI hides the recorder while the countdown is running, and `services/api.js`'s `submissions.create` independently re-checks the most recent submission's timestamp and refuses a too-soon request regardless of what the UI showed — verified with two real browser tabs racing to submit the same video (see `e2e` notes below). What never changes: an individual submitted recording still can't be watched, edited or deleted, and only an admin can review one.
-
-**⚠ Backend mismatch, needs a matching change.** The Express backend (built earlier) still enforces its *old* rule — one submission per (user, video) *ever*, via a unique Mongo index — which directly conflicts with this cooldown model. Before wiring this frontend to that backend, the backend needs: the unique `(user, video)` index dropped, and `submissionService.create` updated to check `Date.now() - lastSubmission.createdAt < COOLDOWN_MS` the same way the mock does. Flagging this now so it isn't a surprise during integration.
+**Recording again — the 30-second cooldown.** A contributor can submit more than one recording for the same video, but not back-to-back. The Player UI shows a countdown, and the backend atomically enforces the same cooldown through `SUBMISSION_COOLDOWN_MS`.
 
 ## Routing
 
@@ -110,4 +106,4 @@ This is a video **data-collection** tool, not a learning platform: there's no cu
 
 ## Notifications
 
-The bell in the header (`components/NotificationBell.jsx`, `context/NotificationProvider.jsx`) is backed by the same per-user `localStorage` pattern as everything else, so it survives a reload. Right now it fires for: a successful submission, and (client-side only, while the tab is open) when a video's cooldown finishes. `api.notifications` in `services/api.js` has `list`, `create`, `markRead` and `markAllRead` if you want to add more triggers later — for instance, once the real backend exists, an admin could get one when a new contributor signs up.
+The bell in the header (`components/NotificationBell.jsx`, `context/NotificationProvider.jsx`) is browser-local and survives a reload. Cross-device notification persistence requires a future backend notification API.

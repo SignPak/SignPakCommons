@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import Field from '../../components/Field'
 import { Alert, Badge, Button, Eyebrow } from '../../components/ui'
+import { TONES, TONE_LABELS } from '../../config/constants'
 import { useLibrary } from '../../context/LibraryContext'
-import { TONES, TONE_LABELS } from '../../mock/data'
 import { formatTime } from '../../utils/format'
 
 const NEW_CATEGORY = { label: '', copy: '', tone: TONES[0] }
