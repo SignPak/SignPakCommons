@@ -31,7 +31,7 @@
   .bar-list li { @apply grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 text-sm font-semibold; }
   .bar-list b { @apply font-ui text-base; }
   .bar-track { @apply h-3.5 overflow-hidden rounded-full bg-panel; }
-  .bar-fill { @apply block h-full min-w-[4px] rounded-full; }
+  .bar-fill { @apply block h-full min-w-1 rounded-full; }
 
   /* overflow-x:auto on a table does not stop Chromium counting the table's full
      width in document.documentElement.scrollWidth unless the wrapper also gets its
@@ -48,7 +48,7 @@
 
   .upload { @apply grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_.9fr]; }
   .upload-drop { @apply min-w-0; }
-  .upload-pick { @apply grid min-h-[280px] cursor-pointer place-content-center justify-items-center gap-2 rounded-3xl border-2 border-dashed border-line-strong bg-panel p-6 text-center text-base text-muted transition hover:border-accent-ink hover:bg-secondary-soft; }
+  .upload-pick { @apply grid min-h-70 cursor-pointer place-content-center justify-items-center gap-2 rounded-3xl border-2 border-dashed border-line-strong bg-panel p-6 text-center text-base text-muted transition hover:border-accent-ink hover:bg-secondary-soft; }
   .upload-preview { @apply block aspect-video w-full rounded-2xl bg-black; }
   .upload-file { @apply mt-3 text-sm text-muted; }
   .upload-file b { @apply text-heading; }
