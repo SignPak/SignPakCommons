@@ -4,6 +4,7 @@ import { Badge, ButtonLink, Eyebrow, PageState, SectionHeading, VideoArtwork } f
 import { useLibrary } from '../context/LibraryContext'
 import { paths, watchUrl } from '../routes/appRoutes'
 import { formatTime } from '../utils/format'
+import { safeRouteId } from '../utils/validators'
 
 const SORTS = {
   path: { label: 'Category order', compare: (a, b) => (a.order || 0) - (b.order || 0) },
@@ -12,7 +13,8 @@ const SORTS = {
 }
 
 export default function CategoryBrowser() {
-  const { categoryId } = useParams()
+  const { categoryId: rawCategoryId } = useParams()
+  const categoryId = safeRouteId(rawCategoryId)
   const { categories, videosIn, hasSubmission, submissionCount } = useLibrary()
   const [query, setQuery] = useState('')
   const [level, setLevel] = useState('All levels')

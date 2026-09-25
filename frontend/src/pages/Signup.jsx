@@ -5,6 +5,7 @@ import Field from '../components/Field'
 import { Alert, Arrow, Button } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
+import { paths } from '../routes/appRoutes'
 import { api } from '../services/api'
 import { validateSignup } from '../utils/validators'
 
@@ -33,7 +34,7 @@ export default function Signup() {
     } catch (error) { setFormError(error.message); setBusy(false) }
   }
 
-  return <AuthShell eyebrow="Start your journey" title="Create your account." subtitle="A few details, then you're in." footer={<>Already have an account? <Link to="/login">Log in</Link></>}>
+  return <AuthShell eyebrow="Start your journey" title="Create your account." subtitle="A few details, then you're in." footer={<>Already have an account? <Link to={paths.login}>Log in</Link></>}>
     <form onSubmit={submit} noValidate>
       <div className="field-row">
         <Field label="First name" name="firstName" value={values.firstName} onChange={change} error={errors.firstName} placeholder="Maya" autoComplete="given-name" />

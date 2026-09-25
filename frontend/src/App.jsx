@@ -1,8 +1,8 @@
-import { Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/Layouts'
 import { GuestOnly, RequireAdmin, RequireAuth } from './components/RouteGuards'
 import { PageState, ButtonLink } from './components/ui'
-import { paths, watchEditUrl, watchUrl } from './routes/appRoutes'
+import { paths } from './routes/appRoutes'
 import AdminCategories from './pages/admin/AdminCategories'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminLayout from './pages/admin/AdminLayout'
@@ -17,12 +17,6 @@ import Player from './pages/Player'
 import ProfileDashboard from './pages/ProfileDashboard'
 import RecordingEditor from './pages/RecordingEditor'
 import Signup from './pages/Signup'
-
-/** Bookmarked/shared links to the old /lesson/:videoId shape still resolve, just redirected to /watch?v=. */
-function LegacyWatchRedirect({ edit = false }) {
-  const { videoId } = useParams()
-  return <Navigate to={edit ? watchEditUrl(videoId) : watchUrl(videoId)} replace />
-}
 
 export default function App() {
   return <Routes>
@@ -54,17 +48,9 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Old URLs from before /watch?v= */}
-      <Route path="lesson/:videoId" element={<LegacyWatchRedirect />} />
-      <Route path="lesson/:videoId/edit" element={<LegacyWatchRedirect edit />} />
-      {/* Old URLs from the first prototype */}
-      <Route path="category" element={<Navigate to={paths.library} replace />} />
-      <Route path="player" element={<Navigate to={paths.library} replace />} />
-      <Route path="edit" element={<Navigate to={paths.library} replace />} />
-      <Route path="auth" element={<Navigate to={paths.login} replace />} />
-      <Route path="contact" element={<Navigate to="/#contact" replace />} />
-      <Route path="policy" element={<Navigate to="/#policy" replace />} />
-      <Route path="*" element={<PageState eyebrow="404" title="Page not found." action={<ButtonLink to="/">Back home</ButtonLink>}>That page doesn't exist or has moved.</PageState>} />
+      <Route path="contact" element={<Navigate to={paths.contact} replace />} />
+      <Route path="policy" element={<Navigate to={paths.policy} replace />} />
+      <Route path="*" element={<PageState eyebrow="404" title="Page not found." action={<ButtonLink to={paths.home}>Back home</ButtonLink>}>That page doesn't exist or has moved.</PageState>} />
     </Route>
   </Routes>
 }

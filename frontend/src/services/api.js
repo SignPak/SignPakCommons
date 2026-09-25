@@ -6,7 +6,6 @@
  * means replacing the bodies below with fetch() calls. Nothing else in the app needs to change.
  *
  * Storage: localStorage for records, IndexedDB (utils/blobStore) for uploaded base videos.
- * Passwords are stored in plain text HERE ONLY because this is a local mock. The real backend must hash them (bcrypt/argon2).
  */
 import { buildSeedSubmissions, seedCategories, seedUsers, seedVideos, SUBMISSION_COOLDOWN_MS } from '../mock/data'
 import { blobStore } from '../utils/blobStore'
@@ -21,18 +20,35 @@ const read = (key, fallback) => {
 const write = (key, value) => window.localStorage.setItem(PREFIX + key, JSON.stringify(value))
 const uid = (prefix) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
 const fail = (message) => { throw new Error(message) }
-const publicUser = ({ password, ...user }) => { void password; return user }
+const publicUser = ({ password, passwordHash, ...user }) => { void password; void passwordHash; return user }
 
-function ensureSeed() {
-  if (read('seeded', false)) return
-  write('users', seedUsers)
+async function hashPassword(password) {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password))
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+async function migrateUsers() {
+  const users = read('users', [])
+  const migrated = await Promise.all(users.map(async ({ password, ...user }) => ({
+    ...user,
+    passwordHash: user.passwordHash || (password ? await hashPassword(password) : ''),
+  })))
+  if (users.some((user) => user.password || !user.passwordHash)) write('users', migrated)
+}
+
+async function ensureSeed() {
+  if (read('seeded', false)) { await migrateUsers(); return }
+  const users = await Promise.all(seedUsers.map(async ({ password, ...user }) => ({ ...user, passwordHash: await hashPassword(password) })))
+  write('users', users)
   write('categories', seedCategories)
   write('videos', seedVideos)
   write('submissions', buildSeedSubmissions())
   write('messages', [])
   write('seeded', true)
 }
-ensureSeed()
+const seedReady = ensureSeed()
+
+const signalAuthChange = () => window.dispatchEvent(new Event('signpak:auth-change'))
 
 // Uploaded videos live in IndexedDB; turn them into object URLs once per page load.
 const urlCache = new Map()
@@ -49,27 +65,40 @@ async function withPlayableUrl(video) {
 export const api = {
   auth: {
     async session() {
+      await seedReady
       const id = read('session', null)
       const user = read('users', []).find((item) => item.id === id)
+      if (id && !user) window.localStorage.removeItem(PREFIX + 'session')
       return user ? publicUser(user) : null
     },
     async register({ email, firstName, surname, password }) {
+      await seedReady
       const users = read('users', [])
       const normalized = email.trim().toLowerCase()
       if (users.some((user) => user.email === normalized)) fail('An account with this email already exists. Log in instead.')
-      const user = { id: uid('user'), email: normalized, firstName: firstName.trim(), surname: surname.trim(), password, role: 'user', createdAt: Date.now(), connections: {} }
+      const user = { id: uid('user'), email: normalized, firstName: firstName.trim(), surname: surname.trim(), passwordHash: await hashPassword(password), role: 'user', createdAt: Date.now(), connections: {} }
       write('users', [...users, user])
       write('session', user.id)
+      signalAuthChange()
       return publicUser(user)
     },
     async login(email, password) {
+      await seedReady
       const user = read('users', []).find((item) => item.email === email.trim().toLowerCase())
-      if (!user || user.password !== password) fail('That email and password do not match. Check them and try again.')
+      if (!user || user.passwordHash !== await hashPassword(password)) fail('That email and password do not match. Check them and try again.')
       write('session', user.id)
+      signalAuthChange()
       return publicUser(user)
     },
-    async logout() { window.localStorage.removeItem(PREFIX + 'session') },
+    async logout() {
+      await seedReady
+      const id = read('session', null)
+      window.localStorage.removeItem(PREFIX + 'session')
+      if (id) write('notifications', read('notifications', []).filter((item) => item.userId !== id))
+      signalAuthChange()
+    },
     async saveConnections(userId, connections) {
+      await seedReady
       const users = read('users', []).map((user) => (user.id === userId ? { ...user, connections } : user))
       write('users', users)
       return publicUser(users.find((user) => user.id === userId))
@@ -120,7 +149,12 @@ export const api = {
   },
 
   submissions: {
-    async list() { return read('submissions', []) },
+    async list(userId = null, includeAll = false) {
+      await seedReady
+      if (!userId && !includeAll) return []
+      const submissions = read('submissions', [])
+      return includeAll ? submissions : submissions.filter((item) => item.userId === userId)
+    },
     /** The most recent submission this user has for this video, or null. Powers the cooldown countdown. */
     async lastFor(userId, videoId) {
       const mine = read('submissions', []).filter((item) => item.userId === userId && item.videoId === videoId)

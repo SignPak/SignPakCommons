@@ -11,17 +11,27 @@ export default function LibraryProvider({ children }) {
   const [data, setData] = useState(EMPTY)
 
   const refresh = useCallback(async () => {
-    const [categories, videos, submissions] = await Promise.all([api.categories.list(), api.videos.list(), api.submissions.list()])
+    const includeAll = user?.role === 'admin'
+    const [categories, videos, submissions] = await Promise.all([
+      api.categories.list(),
+      api.videos.list(),
+      api.submissions.list(user?.id, includeAll),
+    ])
     setData({ ready: true, categories, videos, submissions })
-  }, [])
+  }, [user])
 
   useEffect(() => {
     let active = true
-    Promise.all([api.categories.list(), api.videos.list(), api.submissions.list()]).then(([categories, videos, submissions]) => {
+    const includeAll = user?.role === 'admin'
+    Promise.all([
+      api.categories.list(),
+      api.videos.list(),
+      api.submissions.list(user?.id, includeAll),
+    ]).then(([categories, videos, submissions]) => {
       if (active) setData({ ready: true, categories, videos, submissions })
     })
     return () => { active = false }
-  }, [])
+  }, [user])
 
   const value = useMemo(() => {
     const { categories, videos, submissions } = data
