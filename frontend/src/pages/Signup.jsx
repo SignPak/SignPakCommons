@@ -4,12 +4,15 @@ import AuthShell from '../components/AuthShell'
 import Field from '../components/Field'
 import { Alert, Arrow, Button } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
+import { useNotifications } from '../context/NotificationContext'
+import { api } from '../services/api'
 import { validateSignup } from '../utils/validators'
 
 const EMPTY = { firstName: '', surname: '', email: '', password: '', confirmPassword: '' }
 
 export default function Signup() {
   const { signup } = useAuth()
+  const { notify } = useNotifications()
   const [values, setValues] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -23,8 +26,11 @@ export default function Signup() {
     if (Object.keys(found).length) return
     setBusy(true)
     setFormError('')
-    try { await signup(values) } // GuestOnly redirects once the session exists
-    catch (error) { setFormError(error.message); setBusy(false) }
+    try {
+      await signup(values) // GuestOnly redirects once the session exists
+      const session = await api.auth.session() // fresh read: safe even before NotificationProvider re-renders with the new user
+      if (session) notify({ type: 'welcome', title: 'Welcome to Signpak Commons', body: 'Pick any category and record your first video whenever you\'re ready.' }, session.id)
+    } catch (error) { setFormError(error.message); setBusy(false) }
   }
 
   return <AuthShell eyebrow="Start your journey" title="Create your account." subtitle="A few details, then you're in." footer={<>Already have an account? <Link to="/login">Log in</Link></>}>
