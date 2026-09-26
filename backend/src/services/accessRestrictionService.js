@@ -14,7 +14,7 @@ function hint(type, value) {
 }
 
 export const accessRestrictionService = {
-  list: () => AccessRestriction.find().sort({ createdAt: -1 }),
+  list: () => AccessRestriction.find({ $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }).sort({ createdAt: -1 }),
 
   async create({ type, value, reason }, adminId) {
     try {
@@ -39,6 +39,34 @@ export const accessRestrictionService = {
   async isRequestRestricted(ip, deviceId) {
     const identifiers = [{ type: 'ip', identifierHash: hash(ip) }]
     if (deviceId) identifiers.push({ type: 'device', identifierHash: hash(deviceId) })
-    return AccessRestriction.exists({ $or: identifiers })
+    return AccessRestriction.exists({ $and: [
+      { $or: identifiers },
+      { $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] },
+    ] })
+  },
+
+  async temporarilyRestrictRequest(ip, deviceId, reason, durationMs) {
+    const target = deviceId ? { type: 'device', value: deviceId } : { type: 'ip', value: ip }
+    const filter = { type: target.type, identifierHash: hash(target.value) }
+    const expiresAt = new Date(Date.now() + durationMs)
+    let restriction = await AccessRestriction.findOne(filter)
+    if (restriction) {
+      if (!restriction.expiresAt) return
+      restriction.expiresAt = expiresAt
+      restriction.reason = reason
+      await restriction.save()
+      return
+    }
+    try {
+      await AccessRestriction.create({ ...filter, identifierHint: hint(target.type, target.value), reason, expiresAt })
+    } catch (error) {
+      if (error?.code !== 11000) throw error
+      restriction = await AccessRestriction.findOne(filter)
+      if (restriction?.expiresAt) {
+        restriction.expiresAt = expiresAt
+        restriction.reason = reason
+        await restriction.save()
+      }
+    }
   },
 }

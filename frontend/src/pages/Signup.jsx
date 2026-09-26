@@ -1,19 +1,17 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import Field from '../components/Field'
 import { Alert, Arrow, Button } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { useNotifications } from '../context/NotificationContext'
 import { paths } from '../routes/appRoutes'
-import { api } from '../services/api'
 import { validateSignup } from '../utils/validators'
 
 const EMPTY = { firstName: '', surname: '', email: '', password: '', confirmPassword: '' }
 
 export default function Signup() {
   const { signup } = useAuth()
-  const { notify } = useNotifications()
+  const navigate = useNavigate()
   const [values, setValues] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -28,13 +26,12 @@ export default function Signup() {
     setBusy(true)
     setFormError('')
     try {
-      await signup(values) // GuestOnly redirects once the session exists
-      const session = await api.auth.session() // fresh read: safe even before NotificationProvider re-renders with the new user
-      if (session) notify({ type: 'welcome', title: 'Welcome to Signpak Commons', body: 'Pick any category and record your first video whenever you\'re ready.' }, session.id)
+      const result = await signup(values)
+      navigate(`${paths.verifyEmail}?email=${encodeURIComponent(result.email)}`, { replace: true, state: { emailSent: result.verificationEmailSent } })
     } catch (error) { setFormError(error.message); setBusy(false) }
   }
 
-  return <AuthShell eyebrow="Start your journey" title="Create your account." subtitle="A few details, then you're in." footer={<>Already have an account? <Link to={paths.login}>Log in</Link></>}>
+  return <AuthShell eyebrow="Start your journey" title="Create your account." subtitle="A few details, then verify your email to get started." footer={<>Already signed up? <Link to={paths.verifyEmail}>Verify your email</Link> · <Link to={paths.login}>Log in</Link></>}>
     <form onSubmit={submit} noValidate>
       <div className="field-row">
         <Field label="First name" name="firstName" value={values.firstName} onChange={change} error={errors.firstName} placeholder="Maya" autoComplete="given-name" />

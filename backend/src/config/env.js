@@ -19,6 +19,16 @@ const schema = z.object({
   COOKIE_SECURE: bool.optional(),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
+  BREVO_API_KEY: z.string().optional(),
+  BREVO_SENDER_EMAIL: z.email().optional(),
+  BREVO_SENDER_NAME: z.string().min(1).default('SignPak Commons'),
+  AUTH_OTP_TTL_MINUTES: z.coerce.number().int().min(1).max(30).default(5),
+  AUTH_OTP_RESEND_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
+  AUTH_OTP_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
+  WEB3FORMS_ACCESS_KEY: z.string().optional(),
+  CONTACT_DAILY_LIMIT: z.coerce.number().int().min(1).default(25),
+  CONTACT_USER_DAILY_LIMIT: z.coerce.number().int().min(1).default(1),
+  CONTACT_ABUSE_BLOCK_MINUTES: z.coerce.number().int().min(1).max(1440).default(10),
 
   ADMIN_EMAIL: z.email({ error: 'ADMIN_EMAIL is required and must be a valid email' }),
   ADMIN_PASSWORD: z.string({ error: 'ADMIN_PASSWORD is required (at least 8 characters)' }).min(8, 'ADMIN_PASSWORD must be at least 8 characters').max(72),
@@ -40,6 +50,15 @@ const schema = z.object({
   // (like BCRYPT_ROUNDS) so tests do not have to wait 30 real seconds.
   SUBMISSION_COOLDOWN_MS: z.coerce.number().int().positive().default(30_000),
 }).superRefine((data, context) => {
+  if (data.NODE_ENV === 'production' && !data.BREVO_API_KEY) {
+    context.addIssue({ code: 'custom', path: ['BREVO_API_KEY'], message: 'Required in production for email verification and password reset.' })
+  }
+  if (data.NODE_ENV === 'production' && !data.BREVO_SENDER_EMAIL) {
+    context.addIssue({ code: 'custom', path: ['BREVO_SENDER_EMAIL'], message: 'Required in production; use a verified Brevo sender address.' })
+  }
+  if (data.NODE_ENV === 'production' && !data.WEB3FORMS_ACCESS_KEY) {
+    context.addIssue({ code: 'custom', path: ['WEB3FORMS_ACCESS_KEY'], message: 'Required in production to deliver contact messages.' })
+  }
   const needsGoogle = data.STORAGE_DRIVER === 'gdrive' || data.ARCHIVE_STORAGE_DRIVER === 'gdrive'
   if (needsGoogle && !data.GOOGLE_SERVICE_ACCOUNT_JSON) {
     context.addIssue({ code: 'custom', path: ['GOOGLE_SERVICE_ACCOUNT_JSON'], message: 'Required when STORAGE_DRIVER=gdrive.' })

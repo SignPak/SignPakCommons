@@ -87,6 +87,10 @@ export const api = {
     async session() { return normalize(await request(apiRoutes.auth.session())) },
     async register(values) { return normalize(await request(apiRoutes.auth.signup(), json('POST', values))) },
     async login(email, password) { return normalize(await request(apiRoutes.auth.login(), json('POST', { email, password }))) },
+    async verifyEmail(email, code) { return normalize(await request(apiRoutes.auth.verifyEmail(), json('POST', { email, code }))) },
+    async resendVerification(email) { return request(apiRoutes.auth.resendVerification(), json('POST', { email })) },
+    async forgotPassword(email) { return request(apiRoutes.auth.forgotPassword(), json('POST', { email })) },
+    async resetPassword(values) { return request(apiRoutes.auth.resetPassword(), json('POST', values)) },
     async logout() { await request(apiRoutes.auth.logout(), { method: 'POST' }) },
     async saveConnections(_userId, connections) { return normalize(await request(apiRoutes.users.me(), json('PATCH', { connections }))) },
   },
@@ -125,6 +129,18 @@ export const api = {
     },
     async update(id, patch) { return normalize(await request(apiRoutes.videos.update(id), json('PATCH', patch))) },
     async remove(id) { await request(apiRoutes.videos.remove(id), { method: 'DELETE' }) },
+  },
+
+  demoVideo: {
+    async get() { return normalize(await request(apiRoutes.demoVideo.get())) },
+    async upload({ file, title, durationSec }) {
+      const body = new FormData()
+      body.append('video', file)
+      body.append('title', title)
+      body.append('durationSec', String(durationSec || 0))
+      return normalize(await request(apiRoutes.demoVideo.upload(), { method: 'POST', body }))
+    },
+    async remove() { await request(apiRoutes.demoVideo.remove(), { method: 'DELETE' }) },
   },
 
   submissions: {

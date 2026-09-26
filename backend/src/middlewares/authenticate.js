@@ -6,9 +6,10 @@ import { verifyToken } from '../utils/tokens.js'
 
 async function loadUser(req) {
   const token = req.cookies?.[AUTH_COOKIE]
-  const userId = token && verifyToken(token)
+  const session = token && verifyToken(token)
   // The user is re-read on every request, so a deleted account or changed role takes effect immediately.
-  return userId ? userRepo.findById(userId) : null
+  const user = session ? await userRepo.findById(session.userId) : null
+  return user && (user.authVersion || 0) === session.authVersion ? user : null
 }
 
 /** Requires a valid session. Sets req.user. */

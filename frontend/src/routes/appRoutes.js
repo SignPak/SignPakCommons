@@ -17,6 +17,8 @@ export const paths = {
   policy: '/#policy',
   login: '/login',
   signup: '/signup',
+  verifyEmail: '/verify-email',
+  forgotPassword: '/forgot-password',
   library: '/home',
   profile: '/profile',
   watch: '/watch',

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Button, PageState } from '../components/ui'
 import { api } from '../services/api'
 import { useAuth } from './AuthContext'
 import { LibraryContext } from './LibraryContext'
@@ -6,32 +7,41 @@ import { LibraryContext } from './LibraryContext'
 const EMPTY = { ready: false, categories: [], videos: [], submissions: [] }
 const SUBMISSION_COOLDOWN_MS = Number(import.meta.env.VITE_SUBMISSION_COOLDOWN_MS || 30_000)
 
+function loadLibrary(user) {
+  const includeAll = user?.role === 'admin'
+  return Promise.all([
+    api.categories.list(),
+    api.videos.list(),
+    user ? api.submissions.list(user.id, includeAll) : Promise.resolve([]),
+  ])
+}
+
 export default function LibraryProvider({ children }) {
   const { user } = useAuth()
   const [data, setData] = useState(EMPTY)
+  const [loadError, setLoadError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   const refresh = useCallback(async () => {
-    const includeAll = user?.role === 'admin'
-    const [categories, videos, submissions] = await Promise.all([
-      api.categories.list(),
-      api.videos.list(),
-      user ? api.submissions.list(user.id, includeAll) : Promise.resolve([]),
-    ])
+    const [categories, videos, submissions] = await loadLibrary(user)
     setData({ ready: true, categories, videos, submissions })
+    setLoadError('')
   }, [user])
 
   useEffect(() => {
     let active = true
-    const includeAll = user?.role === 'admin'
-    Promise.all([
-      api.categories.list(),
-      api.videos.list(),
-      user ? api.submissions.list(user.id, includeAll) : Promise.resolve([]),
-    ]).then(([categories, videos, submissions]) => {
-      if (active) setData({ ready: true, categories, videos, submissions })
-    })
+    loadLibrary(user)
+      .then(([categories, videos, submissions]) => {
+        if (active) {
+          setData({ ready: true, categories, videos, submissions })
+          setLoadError('')
+        }
+      })
+      .catch((error) => {
+        if (active) setLoadError(error?.message || 'Unable to load the library. Try again.')
+      })
     return () => { active = false }
-  }, [user])
+  }, [user, loadAttempt])
 
   const value = useMemo(() => {
     const { categories, videos, submissions } = data
@@ -71,7 +81,12 @@ export default function LibraryProvider({ children }) {
           videoId: video.id, recording: recording.blob, trimStart: recording.edit.start, trimEnd: recording.edit.end,
           mirrored: recording.edit.mirrored, duration: recording.duration, size: recording.blob.size, mimeType: recording.mimeType,
         })
-        await refresh()
+        void refresh().catch(() => {
+          setData((current) => ({
+            ...current,
+            submissions: [submission, ...current.submissions.filter((item) => item.id !== submission.id)],
+          }))
+        })
         return submission
       },
       async addCategory(values) { const created = await api.categories.create(values); await refresh(); return created },
@@ -83,6 +98,16 @@ export default function LibraryProvider({ children }) {
     }
   }, [data, user, refresh])
 
+  if (!data.ready && loadError) {
+    return <PageState
+      eyebrow="Connection problem"
+      title="We couldn't load the library."
+      action={<Button onClick={() => {
+        setLoadError('')
+        setLoadAttempt((attempt) => attempt + 1)
+      }}>Try again</Button>}
+    >{loadError}</PageState>
+  }
   if (!data.ready) return <div className="boot" role="status">Loading your library…</div>
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import Field from '../components/Field'
 import { Alert, Arrow, Button } from '../components/ui'
@@ -9,6 +9,7 @@ import { validateLogin } from '../utils/validators'
 
 export default function Login() {
   const { login } = useAuth()
+  const location = useLocation()
   const [values, setValues] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -31,6 +32,8 @@ export default function Login() {
     <form onSubmit={submit} noValidate>
       <Field label="Email address" name="email" type="email" value={values.email} onChange={change} error={errors.email} placeholder="you@example.com" autoComplete="email" />
       <Field label="Password" name="password" type="password" value={values.password} onChange={change} error={errors.password} placeholder="••••••••" autoComplete="current-password" />
+      <p className="auth-footer"><Link to={paths.forgotPassword}>Forgot password?</Link> · <Link to={paths.verifyEmail}>Verify email</Link></p>
+      {location.state?.notice && <Alert tone="success">{location.state.notice}</Alert>}
       {formError && <Alert tone="error">{formError}</Alert>}
       <Button type="submit" block className="auth-submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'} <Arrow /></Button>
     </form>

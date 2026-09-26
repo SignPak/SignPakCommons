@@ -11,6 +11,7 @@ import AdminVideos from './pages/admin/AdminVideos'
 import CategoryBrowser from './pages/CategoryBrowser'
 import Demo from './pages/Demo'
 import Faq from './pages/Faq'
+import ForgotPassword from './pages/ForgotPassword'
 import Home from './pages/Home'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -18,6 +19,7 @@ import Player from './pages/Player'
 import ProfileDashboard from './pages/ProfileDashboard'
 import RecordingEditor from './pages/RecordingEditor'
 import Signup from './pages/Signup'
+import VerifyEmail from './pages/VerifyEmail'
 
 export default function App() {
   return <Routes>
@@ -29,6 +31,8 @@ export default function App() {
       <Route element={<GuestOnly />}>
         <Route path="login" element={<Login />} />
         <Route path="signup" element={<Signup />} />
+        <Route path="verify-email" element={<VerifyEmail />} />
+        <Route path="forgot-password" element={<ForgotPassword />} />
       </Route>
 
       {/* Logged-in contributors */}

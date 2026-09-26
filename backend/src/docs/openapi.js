@@ -47,13 +47,14 @@ export const openapi = {
     { name: 'Users' },
     { name: 'Categories' },
     { name: 'Videos' },
+    { name: 'Demo Video' },
     { name: 'Submissions' },
     { name: 'Contact' },
     { name: 'Admin' },
   ],
   components: {
     securitySchemes: {
-      cookieAuth: { type: 'apiKey', in: 'cookie', name: 'token', description: 'HTTP-only JWT cookie set by login or signup.' },
+      cookieAuth: { type: 'apiKey', in: 'cookie', name: 'signpak_token', description: 'HTTP-only JWT cookie set by login or email verification.' },
     },
     schemas: {
       Category: {
@@ -74,8 +75,16 @@ export const openapi = {
         type: 'object',
         properties: {
           id: { type: 'string' }, firstName: { type: 'string' }, surname: { type: 'string' }, email: { type: 'string', format: 'email' },
+          emailVerified: { type: 'boolean' },
           role: { type: 'string', enum: ['user', 'admin'] }, status: { type: 'string', enum: ['active', 'suspended'] }, statusReason: { type: 'string' },
           connections: { type: 'object', additionalProperties: { type: 'string', nullable: true } },
+        },
+      },
+      SignupInput: {
+        type: 'object', required: ['firstName', 'surname', 'email', 'password'],
+        properties: {
+          firstName: { type: 'string', maxLength: 60 }, surname: { type: 'string', maxLength: 60 },
+          email: { type: 'string', format: 'email' }, password: { type: 'string', format: 'password', minLength: 8 }, confirmPassword: { type: 'string' },
         },
       },
       AuthInput: {
@@ -98,11 +107,15 @@ export const openapi = {
     },
     '/docs.json': { get: { tags: ['Health'], summary: 'Get the OpenAPI document', responses: { 200: { description: 'OpenAPI JSON document' } } } },
     '/auth/signup': {
-      post: { tags: ['Auth'], summary: 'Create an account', requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthInput' } } } }, responses: { 201: { description: 'Account created' }, 400: errorResponse } },
+      post: { tags: ['Auth'], summary: 'Create an unverified account and send a code', requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/SignupInput' } } } }, responses: { 201: { description: 'Account pending email verification' }, 400: errorResponse } },
     },
     '/auth/login': {
       post: { tags: ['Auth'], summary: 'Log in and set the HTTP-only cookie', requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthInput' } } } }, responses: { 200: { description: 'Logged in' }, 401: errorResponse } },
     },
+    '/auth/verify-email': { post: { tags: ['Auth'], summary: 'Verify an email code and establish a session', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email', 'code'], properties: { email: { type: 'string', format: 'email' }, code: { type: 'string', pattern: '^\\d{6}$' } } } } } }, responses: { 200: { description: 'Verified and logged in' }, 400: errorResponse } } },
+    '/auth/resend-verification': { post: { tags: ['Auth'], summary: 'Resend an email verification code', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email'], properties: { email: { type: 'string', format: 'email' } } } } } }, responses: { 200: { description: 'Generic response' } } } },
+    '/auth/forgot-password': { post: { tags: ['Auth'], summary: 'Request a password reset code', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email'], properties: { email: { type: 'string', format: 'email' } } } } } }, responses: { 200: { description: 'Generic response' } } } },
+    '/auth/reset-password': { post: { tags: ['Auth'], summary: 'Reset a password using a one-time code', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email', 'code', 'password', 'confirmPassword'], properties: { email: { type: 'string', format: 'email' }, code: { type: 'string', pattern: '^\\d{6}$' }, password: { type: 'string', format: 'password', minLength: 8 }, confirmPassword: { type: 'string', format: 'password' } } } } } }, responses: { 200: { description: 'Password reset' }, 400: errorResponse } } },
     '/auth/logout': { post: { tags: ['Auth'], summary: 'Clear the session cookie', responses: { 204: { description: 'Logged out' } } } },
     '/auth/session': { get: { tags: ['Auth'], summary: 'Get the current session', responses: { 200: { description: 'Session state' } } } },
     '/users/me': {
@@ -130,11 +143,17 @@ export const openapi = {
     },
     '/videos/{id}/file': { parameters: [idParameter], get: { tags: ['Videos'], summary: 'Stream a visible video file', responses: { 200: { description: 'Video stream', content: { 'video/mp4': {} } }, 404: errorResponse } } },
     '/videos/{id}/poster': { parameters: [idParameter], get: { tags: ['Videos'], summary: 'Stream a visible video poster', responses: { 200: { description: 'Image stream' }, 404: errorResponse } } },
+    '/demo-video': {
+      get: { tags: ['Demo Video'], summary: 'Get the public demo video metadata', responses: { 200: { description: 'Current demo video, or null when none is set' } } },
+      post: { tags: ['Demo Video'], summary: 'Upload or replace the public demo video', security: adminSecurity, requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['video', 'title'], properties: { video: { type: 'string', format: 'binary' }, title: { type: 'string', maxLength: 120 }, durationSec: { type: 'number' } } } } } }, responses: { 201: { description: 'Uploaded' }, 422: errorResponse } },
+      delete: { tags: ['Demo Video'], summary: 'Delete the public demo video', security: adminSecurity, responses: { 204: { description: 'Deleted' }, 403: errorResponse } },
+    },
+    '/demo-video/file': { get: { tags: ['Demo Video'], summary: 'Stream the public demo video', responses: { 200: { description: 'Video stream', content: { 'video/mp4': {} } }, 404: errorResponse } } },
     '/submissions': {
       get: { tags: ['Submissions'], summary: 'List the current user submissions', security: userSecurity, responses: { 200: { description: 'Submissions' }, 401: errorResponse } },
       post: { tags: ['Submissions'], summary: 'Submit a recording', security: userSecurity, requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['recording', 'videoId'], properties: { recording: { type: 'string', format: 'binary' }, videoId: { type: 'string' }, trimStart: { type: 'number' }, trimEnd: { type: 'number' }, mirrored: { type: 'boolean' }, duration: { type: 'number' } } } } } }, responses: { 201: { description: 'Created' }, 400: errorResponse } },
     },
-    '/contact': { post: { tags: ['Contact'], summary: 'Send a contact message', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name', 'email', 'message'], properties: { name: { type: 'string' }, email: { type: 'string', format: 'email' }, message: { type: 'string' } } } } } }, responses: { 201: { description: 'Message sent' }, 400: errorResponse } } },
+    '/contact': { post: { tags: ['Contact'], summary: 'Send a contact message from the authenticated account email', security: userSecurity, requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name', 'email', 'message'], properties: { name: { type: 'string' }, email: { type: 'string', format: 'email' }, message: { type: 'string' } } } } } }, responses: { 201: { description: 'Message sent to Web3Forms and saved to the admin inbox' }, 403: errorResponse, 409: errorResponse, 429: errorResponse } } },
     '/admin/users': { get: { tags: ['Admin'], summary: 'List all users', security: adminSecurity, responses: { 200: { description: 'Users' }, 403: errorResponse } } },
     '/admin/users/{id}': {
       parameters: [idParameter],

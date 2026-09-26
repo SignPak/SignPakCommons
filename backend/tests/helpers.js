@@ -69,5 +69,9 @@ export const recordingForm = (fields, { file = webm(3000), type = 'video/webm' }
 
 export const filesIn = (folder) => {
   const dir = path.join(uploadDir, folder)
-  return fs.existsSync(dir) ? fs.readdirSync(dir) : []
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const relative = path.join(folder, entry.name)
+    return entry.isDirectory() ? filesIn(relative) : [relative]
+  })
 }

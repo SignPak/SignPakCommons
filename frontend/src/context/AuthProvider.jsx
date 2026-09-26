@@ -28,7 +28,8 @@ export default function AuthProvider({ children }) {
   }, [refreshSession])
 
   const login = useCallback(async (email, password) => setUser(await api.auth.login(email, password)), [])
-  const signup = useCallback(async (values) => setUser(await api.auth.register(values)), [])
+  const signup = useCallback((values) => api.auth.register(values), [])
+  const verifyEmail = useCallback(async (email, code) => setUser(await api.auth.verifyEmail(email, code)), [])
   const logout = useCallback(async () => {
     try { await api.auth.logout() } finally { setUser(null) }
   }, [])
@@ -37,8 +38,8 @@ export default function AuthProvider({ children }) {
   }, [user])
 
   const value = useMemo(
-    () => ({ user, loading, isAdmin: user?.role === 'admin', login, signup, logout, saveConnections }),
-    [user, loading, login, signup, logout, saveConnections],
+    () => ({ user, loading, isAdmin: user?.role === 'admin', login, signup, verifyEmail, logout, saveConnections }),
+    [user, loading, login, signup, verifyEmail, logout, saveConnections],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

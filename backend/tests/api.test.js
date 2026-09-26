@@ -5,16 +5,27 @@ import { Client, filesIn, jpeg, mp4, recordingForm, videoForm, webm } from './he
 const { default: app } = await import('../src/app.js')
 const { connectDb, disconnectDb } = await import('../src/config/db.js')
 const { authService } = await import('../src/services/authService.js')
+const { contactService } = await import('../src/services/contactService.js')
+const deliveredCodes = new Map()
+const { ContactDailyQuota } = await import('../src/models/ContactDailyQuota.js')
 const { storageService } = await import('../src/services/storage/index.js')
+const { submissionRepo } = await import('../src/repositories/submissionRepo.js')
 const { Submission } = await import('../src/models/Submission.js')
 const { SubmissionCooldown } = await import('../src/models/SubmissionCooldown.js')
 const { default: mongoose } = await import('mongoose')
 
 let server, memory, base, admin, contributor, other
+let eveSession
+const contactDeliveries = []
 const asJson = (res) => res.body
 const contributorData = { firstName: 'Sara', surname: 'Ahmed', email: 'Sara@Example.com', password: 'password1', confirmPassword: 'password1' }
 
 before(async () => {
+  authService.sendOTPEmail = async (email, code, purpose) => deliveredCodes.set(`${email.toLowerCase()}:${purpose}`, code)
+  contactService.deliver = async (payload) => {
+    if (payload.message === 'Provider failure') throw new Error('provider unavailable')
+    contactDeliveries.push(payload)
+  }
   let uri = process.env.MONGODB_URI_TEST
   if (!uri) {
     const { MongoMemoryServer } = await import('mongodb-memory-server')
@@ -33,8 +44,11 @@ before(async () => {
   assert.equal((await admin.post('/auth/login', { email: 'admin@signpak.test', password: 'Admin@12345' })).status, 200)
   contributor = new Client(base)
   assert.equal((await contributor.post('/auth/signup', contributorData)).status, 201)
+  assert.equal((await contributor.get('/users/me')).status, 401)
+  assert.equal((await contributor.post('/auth/verify-email', { email: contributorData.email, code: deliveredCodes.get('sara@example.com:email-verification') })).status, 200)
   other = new Client(base)
   await other.post('/auth/signup', { firstName: 'Omar', surname: 'Khan', email: 'omar@example.com', password: 'password1' })
+  await other.post('/auth/verify-email', { email: 'omar@example.com', code: deliveredCodes.get('omar@example.com:email-verification') })
 })
 
 after(async () => {
@@ -76,10 +90,40 @@ describe('basics', () => {
 
   test('cross-origin writes are refused, allowed origin passes', async () => {
     const c = new Client(base)
-    const evil = await c.post('/contact', { name: 'a', email: 'a@b.co', message: 'hi' }, { headers: { origin: 'https://evil.example' } })
+    const evil = await c.request('POST', '/auth/logout', { headers: { origin: 'https://evil.example' } })
     assert.equal(evil.status, 403)
-    const fine = await c.post('/contact', { name: 'a', email: 'a@b.co', message: 'hi' }, { headers: { origin: 'http://localhost:5173' } })
-    assert.equal(fine.status, 201)
+    const fine = await c.request('POST', '/auth/logout', { headers: { origin: 'http://localhost:5173' } })
+    assert.equal(fine.status, 204)
+  })
+})
+
+describe('demo video', () => {
+  test('admins can upload, replace, and delete the public demo video', async () => {
+    const visitor = new Client(base)
+    assert.equal((await visitor.get('/demo-video')).body.data, null)
+    assert.equal((await contributor.upload('/demo-video', videoForm({ title: 'Not allowed' }))).status, 403)
+
+    const first = await admin.upload('/demo-video', videoForm({ title: 'How to sign', durationSec: '8' }))
+    assert.equal(first.status, 201, JSON.stringify(first.body))
+    assert.equal(first.body.data.title, 'How to sign')
+    assert.equal(first.body.data.videoUrl, '/api/v1/demo-video/file')
+    const firstFile = await visitor.get('/demo-video/file', { raw: true })
+    assert.equal(firstFile.status, 200)
+    assert.deepEqual(firstFile.body, webm())
+    assert.equal((await visitor.get('/videos')).body.data.some((video) => video.title === 'How to sign'), false)
+
+    const replacement = await admin.upload('/demo-video', videoForm({ title: 'A new walkthrough' }, { video: mp4() }))
+    assert.equal(replacement.status, 201)
+    assert.equal(replacement.body.data.title, 'A new walkthrough')
+    assert.equal(filesIn('demo').length, 1)
+    const replacementFile = await visitor.get('/demo-video/file', { raw: true })
+    assert.equal(replacementFile.headers.get('content-type'), 'video/mp4')
+    assert.deepEqual(replacementFile.body, mp4())
+
+    assert.equal((await admin.delete('/demo-video')).status, 204)
+    assert.equal((await visitor.get('/demo-video')).body.data, null)
+    assert.equal((await visitor.get('/demo-video/file')).status, 404)
+    assert.deepEqual(filesIn('demo'), [])
   })
 })
 
@@ -97,14 +141,39 @@ describe('auth', () => {
 
   test('signup sets an httpOnly cookie and never leaks the hash or accepts a role', async () => {
     const c = new Client(base)
+    eveSession = c
     const res = await c.post('/auth/signup', { firstName: 'Eve', surname: 'Hacker', email: 'eve@example.com', password: 'password1', role: 'admin' })
     assert.equal(res.status, 201)
-    assert.equal(res.body.data.role, 'user')
     assert.equal(res.body.data.email, 'eve@example.com')
+    assert.equal(res.body.data.verificationEmailSent, true)
+    assert.equal(res.setCookie.length, 0)
+    assert.equal((await c.post('/auth/login', { email: 'eve@example.com', password: 'password1' })).status, 401)
+    assert.equal((await c.post('/auth/verify-email', { email: 'eve@example.com', code: '000000' })).status, 400)
+    const verified = await c.post('/auth/verify-email', { email: 'eve@example.com', code: deliveredCodes.get('eve@example.com:email-verification') })
+    assert.equal(verified.status, 200)
+    assert.equal(verified.body.data.role, 'user')
+    assert.equal(verified.body.data.emailVerified, true)
     assert.equal(res.body.data.passwordHash, undefined)
-    assert.match(res.setCookie[0], /HttpOnly/i)
-    assert.match(res.setCookie[0], /SameSite=Lax/i)
+    assert.match(verified.setCookie[0], /HttpOnly/i)
+    assert.match(verified.setCookie[0], /SameSite=Lax/i)
     assert.equal((await c.get('/admin/stats')).status, 403)
+  })
+
+  test('password reset codes are one-time and replace the old password', async () => {
+    const resetRequested = await new Client(base).post('/auth/forgot-password', { email: 'eve@example.com' })
+    const unknownRequested = await new Client(base).post('/auth/forgot-password', { email: 'nobody@example.com' })
+    assert.equal(resetRequested.status, 200)
+    assert.deepEqual(resetRequested.body, unknownRequested.body)
+    const code = deliveredCodes.get('eve@example.com:password-reset')
+    const wrong = await new Client(base).post('/auth/reset-password', { email: 'eve@example.com', code: '000000', password: 'password2', confirmPassword: 'password2' })
+    assert.equal(wrong.status, 400)
+    const reset = await new Client(base).post('/auth/reset-password', { email: 'eve@example.com', code, password: 'password2', confirmPassword: 'password2' })
+    assert.equal(reset.status, 200)
+    assert.equal((await new Client(base).post('/auth/login', { email: 'eve@example.com', password: 'password1' })).status, 401)
+    assert.equal((await new Client(base).post('/auth/login', { email: 'eve@example.com', password: 'password2' })).status, 200)
+    assert.equal((await eveSession.get('/users/me')).status, 401)
+    const reused = await new Client(base).post('/auth/reset-password', { email: 'eve@example.com', code, password: 'password3', confirmPassword: 'password3' })
+    assert.equal(reused.status, 400)
   })
 
   test('duplicate emails conflict, case-insensitively', async () => {
@@ -284,6 +353,34 @@ let submission
 describe('submissions and the cooldown rule', () => {
   const good = () => ({ videoId: video1.id, trimStart: '0', trimEnd: '2.5', duration: '3', mirrored: 'true' })
 
+  test('archive and database failures release cooldown and remove any archived file', async () => {
+    const originalArchive = storageService.archive
+    const originalCreate = submissionRepo.create
+    const otherId = (await admin.get('/admin/users')).body.data.find((user) => user.email === 'omar@example.com').id
+    const cooldownFilter = { user: otherId, video: video1.id }
+    let failedRecording
+    try {
+      storageService.archive = async () => { throw new Error('archive unavailable') }
+      const archiveFailure = await other.upload('/submissions', recordingForm(good()))
+      assert.equal(archiveFailure.status, 500)
+      assert.equal(await SubmissionCooldown.countDocuments(cooldownFilter), 0)
+
+      storageService.archive = originalArchive
+      submissionRepo.create = async (data) => {
+        failedRecording = data.recording
+        throw new Error('database unavailable')
+      }
+      const databaseFailure = await other.upload('/submissions', recordingForm(good()))
+      assert.equal(databaseFailure.status, 500)
+      assert.equal(await SubmissionCooldown.countDocuments(cooldownFilter), 0)
+      await assert.rejects(() => storageService.describe(failedRecording))
+      assert.deepEqual(filesIn('tmp'), [])
+    } finally {
+      storageService.archive = originalArchive
+      submissionRepo.create = originalCreate
+    }
+  })
+
   test('input is checked before anything is stored', async () => {
     const before = filesIn('recordings').length
     assert.equal((await new Client(base).upload('/submissions', recordingForm(good()))).status, 401)
@@ -383,15 +480,34 @@ describe('admin stats and contact', () => {
     assert.equal((await contributor.get(`/videos/${video1.id}`)).status, 404) // hidden from contributors now
   })
 
-  test('contact messages: public to send, admin to read', async () => {
-    const c = new Client(base)
-    const bad = await c.post('/contact', { name: '', email: 'nope', message: '' })
+  test('contact delivery requires matching account email, enforces quotas, and blocks abusive devices', async () => {
+    const bad = await contributor.post('/contact', { name: '', email: 'nope', message: '' })
     assert.equal(bad.status, 422)
     assert.ok(bad.body.error.fields.email)
-    assert.equal((await c.post('/contact', { name: 'Maya', email: 'maya@example.com', message: 'Hello!' })).status, 201)
+    assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'sara@example.com', message: 'Provider failure' })).status, 500)
+    const sent = await contributor.post('/contact', { name: 'Sara Ahmed', email: 'sara@example.com', message: 'Hello!' })
+    assert.equal(sent.status, 201)
+    assert.equal(contactDeliveries.length, 1)
+    assert.equal(contactDeliveries[0].email, 'sara@example.com')
+    assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'sara@example.com', message: 'Again today' })).status, 409)
+
+    const mismatchDevice = 'device-contact-email-mismatch'
+    assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'other@example.com', message: 'Wrong email' }, { headers: { 'x-device-id': mismatchDevice } })).status, 403)
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': mismatchDevice } })).status, 403)
+
+    const today = new Date().toISOString().slice(0, 10)
+    await ContactDailyQuota.findByIdAndUpdate(today, { count: 25 }, { upsert: true })
+    const cappedDevice = 'device-contact-global-cap'
+    assert.equal((await other.post('/contact', { name: 'Omar Khan', email: 'omar@example.com', message: 'Over cap' }, { headers: { 'x-device-id': cappedDevice } })).status, 429)
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': cappedDevice } })).status, 403)
+
+    const anonymousDevice = 'device-contact-anonymous-test'
+    assert.equal((await new Client(base).post('/contact', { name: 'Guest', email: 'guest@example.com', message: 'No session' }, { headers: { 'x-device-id': anonymousDevice } })).status, 403)
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': anonymousDevice } })).status, 403)
+
     const list = await admin.get('/admin/messages')
     assert.equal(list.status, 200)
-    assert.ok(list.body.data.some((m) => m.name === 'Maya' && m.message === 'Hello!'))
+    assert.ok(list.body.data.some((m) => m.name === 'Sara Ahmed' && m.message === 'Hello!' && m.userId))
     assert.equal((await contributor.get('/admin/messages')).status, 403)
   })
 

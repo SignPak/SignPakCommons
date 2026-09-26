@@ -2,9 +2,11 @@ import { User } from '../models/User.js'
 
 export const userRepo = {
   findById: (id) => User.findById(id),
-  findByEmail: (email, { withPassword = false } = {}) => {
+  findByEmail: (email, { withPassword = false, withOtp = false } = {}) => {
     const query = User.findOne({ email: email.trim().toLowerCase() })
-    return withPassword ? query.select('+passwordHash') : query
+    if (withPassword) query.select('+passwordHash')
+    if (withOtp) query.select('+emailVerificationCodeHash +emailVerificationExpiresAt +emailVerificationAttempts +emailVerificationSentAt +passwordResetCodeHash +passwordResetExpiresAt +passwordResetAttempts +passwordResetSentAt')
+    return query
   },
   findManyByIds: (ids) => User.find({ _id: { $in: ids } }),
   create: (data) => User.create(data),

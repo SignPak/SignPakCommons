@@ -40,21 +40,23 @@ export const submissionService = {
     const claimed = await submissionRepo.claimCooldown(user._id, video._id, env.SUBMISSION_COOLDOWN_MS)
     if (!claimed) throw cooling(await submissionRepo.cooldownRemaining(user._id, video._id))
 
-    const sequence = await submissionRepo.countForPair(user._id, video._id)
-    const categoryName = archiveSlug(category.label)
-    const videoName = archiveSlug(video.title)
-    const archiveFolder = `commons/${user._id}_${sequence}/${categoryName}/${videoName}`
-    const recording = await storageService.archive({
-      tempPath: upload.path, originalName: upload.originalname, mimeType: kind.mimeType, ext: kind.ext,
-      folder: archiveFolder, fileName: `${videoName}${kind.ext}`,
-    })
+    let recording
     try {
+      const sequence = await submissionRepo.countForPair(user._id, video._id)
+      const categoryName = archiveSlug(category.label)
+      const videoName = archiveSlug(video.title)
+      const archiveFolder = `commons/${user._id}_${sequence}/${categoryName}/${videoName}`
+      recording = await storageService.archive({
+        tempPath: upload.path, originalName: upload.originalname, mimeType: kind.mimeType, ext: kind.ext,
+        folder: archiveFolder, fileName: `${videoName}${kind.ext}`,
+      })
       return await submissionRepo.create({
         user: user._id, video: video._id, trimStart: input.trimStart, trimEnd: input.trimEnd,
         mirrored: input.mirrored, duration: input.duration, recording,
       })
     } catch (error) {
-      await submissionRepo.releaseCooldown(user._id, video._id) // this attempt never landed, so it should not cost the contributor their cooldown
+      await storageService.remove(recording)
+      await submissionRepo.releaseCooldown(user._id, video._id)
       throw error
     }
   },
