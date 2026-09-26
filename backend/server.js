@@ -18,16 +18,16 @@ const initServices = () => {
   return initPromise
 }
 
-// Ensure DB and services are connected before handling any incoming request
-app.use(async (req, res, next) => {
+// Vercel invokes the exported handler directly; initialize before Express dispatches routes.
+async function handler(req, res) {
   try {
     await initServices()
-    next()
+    app(req, res)
   } catch (error) {
     logger.fatal({ err: error }, 'Failed to initialize services')
     res.status(500).json({ error: 'Database or service initialization failed' })
   }
-})
+}
 
 // Run app.listen only when running locally (not on Vercel serverless)
 if (!process.env.VERCEL) {
@@ -42,4 +42,4 @@ if (!process.env.VERCEL) {
 }
 
 // CRITICAL FOR VERCEL: Export the Express app instance
-export default app
+export default handler
