@@ -9,6 +9,7 @@ import { API_PREFIX } from './config/constants.js'
 import { env } from './config/env.js'
 import { openapi } from './docs/openapi.js'
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js'
+import { enforceAccessRestrictions } from './middlewares/enforceAccessRestrictions.js'
 import { apiLimiter } from './middlewares/rateLimiter.js'
 import { verifyOrigin } from './middlewares/verifyOrigin.js'
 import routes from './routes/index.js'
@@ -47,7 +48,7 @@ app.get('/api-docs.json', (req, res) => res.json(openapi))
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }))
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }))
 
-app.use(API_PREFIX, apiLimiter, verifyOrigin, routes)
+app.use(API_PREFIX, apiLimiter, verifyOrigin, enforceAccessRestrictions, routes)
 
 app.use(notFoundHandler)
 app.use(errorHandler)

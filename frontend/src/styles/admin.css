@@ -10,6 +10,19 @@
   .admin-body .panel + .panel, .admin-split .panel + .panel { @apply mt-0; }
   .admin-toolbar { @apply flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between; }
   .admin-alert { @apply mb-4; }
+  .admin-access-grid { @apply lg:grid-cols-2; }
+  .admin-user-table { min-width: 58rem; }
+  .admin-row-actions { @apply flex flex-wrap gap-2; }
+  .admin-row-actions .btn, .restriction-list .btn { @apply min-h-9 px-3 py-1.5 text-xs; }
+  .admin-row-actions .is-danger { @apply text-danger; }
+  .admin-status-reason { @apply mt-1 block max-w-52 text-xs text-muted; }
+  .admin-restriction-form { @apply grid gap-x-4 sm:grid-cols-2; }
+  .admin-restriction-form .btn { @apply mt-13 self-start; }
+  .restriction-list { @apply m-0 grid list-none gap-0 p-0; }
+  .restriction-list li { @apply flex items-center justify-between gap-4 border-t border-line py-4; }
+  .restriction-list li > div { @apply grid min-w-0 grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1; }
+  .restriction-list li b { @apply truncate font-ui text-sm; }
+  .restriction-list li small { @apply col-span-2 text-xs text-muted; }
   .admin-filters { @apply mb-6 grid grid-cols-1 gap-4 md:grid-cols-3; }
   .admin-filters .field { @apply mb-0; }
   .admin-filters .field-control { @apply min-h-12; }

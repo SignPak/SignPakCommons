@@ -9,6 +9,14 @@ export const submissionRepo = {
   recent: (limit) => Submission.find().sort({ createdAt: -1 }).limit(limit),
   countForPair: (userId, videoId) => Submission.countDocuments({ user: userId, video: videoId }),
   count: () => Submission.countDocuments(),
+  async removeForUser(userId) {
+    const submissions = await Submission.find({ user: userId }).select('recording')
+    await Promise.all([
+      Submission.deleteMany({ user: userId }),
+      SubmissionCooldown.deleteMany({ user: userId }),
+    ])
+    return submissions.map((submission) => submission.recording)
+  },
   // Just the timestamps, for bucketing into days.
   createdSince: (date) => Submission.find({ createdAt: { $gte: date } }).select('createdAt').lean(),
   countsByVideo: () => Submission.aggregate([{ $group: { _id: '$video', count: { $sum: 1 } } }]),

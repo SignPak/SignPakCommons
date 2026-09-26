@@ -9,6 +9,11 @@ export const userRepo = {
   findManyByIds: (ids) => User.find({ _id: { $in: ids } }),
   create: (data) => User.create(data),
   save: (doc) => doc.save(),
-  list: ({ role } = {}) => User.find(role ? { role } : {}).sort({ createdAt: 1 }),
+  list: ({ role, includeDeviceIds = false } = {}) => {
+    const query = User.find(role ? { role } : {}).sort({ createdAt: 1 })
+    return includeDeviceIds ? query.select('+lastDeviceId') : query
+  },
   countByRole: (role) => User.countDocuments({ role }),
+  countActiveAdmins: () => User.countDocuments({ role: 'admin', status: 'active' }),
+  remove: (id) => User.deleteOne({ _id: id }),
 }

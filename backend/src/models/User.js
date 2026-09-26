@@ -8,13 +8,16 @@ const userSchema = new mongoose.Schema({
   surname: { type: String, required: true, trim: true, maxlength: 60 },
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, enum: ROLE_LIST, default: ROLES.USER },
+  status: { type: String, enum: ['active', 'suspended'], default: 'active' },
+  statusReason: { type: String, trim: true, maxlength: 500, default: '' },
+  lastDeviceId: { type: String, select: false, default: null },
   connections: {
     github: { type: String, default: null },
     linkedin: { type: String, default: null },
   },
 }, {
   timestamps: true,
-  toJSON: jsonOptions((doc, ret) => { delete ret.passwordHash; delete ret.updatedAt; return ret }),
+  toJSON: jsonOptions((doc, ret) => { delete ret.passwordHash; delete ret.updatedAt; delete ret.lastDeviceId; return ret }),
 })
 
 export const User = mongoose.model('User', userSchema)

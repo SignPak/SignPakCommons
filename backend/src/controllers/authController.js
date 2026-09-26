@@ -6,12 +6,14 @@ import { clearAuthCookie, setAuthCookie } from '../utils/tokens.js'
 export const authController = {
   signup: asyncHandler(async (req, res) => {
     const { user, token } = await authService.register(req.body)
+    await authService.recordDevice(user, req.get('X-Device-ID'))
     setAuthCookie(res, token)
     created(res, user)
   }),
 
   login: asyncHandler(async (req, res) => {
     const { user, token } = await authService.login(req.body)
+    await authService.recordDevice(user, req.get('X-Device-ID'))
     setAuthCookie(res, token)
     ok(res, user)
   }),

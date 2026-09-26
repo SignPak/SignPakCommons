@@ -30,7 +30,14 @@ export const authService = {
     const user = await userRepo.findByEmail(email, { withPassword: true })
     const matches = await bcrypt.compare(password, user?.passwordHash || DUMMY_HASH)
     if (!user || !matches) throw unauthorized('That email and password do not match. Check them and try again.')
+    if (user.status === 'suspended') throw unauthorized('This account is suspended.')
     return { user, token: signToken(user.id) }
+  },
+
+  async recordDevice(user, deviceId) {
+    if (!/^[A-Za-z0-9._:-]{16,128}$/.test(deviceId || '')) return user
+    user.lastDeviceId = deviceId
+    return userRepo.save(user)
   },
 
   /** Admin accounts come from environment variables, never from the signup form. Safe to run on every boot. */

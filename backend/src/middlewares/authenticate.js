@@ -15,12 +15,14 @@ async function loadUser(req) {
 export const authenticate = asyncHandler(async (req, res, next) => {
   const user = await loadUser(req)
   if (!user) throw unauthorized()
+  if (user.status === 'suspended') throw unauthorized('This account is suspended.')
   req.user = user
   next()
 })
 
 /** Attaches req.user when there is a valid session, but lets anonymous visitors through. */
 export const optionalAuthenticate = asyncHandler(async (req, res, next) => {
-  req.user = (await loadUser(req)) || null
+  const user = await loadUser(req)
+  req.user = user?.status === 'active' ? user : null
   next()
 })
