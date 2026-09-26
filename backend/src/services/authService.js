@@ -33,7 +33,7 @@ export const authService = {
     if (await userRepo.findByEmail(email)) throw emailTaken()
     const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
     try {
-      const user = await userRepo.create({ email, firstName, surname, passwordHash, role: ROLES.USER })
+      const user = await userRepo.create({ email, firstName, surname, passwordHash, role: ROLES.USER, emailVerified: false })
       const verificationEmailSent = await this.issueOtp(user, 'email-verification')
       return { email: user.email, verificationEmailSent }
     } catch (error) {

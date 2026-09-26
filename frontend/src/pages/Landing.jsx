@@ -189,7 +189,7 @@ export default function Landing() {
             contact@pslai.org
           </a> */}
         </div>
-        <ContactForm />
+        <ContactForm key={user?.id || 'guest'} />
       </section>
 
       {/* FOOTER */}
@@ -199,20 +199,32 @@ export default function Landing() {
 }
 
 function ContactForm() {
-  const [values, setValues] = useState({ name: '', email: '', message: '' })
+  const { user } = useAuth()
+  const [values, setValues] = useState(() => ({ name: user ? `${user.firstName} ${user.surname}` : '', email: user?.email || '', message: '' }))
   const [status, setStatus] = useState('idle') // idle | sending | sent | error
+  const [errorMessage, setErrorMessage] = useState('')
   const change = (event) => setValues((current) => ({ ...current, [event.target.name]: event.target.value }))
 
   const submit = async (event) => {
     event.preventDefault()
     setStatus('sending')
+    setErrorMessage('')
     try {
       await api.contact.send(values)
-      setValues({ name: '', email: '', message: '' })
+      setValues({ name: `${user.firstName} ${user.surname}`, email: user.email, message: '' })
       setStatus('sent')
-    } catch {
+    } catch (error) {
+      setErrorMessage(error.message || 'Your message could not be sent. Try again.')
       setStatus('error')
     }
+  }
+
+  if (!user) {
+    return <div className="contact-card">
+      <h3 className="display display-md">Sign in to contact us.</h3>
+      <p>Contact messages are limited to one per account each day. Sign in with a verified email address to send yours.</p>
+      <ButtonLink to={paths.login}>Log in to continue <Arrow /></ButtonLink>
+    </div>
   }
 
   if (status === 'sent') {
@@ -244,7 +256,7 @@ function ContactForm() {
         name="email"
         type="email"
         value={values.email}
-        onChange={change}
+        readOnly
         placeholder="you@example.com"
         required
         autoComplete="email"
@@ -259,7 +271,7 @@ function ContactForm() {
         rows={5}
         required
       />
-      {status === 'error' && <Alert tone="error">Your message could not be sent. Try again.</Alert>}
+      {status === 'error' && <Alert tone="error">{errorMessage}</Alert>}
       <Button type="submit" block disabled={status === 'sending'}>
         {status === 'sending' ? 'Sending…' : 'Send message'} <Arrow />
       </Button>

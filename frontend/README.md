@@ -56,6 +56,7 @@ Every server call goes through `src/services/api.js`. Requests use the `/api/v1`
 - Recording submissions upload the recorded `Blob` with trim metadata. The backend enforces the submission cooldown.
 - Notifications remain browser-local until a persisted backend notification API is added.
 - Signup requires a Brevo-delivered email code before the API establishes a session; password recovery uses a separate one-time code.
+- Contact messages require a verified signed-in account and must use its email address; the backend limits accounts to one message per UTC day and all messages to 25 per UTC day.
 
 ## Theming
 

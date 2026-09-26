@@ -5,7 +5,9 @@ import { Client, filesIn, jpeg, mp4, recordingForm, videoForm, webm } from './he
 const { default: app } = await import('../src/app.js')
 const { connectDb, disconnectDb } = await import('../src/config/db.js')
 const { authService } = await import('../src/services/authService.js')
+const { contactService } = await import('../src/services/contactService.js')
 const deliveredCodes = new Map()
+const { ContactDailyQuota } = await import('../src/models/ContactDailyQuota.js')
 const { storageService } = await import('../src/services/storage/index.js')
 const { submissionRepo } = await import('../src/repositories/submissionRepo.js')
 const { Submission } = await import('../src/models/Submission.js')
@@ -14,11 +16,16 @@ const { default: mongoose } = await import('mongoose')
 
 let server, memory, base, admin, contributor, other
 let eveSession
+const contactDeliveries = []
 const asJson = (res) => res.body
 const contributorData = { firstName: 'Sara', surname: 'Ahmed', email: 'Sara@Example.com', password: 'password1', confirmPassword: 'password1' }
 
 before(async () => {
   authService.sendOTPEmail = async (email, code, purpose) => deliveredCodes.set(`${email.toLowerCase()}:${purpose}`, code)
+  contactService.deliver = async (payload) => {
+    if (payload.message === 'Provider failure') throw new Error('provider unavailable')
+    contactDeliveries.push(payload)
+  }
   let uri = process.env.MONGODB_URI_TEST
   if (!uri) {
     const { MongoMemoryServer } = await import('mongodb-memory-server')
@@ -83,10 +90,10 @@ describe('basics', () => {
 
   test('cross-origin writes are refused, allowed origin passes', async () => {
     const c = new Client(base)
-    const evil = await c.post('/contact', { name: 'a', email: 'a@b.co', message: 'hi' }, { headers: { origin: 'https://evil.example' } })
+    const evil = await c.request('POST', '/auth/logout', { headers: { origin: 'https://evil.example' } })
     assert.equal(evil.status, 403)
-    const fine = await c.post('/contact', { name: 'a', email: 'a@b.co', message: 'hi' }, { headers: { origin: 'http://localhost:5173' } })
-    assert.equal(fine.status, 201)
+    const fine = await c.request('POST', '/auth/logout', { headers: { origin: 'http://localhost:5173' } })
+    assert.equal(fine.status, 204)
   })
 })
 
@@ -473,15 +480,34 @@ describe('admin stats and contact', () => {
     assert.equal((await contributor.get(`/videos/${video1.id}`)).status, 404) // hidden from contributors now
   })
 
-  test('contact messages: public to send, admin to read', async () => {
-    const c = new Client(base)
-    const bad = await c.post('/contact', { name: '', email: 'nope', message: '' })
+  test('contact delivery requires matching account email, enforces quotas, and blocks abusive devices', async () => {
+    const bad = await contributor.post('/contact', { name: '', email: 'nope', message: '' })
     assert.equal(bad.status, 422)
     assert.ok(bad.body.error.fields.email)
-    assert.equal((await c.post('/contact', { name: 'Maya', email: 'maya@example.com', message: 'Hello!' })).status, 201)
+    assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'sara@example.com', message: 'Provider failure' })).status, 500)
+    const sent = await contributor.post('/contact', { name: 'Sara Ahmed', email: 'sara@example.com', message: 'Hello!' })
+    assert.equal(sent.status, 201)
+    assert.equal(contactDeliveries.length, 1)
+    assert.equal(contactDeliveries[0].email, 'sara@example.com')
+    assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'sara@example.com', message: 'Again today' })).status, 409)
+
+    const mismatchDevice = 'device-contact-email-mismatch'
+    assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'other@example.com', message: 'Wrong email' }, { headers: { 'x-device-id': mismatchDevice } })).status, 403)
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': mismatchDevice } })).status, 403)
+
+    const today = new Date().toISOString().slice(0, 10)
+    await ContactDailyQuota.findByIdAndUpdate(today, { count: 25 }, { upsert: true })
+    const cappedDevice = 'device-contact-global-cap'
+    assert.equal((await other.post('/contact', { name: 'Omar Khan', email: 'omar@example.com', message: 'Over cap' }, { headers: { 'x-device-id': cappedDevice } })).status, 429)
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': cappedDevice } })).status, 403)
+
+    const anonymousDevice = 'device-contact-anonymous-test'
+    assert.equal((await new Client(base).post('/contact', { name: 'Guest', email: 'guest@example.com', message: 'No session' }, { headers: { 'x-device-id': anonymousDevice } })).status, 403)
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': anonymousDevice } })).status, 403)
+
     const list = await admin.get('/admin/messages')
     assert.equal(list.status, 200)
-    assert.ok(list.body.data.some((m) => m.name === 'Maya' && m.message === 'Hello!'))
+    assert.ok(list.body.data.some((m) => m.name === 'Sara Ahmed' && m.message === 'Hello!' && m.userId))
     assert.equal((await contributor.get('/admin/messages')).status, 403)
   })
 

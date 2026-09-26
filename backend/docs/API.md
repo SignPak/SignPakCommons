@@ -64,7 +64,7 @@ Errors use a structured object suitable for form-level and field-level messages:
 | POST/DELETE | `/demo-video` | Admin | Upload/replace or delete the walkthrough video. |
 | GET/POST | `/submissions` | User | List or create contributor recordings. |
 | GET | `/submissions/:id/recording` | None | Deliberately unavailable; submission archives are append-only. |
-| POST | `/contact` | Public | Send a contact message. |
+| POST | `/contact` | Verified user | Send a message from the account email; one per account per UTC day. |
 | GET | `/admin/users` | Admin | List users. |
 | GET | `/admin/stats` | Admin | Read dashboard statistics. |
 | GET | `/admin/messages` | Admin | Read contact messages. |
@@ -76,6 +76,8 @@ Video creation uses `multipart/form-data` with `video`, optional `poster`, `titl
 The public demo video is a separate singleton asset, independent of the lesson library. Admin uploads use `multipart/form-data` with `video`, `title`, and optional `durationSec`; uploading replaces the current demo asset.
 
 The server validates file signatures, size limits, metadata, and route IDs. Client-reported durations are currently accepted for trimming metadata; server-side media probing and trimming are future work.
+
+Contact messages are delivered to the recipient configured by the `WEB3FORMS_ACCESS_KEY` in Web3Forms and are also retained in the admin inbox. Only authenticated users can send, the submitted email must match their account, each account can send one message per UTC day, and total successful deliveries are capped at 25 per UTC day. Anonymous or email-mismatched attempts, and attempts after the global cap, temporarily restrict that device (or IP if no device ID is supplied) for 10 minutes.
 
 ## Visibility rules
 

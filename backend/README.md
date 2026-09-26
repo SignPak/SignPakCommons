@@ -7,7 +7,7 @@ Express + Node.js + MongoDB (Mongoose). Cookie-based auth, local base-video stor
 ```bash
 cd backend
 npm install
-cp .env.example .env      # then fill in JWT_SECRET, ADMIN_PASSWORD, MONGODB_URI and Brevo sender credentials
+cp .env.example .env      # then fill in JWT_SECRET, ADMIN_PASSWORD, MONGODB_URI and service credentials
 npm run dev               # http://localhost:5000, health check at /api/v1/health
 npm test                  # integration tests (see "Testing")
 ```
@@ -72,7 +72,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 | `GET /submissions` | logged in | Contributors: their own. Admin: all |
 | `POST /submissions` | logged in | `multipart/form-data`: `recording`, `videoId`, `trimStart`, `trimEnd`, `mirrored`, `duration` |
 | `GET /submissions/:id/recording` | none | Deliberately unavailable; submissions are append-only archives |
-| `POST /contact` | anyone | Rate limited: 5 per hour per IP |
+| `POST /contact` | verified user | Account email must match; one per user/day and 25 total/day; delivered via Web3Forms |
 | `GET /admin/users`, `/admin/stats?days=14`, `/admin/messages` | admin | |
 
 ## Decisions worth knowing
@@ -95,7 +95,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 
 ## Testing
 
-`npm test` runs the HTTP integration suite for auth, roles, uploads, Range streaming, the cooldown rule, stats, contact, and cleanup of temporary files. Authentication email delivery is stubbed in tests; the application mail path uses Brevo.
+`npm test` runs the HTTP integration suite for auth, roles, uploads, Range streaming, the cooldown rule, stats, contact quotas, and cleanup of temporary files. Brevo and Web3Forms delivery are stubbed in tests; configure their environment keys to enable real email delivery.
 
 - Set `MONGODB_URI_TEST` to run against a MongoDB you already have (it uses that database and **drops it**, so point it at a throwaway one).
 - Otherwise it starts `mongodb-memory-server`, which downloads a MongoDB binary on first use.

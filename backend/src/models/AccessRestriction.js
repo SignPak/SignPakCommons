@@ -6,7 +6,8 @@ const accessRestrictionSchema = new mongoose.Schema({
   identifierHash: { type: String, required: true },
   identifierHint: { type: String, required: true },
   reason: { type: String, trim: true, maxlength: 500, default: '' },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  expiresAt: { type: Date, default: null },
 }, {
   timestamps: true,
   versionKey: false,
@@ -14,5 +15,6 @@ const accessRestrictionSchema = new mongoose.Schema({
 })
 
 accessRestrictionSchema.index({ type: 1, identifierHash: 1 }, { unique: true })
+accessRestrictionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
 export const AccessRestriction = mongoose.model('AccessRestriction', accessRestrictionSchema)
