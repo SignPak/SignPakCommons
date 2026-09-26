@@ -73,6 +73,7 @@
   .upload-file b { @apply text-heading; }
   .upload-file label { @apply ml-2; }
   .upload-fields > .field:first-child { @apply mt-0; }
+  .upload-fields > .btn { @apply mt-4; }
 
   .video-list { @apply m-0 list-none p-0; }
   .video-row { @apply border-t border-line py-5; }
