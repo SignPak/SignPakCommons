@@ -16,3 +16,17 @@ export const loginSchema = z.object({
   email: emailField,
   password: z.string({ error: 'Enter your password.' }).min(1, 'Enter your password.').max(200),
 })
+
+export const emailOnlySchema = z.object({ email: emailField })
+
+export const verifyEmailSchema = z.object({
+  email: emailField,
+  code: z.string().regex(/^\d{6}$/, 'Enter the six-digit code from your email.'),
+})
+
+export const resetPasswordSchema = z.object({
+  email: emailField,
+  code: z.string().regex(/^\d{6}$/, 'Enter the six-digit code from your email.'),
+  password: z.string({ error: 'Create a password.' }).min(8, 'Use at least 8 characters.').max(72, 'Use 72 characters or fewer.'),
+  confirmPassword: z.string(),
+}).refine((data) => data.confirmPassword === data.password, { path: ['confirmPassword'], message: 'Passwords do not match.' })

@@ -5,6 +5,7 @@ import { Client, filesIn, jpeg, mp4, recordingForm, videoForm, webm } from './he
 const { default: app } = await import('../src/app.js')
 const { connectDb, disconnectDb } = await import('../src/config/db.js')
 const { authService } = await import('../src/services/authService.js')
+const deliveredCodes = new Map()
 const { storageService } = await import('../src/services/storage/index.js')
 const { submissionRepo } = await import('../src/repositories/submissionRepo.js')
 const { Submission } = await import('../src/models/Submission.js')
@@ -12,10 +13,12 @@ const { SubmissionCooldown } = await import('../src/models/SubmissionCooldown.js
 const { default: mongoose } = await import('mongoose')
 
 let server, memory, base, admin, contributor, other
+let eveSession
 const asJson = (res) => res.body
 const contributorData = { firstName: 'Sara', surname: 'Ahmed', email: 'Sara@Example.com', password: 'password1', confirmPassword: 'password1' }
 
 before(async () => {
+  authService.sendOTPEmail = async (email, code, purpose) => deliveredCodes.set(`${email.toLowerCase()}:${purpose}`, code)
   let uri = process.env.MONGODB_URI_TEST
   if (!uri) {
     const { MongoMemoryServer } = await import('mongodb-memory-server')
@@ -34,8 +37,11 @@ before(async () => {
   assert.equal((await admin.post('/auth/login', { email: 'admin@signpak.test', password: 'Admin@12345' })).status, 200)
   contributor = new Client(base)
   assert.equal((await contributor.post('/auth/signup', contributorData)).status, 201)
+  assert.equal((await contributor.get('/users/me')).status, 401)
+  assert.equal((await contributor.post('/auth/verify-email', { email: contributorData.email, code: deliveredCodes.get('sara@example.com:email-verification') })).status, 200)
   other = new Client(base)
   await other.post('/auth/signup', { firstName: 'Omar', surname: 'Khan', email: 'omar@example.com', password: 'password1' })
+  await other.post('/auth/verify-email', { email: 'omar@example.com', code: deliveredCodes.get('omar@example.com:email-verification') })
 })
 
 after(async () => {
@@ -128,14 +134,39 @@ describe('auth', () => {
 
   test('signup sets an httpOnly cookie and never leaks the hash or accepts a role', async () => {
     const c = new Client(base)
+    eveSession = c
     const res = await c.post('/auth/signup', { firstName: 'Eve', surname: 'Hacker', email: 'eve@example.com', password: 'password1', role: 'admin' })
     assert.equal(res.status, 201)
-    assert.equal(res.body.data.role, 'user')
     assert.equal(res.body.data.email, 'eve@example.com')
+    assert.equal(res.body.data.verificationEmailSent, true)
+    assert.equal(res.setCookie.length, 0)
+    assert.equal((await c.post('/auth/login', { email: 'eve@example.com', password: 'password1' })).status, 401)
+    assert.equal((await c.post('/auth/verify-email', { email: 'eve@example.com', code: '000000' })).status, 400)
+    const verified = await c.post('/auth/verify-email', { email: 'eve@example.com', code: deliveredCodes.get('eve@example.com:email-verification') })
+    assert.equal(verified.status, 200)
+    assert.equal(verified.body.data.role, 'user')
+    assert.equal(verified.body.data.emailVerified, true)
     assert.equal(res.body.data.passwordHash, undefined)
-    assert.match(res.setCookie[0], /HttpOnly/i)
-    assert.match(res.setCookie[0], /SameSite=Lax/i)
+    assert.match(verified.setCookie[0], /HttpOnly/i)
+    assert.match(verified.setCookie[0], /SameSite=Lax/i)
     assert.equal((await c.get('/admin/stats')).status, 403)
+  })
+
+  test('password reset codes are one-time and replace the old password', async () => {
+    const resetRequested = await new Client(base).post('/auth/forgot-password', { email: 'eve@example.com' })
+    const unknownRequested = await new Client(base).post('/auth/forgot-password', { email: 'nobody@example.com' })
+    assert.equal(resetRequested.status, 200)
+    assert.deepEqual(resetRequested.body, unknownRequested.body)
+    const code = deliveredCodes.get('eve@example.com:password-reset')
+    const wrong = await new Client(base).post('/auth/reset-password', { email: 'eve@example.com', code: '000000', password: 'password2', confirmPassword: 'password2' })
+    assert.equal(wrong.status, 400)
+    const reset = await new Client(base).post('/auth/reset-password', { email: 'eve@example.com', code, password: 'password2', confirmPassword: 'password2' })
+    assert.equal(reset.status, 200)
+    assert.equal((await new Client(base).post('/auth/login', { email: 'eve@example.com', password: 'password1' })).status, 401)
+    assert.equal((await new Client(base).post('/auth/login', { email: 'eve@example.com', password: 'password2' })).status, 200)
+    assert.equal((await eveSession.get('/users/me')).status, 401)
+    const reused = await new Client(base).post('/auth/reset-password', { email: 'eve@example.com', code, password: 'password3', confirmPassword: 'password3' })
+    assert.equal(reused.status, 400)
   })
 
   test('duplicate emails conflict, case-insensitively', async () => {

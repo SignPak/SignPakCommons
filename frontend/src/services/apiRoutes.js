@@ -15,6 +15,10 @@ export const apiRoutes = {
     login: () => `${API_BASE}/auth/login`,
     logout: () => `${API_BASE}/auth/logout`,
     session: () => `${API_BASE}/auth/session`,
+    verifyEmail: () => `${API_BASE}/auth/verify-email`,
+    resendVerification: () => `${API_BASE}/auth/resend-verification`,
+    forgotPassword: () => `${API_BASE}/auth/forgot-password`,
+    resetPassword: () => `${API_BASE}/auth/reset-password`,
   },
 
   users: {

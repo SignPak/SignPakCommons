@@ -54,7 +54,7 @@ export const openapi = {
   ],
   components: {
     securitySchemes: {
-      cookieAuth: { type: 'apiKey', in: 'cookie', name: 'token', description: 'HTTP-only JWT cookie set by login or signup.' },
+      cookieAuth: { type: 'apiKey', in: 'cookie', name: 'signpak_token', description: 'HTTP-only JWT cookie set by login or email verification.' },
     },
     schemas: {
       Category: {
@@ -75,8 +75,16 @@ export const openapi = {
         type: 'object',
         properties: {
           id: { type: 'string' }, firstName: { type: 'string' }, surname: { type: 'string' }, email: { type: 'string', format: 'email' },
+          emailVerified: { type: 'boolean' },
           role: { type: 'string', enum: ['user', 'admin'] }, status: { type: 'string', enum: ['active', 'suspended'] }, statusReason: { type: 'string' },
           connections: { type: 'object', additionalProperties: { type: 'string', nullable: true } },
+        },
+      },
+      SignupInput: {
+        type: 'object', required: ['firstName', 'surname', 'email', 'password'],
+        properties: {
+          firstName: { type: 'string', maxLength: 60 }, surname: { type: 'string', maxLength: 60 },
+          email: { type: 'string', format: 'email' }, password: { type: 'string', format: 'password', minLength: 8 }, confirmPassword: { type: 'string' },
         },
       },
       AuthInput: {
@@ -99,11 +107,15 @@ export const openapi = {
     },
     '/docs.json': { get: { tags: ['Health'], summary: 'Get the OpenAPI document', responses: { 200: { description: 'OpenAPI JSON document' } } } },
     '/auth/signup': {
-      post: { tags: ['Auth'], summary: 'Create an account', requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthInput' } } } }, responses: { 201: { description: 'Account created' }, 400: errorResponse } },
+      post: { tags: ['Auth'], summary: 'Create an unverified account and send a code', requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/SignupInput' } } } }, responses: { 201: { description: 'Account pending email verification' }, 400: errorResponse } },
     },
     '/auth/login': {
       post: { tags: ['Auth'], summary: 'Log in and set the HTTP-only cookie', requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthInput' } } } }, responses: { 200: { description: 'Logged in' }, 401: errorResponse } },
     },
+    '/auth/verify-email': { post: { tags: ['Auth'], summary: 'Verify an email code and establish a session', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email', 'code'], properties: { email: { type: 'string', format: 'email' }, code: { type: 'string', pattern: '^\\d{6}$' } } } } } }, responses: { 200: { description: 'Verified and logged in' }, 400: errorResponse } } },
+    '/auth/resend-verification': { post: { tags: ['Auth'], summary: 'Resend an email verification code', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email'], properties: { email: { type: 'string', format: 'email' } } } } } }, responses: { 200: { description: 'Generic response' } } } },
+    '/auth/forgot-password': { post: { tags: ['Auth'], summary: 'Request a password reset code', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email'], properties: { email: { type: 'string', format: 'email' } } } } } }, responses: { 200: { description: 'Generic response' } } } },
+    '/auth/reset-password': { post: { tags: ['Auth'], summary: 'Reset a password using a one-time code', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email', 'code', 'password', 'confirmPassword'], properties: { email: { type: 'string', format: 'email' }, code: { type: 'string', pattern: '^\\d{6}$' }, password: { type: 'string', format: 'password', minLength: 8 }, confirmPassword: { type: 'string', format: 'password' } } } } } }, responses: { 200: { description: 'Password reset' }, 400: errorResponse } } },
     '/auth/logout': { post: { tags: ['Auth'], summary: 'Clear the session cookie', responses: { 204: { description: 'Logged out' } } } },
     '/auth/session': { get: { tags: ['Auth'], summary: 'Get the current session', responses: { 200: { description: 'Session state' } } } },
     '/users/me': {

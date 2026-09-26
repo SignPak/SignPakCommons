@@ -19,6 +19,8 @@ npm run build
 | `/`                         | public     | Landing: hero, about, policy, contact            |
 | `/demo`                     | public     | "How it works" walkthrough video                 |
 | `/signup`, `/login`         | logged out | Account forms                                    |
+| `/verify-email`             | logged out | Verify signup code sent by email                 |
+| `/forgot-password`          | logged out | Request a code and reset password                |
 | `/home`                     | learner    | Categories                                       |
 | `/library/:categoryId`      | learner    | Videos in a category (search, filter, sort)      |
 | `/watch?v=<videoId>`        | learner    | Player and recorder                              |
@@ -53,6 +55,7 @@ Every server call goes through `src/services/api.js`. Requests use the `/api/v1`
 - Admin video uploads are stored by the backend; the browser does not keep the base library in IndexedDB.
 - Recording submissions upload the recorded `Blob` with trim metadata. The backend enforces the submission cooldown.
 - Notifications remain browser-local until a persisted backend notification API is added.
+- Signup requires a Brevo-delivered email code before the API establishes a session; password recovery uses a separate one-time code.
 
 ## Theming
 

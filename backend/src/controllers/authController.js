@@ -5,10 +5,7 @@ import { clearAuthCookie, setAuthCookie } from '../utils/tokens.js'
 
 export const authController = {
   signup: asyncHandler(async (req, res) => {
-    const { user, token } = await authService.register(req.body)
-    await authService.recordDevice(user, req.get('X-Device-ID'))
-    setAuthCookie(res, token)
-    created(res, user)
+    created(res, await authService.register(req.body))
   }),
 
   login: asyncHandler(async (req, res) => {
@@ -16,6 +13,28 @@ export const authController = {
     await authService.recordDevice(user, req.get('X-Device-ID'))
     setAuthCookie(res, token)
     ok(res, user)
+  }),
+
+  verifyEmail: asyncHandler(async (req, res) => {
+    const { user, token } = await authService.verifyEmail(req.body)
+    await authService.recordDevice(user, req.get('X-Device-ID'))
+    setAuthCookie(res, token)
+    ok(res, user)
+  }),
+
+  resendVerification: asyncHandler(async (req, res) => {
+    await authService.resendVerification(req.body.email)
+    ok(res, { message: 'If the account needs verification, a code will be sent.' })
+  }),
+
+  forgotPassword: asyncHandler(async (req, res) => {
+    await authService.requestPasswordReset(req.body.email)
+    ok(res, { message: 'If an account exists for this email, a reset code will be sent.' })
+  }),
+
+  resetPassword: asyncHandler(async (req, res) => {
+    await authService.resetPassword(req.body)
+    ok(res, { message: 'Password reset. You can now log in.' })
   }),
 
   logout: (req, res) => {

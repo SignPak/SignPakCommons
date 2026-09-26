@@ -12,9 +12,11 @@ The OpenAPI document is maintained in [`src/docs/openapi.js`](../src/docs/openap
 
 ## Authentication
 
-Signup and login set an HTTP-only `signpak_token` cookie. Browser clients must send requests with credentials enabled. Swagger UI can describe the cookie scheme, but browser authentication is normally established by calling `/auth/signup` or `/auth/login` first.
+Login and successful email verification set an HTTP-only `signpak_token` cookie. Signup creates an unverified account and emails a six-digit code; browser clients must verify it before logging in. Browser requests must send credentials.
 
 The cookie is cleared by `POST /auth/logout`. `GET /auth/session` is public and returns the current user when a valid session exists, or `null` for a visitor.
+
+Verification and password reset codes are stored as keyed hashes, expire after `AUTH_OTP_TTL_MINUTES`, and have bounded attempts and resend intervals. Password reset responses do not reveal whether an email exists. Configure `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` (a verified Brevo sender), and optionally `BREVO_SENDER_NAME` in the backend environment.
 
 ## Response format
 
@@ -43,8 +45,12 @@ Errors use a structured object suitable for form-level and field-level messages:
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
 | GET | `/health` | Public | Check API and database status. |
-| POST | `/auth/signup` | Public | Create a contributor account and session. |
+| POST | `/auth/signup` | Public | Create an unverified contributor and send a verification code. |
 | POST | `/auth/login` | Public | Create a session. |
+| POST | `/auth/verify-email` | Public | Verify a code and establish a session. |
+| POST | `/auth/resend-verification` | Public | Resend a verification code with a generic response. |
+| POST | `/auth/forgot-password` | Public | Request a password reset code with a generic response. |
+| POST | `/auth/reset-password` | Public | Reset password and invalidate existing sessions. |
 | POST | `/auth/logout` | Public | Clear the session. |
 | GET | `/auth/session` | Public | Read the current session. |
 | GET/PATCH | `/users/me` | User | Read or update the current profile. |

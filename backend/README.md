@@ -7,7 +7,7 @@ Express + Node.js + MongoDB (Mongoose). Cookie-based auth, local base-video stor
 ```bash
 cd backend
 npm install
-cp .env.example .env      # then fill in JWT_SECRET, ADMIN_PASSWORD and MONGODB_URI
+cp .env.example .env      # then fill in JWT_SECRET, ADMIN_PASSWORD, MONGODB_URI and Brevo sender credentials
 npm run dev               # http://localhost:5000, health check at /api/v1/health
 npm test                  # integration tests (see "Testing")
 ```
@@ -52,8 +52,12 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 | Method + path | Who | Notes |
 | --- | --- | --- |
 | `GET /health` | anyone | 503 if the database is down |
-| `POST /auth/signup` | anyone | Always creates a contributor. Sets the cookie |
+| `POST /auth/signup` | anyone | Creates an unverified contributor and emails a verification code |
 | `POST /auth/login` | anyone | Sets the cookie |
+| `POST /auth/verify-email` | anyone | Verifies an email and sets the session cookie |
+| `POST /auth/resend-verification` | anyone | Resends a verification code (generic response) |
+| `POST /auth/forgot-password` | anyone | Sends a password-reset code (generic response) |
+| `POST /auth/reset-password` | anyone | Resets password and invalidates existing sessions |
 | `POST /auth/logout` | anyone | Clears the cookie |
 | `GET /auth/session` | anyone | `{ data: user }`, or `{ data: null }` for visitors |
 | `GET /users/me` | logged in | |
@@ -73,7 +77,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 
 ## Decisions worth knowing
 
-**Auth.** A signed JWT in an `httpOnly` cookie (`signpak_token`), so page scripts cannot read it. The user is reloaded from the database on every request, so role changes and deletions apply immediately. Login answers identically for "wrong password" and "no such email", and does the same amount of hashing work for both.
+**Auth.** A signed JWT in an `httpOnly` cookie (`signpak_token`), so page scripts cannot read it. Signup requires email verification before login; OTPs are hashed in MongoDB, expire, and have bounded attempts. Password reset uses the same one-time-code policy and increments the session version to invalidate existing cookies. Configure `BREVO_API_KEY` and a verified `BREVO_SENDER_EMAIL` for transactional email. The user is reloaded from the database on every request, so role changes and deletions apply immediately. Login answers identically for "wrong password" and "no such email", and does the same amount of hashing work for both.
 
 **CSRF.** `SameSite=Lax` plus an `Origin` check: any `POST/PATCH/DELETE` carrying an `Origin` header outside `CLIENT_ORIGIN` is refused with 403.
 
@@ -91,7 +95,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 
 ## Testing
 
-`npm test` runs `tests/api.test.js` (31 tests): auth, roles, uploads, Range streaming, the cooldown rule (including a real elapsed-cooldown resubmission, sped up via `SUBMISSION_COOLDOWN_MS=200` in `tests/helpers.js`), stats, contact, cleanup of temp files. It calls the real HTTP stack.
+`npm test` runs the HTTP integration suite for auth, roles, uploads, Range streaming, the cooldown rule, stats, contact, and cleanup of temporary files. Authentication email delivery is stubbed in tests; the application mail path uses Brevo.
 
 - Set `MONGODB_URI_TEST` to run against a MongoDB you already have (it uses that database and **drops it**, so point it at a throwaway one).
 - Otherwise it starts `mongodb-memory-server`, which downloads a MongoDB binary on first use.

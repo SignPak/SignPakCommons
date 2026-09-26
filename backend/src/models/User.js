@@ -7,6 +7,16 @@ const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true, trim: true, maxlength: 60 },
   surname: { type: String, required: true, trim: true, maxlength: 60 },
   passwordHash: { type: String, required: true, select: false },
+  authVersion: { type: Number, default: 0 },
+  emailVerified: { type: Boolean, default: false },
+  emailVerificationCodeHash: { type: String, default: null, select: false },
+  emailVerificationExpiresAt: { type: Date, default: null, select: false },
+  emailVerificationAttempts: { type: Number, default: 0, select: false },
+  emailVerificationSentAt: { type: Date, default: null, select: false },
+  passwordResetCodeHash: { type: String, default: null, select: false },
+  passwordResetExpiresAt: { type: Date, default: null, select: false },
+  passwordResetAttempts: { type: Number, default: 0, select: false },
+  passwordResetSentAt: { type: Date, default: null, select: false },
   role: { type: String, enum: ROLE_LIST, default: ROLES.USER },
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
   statusReason: { type: String, trim: true, maxlength: 500, default: '' },
@@ -17,7 +27,10 @@ const userSchema = new mongoose.Schema({
   },
 }, {
   timestamps: true,
-  toJSON: jsonOptions((doc, ret) => { delete ret.passwordHash; delete ret.updatedAt; delete ret.lastDeviceId; return ret }),
+  toJSON: jsonOptions((doc, ret) => {
+    for (const key of ['passwordHash', 'authVersion', 'updatedAt', 'lastDeviceId', 'emailVerificationCodeHash', 'emailVerificationExpiresAt', 'emailVerificationAttempts', 'emailVerificationSentAt', 'passwordResetCodeHash', 'passwordResetExpiresAt', 'passwordResetAttempts', 'passwordResetSentAt']) delete ret[key]
+    return ret
+  }),
 })
 
 export const User = mongoose.model('User', userSchema)
