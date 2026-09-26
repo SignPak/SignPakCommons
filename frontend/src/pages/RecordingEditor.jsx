@@ -32,7 +32,7 @@ function EditScreen({ videoId }) {
     onSubmit={async () => {
       await submitRecording(video, recording)
       removeRecording(video.id)
-      await notify({ type: 'submission', title: 'Recording submitted', body: video.title, href: watchUrl(video.id) })
+      await notify({ type: 'submission', title: 'Recording submitted', body: video.title, href: watchUrl(video.id) }).catch(() => {})
       navigate(watchUrl(video.id), { state: { justSubmitted: true } })
     }}
   />

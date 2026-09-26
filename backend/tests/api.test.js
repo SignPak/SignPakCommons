@@ -6,6 +6,7 @@ const { default: app } = await import('../src/app.js')
 const { connectDb, disconnectDb } = await import('../src/config/db.js')
 const { authService } = await import('../src/services/authService.js')
 const { storageService } = await import('../src/services/storage/index.js')
+const { submissionRepo } = await import('../src/repositories/submissionRepo.js')
 const { Submission } = await import('../src/models/Submission.js')
 const { SubmissionCooldown } = await import('../src/models/SubmissionCooldown.js')
 const { default: mongoose } = await import('mongoose')
@@ -283,6 +284,34 @@ let submission
 
 describe('submissions and the cooldown rule', () => {
   const good = () => ({ videoId: video1.id, trimStart: '0', trimEnd: '2.5', duration: '3', mirrored: 'true' })
+
+  test('archive and database failures release cooldown and remove any archived file', async () => {
+    const originalArchive = storageService.archive
+    const originalCreate = submissionRepo.create
+    const otherId = (await admin.get('/admin/users')).body.data.find((user) => user.email === 'omar@example.com').id
+    const cooldownFilter = { user: otherId, video: video1.id }
+    let failedRecording
+    try {
+      storageService.archive = async () => { throw new Error('archive unavailable') }
+      const archiveFailure = await other.upload('/submissions', recordingForm(good()))
+      assert.equal(archiveFailure.status, 500)
+      assert.equal(await SubmissionCooldown.countDocuments(cooldownFilter), 0)
+
+      storageService.archive = originalArchive
+      submissionRepo.create = async (data) => {
+        failedRecording = data.recording
+        throw new Error('database unavailable')
+      }
+      const databaseFailure = await other.upload('/submissions', recordingForm(good()))
+      assert.equal(databaseFailure.status, 500)
+      assert.equal(await SubmissionCooldown.countDocuments(cooldownFilter), 0)
+      await assert.rejects(() => storageService.describe(failedRecording))
+      assert.deepEqual(filesIn('tmp'), [])
+    } finally {
+      storageService.archive = originalArchive
+      submissionRepo.create = originalCreate
+    }
+  })
 
   test('input is checked before anything is stored', async () => {
     const before = filesIn('recordings').length

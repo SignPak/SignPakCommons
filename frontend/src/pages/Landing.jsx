@@ -185,9 +185,9 @@ export default function Landing() {
           <p className="contact-copy">
             Have questions about video contributions, recording specifications, or partnership opportunities? Reach out to our team.
           </p>
-          <a className="link-accent" href="mailto:contact@pslai.org">
+          {/* <a className="link-accent" href="mailto:contact@pslai.org">
             contact@pslai.org
-          </a>
+          </a> */}
         </div>
         <ContactForm />
       </section>
