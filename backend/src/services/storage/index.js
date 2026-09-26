@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
@@ -6,7 +7,7 @@ import { createGoogleDriveDriver } from './googleDriveDriver.js'
 import { createLocalDriver } from './localDriver.js'
 
 const drivers = {
-  local: createLocalDriver(path.resolve(env.UPLOAD_DIR)),
+  local: createLocalDriver(path.resolve(process.env.VERCEL ? os.tmpdir() : process.cwd(), env.UPLOAD_DIR)),
   ...(env.STORAGE_DRIVER === 'gdrive' || env.ARCHIVE_STORAGE_DRIVER === 'gdrive' ? { gdrive: createGoogleDriveDriver({ serviceAccountJson: env.GOOGLE_SERVICE_ACCOUNT_JSON, rootFolderId: env.GOOGLE_DRIVE_FOLDER_ID }) } : {}),
 }
 const driverFor = (name) => {
