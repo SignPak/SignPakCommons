@@ -30,10 +30,12 @@ export default function LibraryProvider({ children }) {
 
   useEffect(() => {
     let active = true
-    setLoadError('')
     loadLibrary(user)
       .then(([categories, videos, submissions]) => {
-        if (active) setData({ ready: true, categories, videos, submissions })
+        if (active) {
+          setData({ ready: true, categories, videos, submissions })
+          setLoadError('')
+        }
       })
       .catch((error) => {
         if (active) setLoadError(error?.message || 'Unable to load the library. Try again.')
@@ -100,7 +102,10 @@ export default function LibraryProvider({ children }) {
     return <PageState
       eyebrow="Connection problem"
       title="We couldn't load the library."
-      action={<Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Try again</Button>}
+      action={<Button onClick={() => {
+        setLoadError('')
+        setLoadAttempt((attempt) => attempt + 1)
+      }}>Try again</Button>}
     >{loadError}</PageState>
   }
   if (!data.ready) return <div className="boot" role="status">Loading your library…</div>
