@@ -17,7 +17,7 @@
   .admin-row-actions .is-danger { @apply text-danger; }
   .admin-status-reason { @apply mt-1 block max-w-52 text-xs text-muted; }
   .admin-restriction-form { @apply grid gap-x-4 sm:grid-cols-2; }
-  .admin-restriction-form .btn { @apply mt-4 self-start; }
+  .admin-restriction-form .btn { @apply mt-13 self-start; }
   .restriction-list { @apply m-0 grid list-none gap-0 p-0; }
   .restriction-list li { @apply flex items-center justify-between gap-4 border-t border-line py-4; }
   .restriction-list li > div { @apply grid min-w-0 grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1; }
