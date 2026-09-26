@@ -127,6 +127,18 @@ export const api = {
     async remove(id) { await request(apiRoutes.videos.remove(id), { method: 'DELETE' }) },
   },
 
+  demoVideo: {
+    async get() { return normalize(await request(apiRoutes.demoVideo.get())) },
+    async upload({ file, title, durationSec }) {
+      const body = new FormData()
+      body.append('video', file)
+      body.append('title', title)
+      body.append('durationSec', String(durationSec || 0))
+      return normalize(await request(apiRoutes.demoVideo.upload(), { method: 'POST', body }))
+    },
+    async remove() { await request(apiRoutes.demoVideo.remove(), { method: 'DELETE' }) },
+  },
+
   submissions: {
     async list() { return normalizeList(await request(apiRoutes.submissions.list())) },
     async create({ recording, videoId, trimStart, trimEnd, mirrored, duration }) {

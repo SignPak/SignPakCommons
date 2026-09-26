@@ -6,6 +6,7 @@ import adminRoutes from './adminRoutes.js'
 import authRoutes from './authRoutes.js'
 import categoryRoutes from './categoryRoutes.js'
 import contactRoutes from './contactRoutes.js'
+import demoVideoRoutes from './demoVideoRoutes.js'
 import submissionRoutes from './submissionRoutes.js'
 import userRoutes from './userRoutes.js'
 import videoRoutes from './videoRoutes.js'
@@ -23,6 +24,7 @@ router.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }
 router.use('/auth', authRoutes)
 router.use('/users', userRoutes)
 router.use('/categories', categoryRoutes)
+router.use('/demo-video', demoVideoRoutes)
 router.use('/videos', videoRoutes)
 router.use('/submissions', submissionRoutes)
 router.use('/contact', contactRoutes)

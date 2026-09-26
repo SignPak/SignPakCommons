@@ -26,11 +26,11 @@ export default function Demo() {
 
   useEffect(() => {
     let active = true
-    api.videos.list()
-      .then((videos) => {
+    api.demoVideo.get()
+      .then((video) => {
         if (!active) return
-        setDemoVideo(videos[0] || null)
-        setVideoState(videos[0] ? 'ready' : 'empty')
+        setDemoVideo(video || null)
+        setVideoState(video ? 'ready' : 'empty')
       })
       .catch(() => {
         if (active) setVideoState('error')

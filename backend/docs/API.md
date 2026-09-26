@@ -54,6 +54,8 @@ Errors use a structured object suitable for form-level and field-level messages:
 | GET | `/videos/:id/file` | Public when published | Stream a published reference video. |
 | GET | `/videos/:id/poster` | Public when published | Stream a published poster. |
 | POST/PATCH/DELETE | `/videos`, `/videos/:id` | Admin | Upload and manage base videos. |
+| GET | `/demo-video`, `/demo-video/file` | Public | Read metadata or stream the current walkthrough video. |
+| POST/DELETE | `/demo-video` | Admin | Upload/replace or delete the walkthrough video. |
 | GET/POST | `/submissions` | User | List or create contributor recordings. |
 | GET | `/submissions/:id/recording` | None | Deliberately unavailable; submission archives are append-only. |
 | POST | `/contact` | Public | Send a contact message. |
@@ -64,6 +66,8 @@ Errors use a structured object suitable for form-level and field-level messages:
 ## Uploads
 
 Video creation uses `multipart/form-data` with `video`, optional `poster`, `title`, optional `categoryId`, `status`, and `durationSec`. Submission creation uses `multipart/form-data` with `recording`, `videoId`, `trimStart`, `trimEnd`, `mirrored`, and `duration`.
+
+The public demo video is a separate singleton asset, independent of the lesson library. Admin uploads use `multipart/form-data` with `video`, `title`, and optional `durationSec`; uploading replaces the current demo asset.
 
 The server validates file signatures, size limits, metadata, and route IDs. Client-reported durations are currently accepted for trimming metadata; server-side media probing and trimming are future work.
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import AdminDemoVideo from './AdminDemoVideo'
 import Field from '../../components/Field'
 import { Alert, Badge, Button, SectionHeading, VideoArtwork } from '../../components/ui'
 import { useLibrary } from '../../context/LibraryContext'
@@ -44,6 +45,7 @@ export default function AdminVideos() {
   }
 
   return <>
+    <AdminDemoVideo />
     <UploadPanel />
     <section className="panel">
       <SectionHeading

@@ -47,6 +47,7 @@ export const openapi = {
     { name: 'Users' },
     { name: 'Categories' },
     { name: 'Videos' },
+    { name: 'Demo Video' },
     { name: 'Submissions' },
     { name: 'Contact' },
     { name: 'Admin' },
@@ -130,6 +131,12 @@ export const openapi = {
     },
     '/videos/{id}/file': { parameters: [idParameter], get: { tags: ['Videos'], summary: 'Stream a visible video file', responses: { 200: { description: 'Video stream', content: { 'video/mp4': {} } }, 404: errorResponse } } },
     '/videos/{id}/poster': { parameters: [idParameter], get: { tags: ['Videos'], summary: 'Stream a visible video poster', responses: { 200: { description: 'Image stream' }, 404: errorResponse } } },
+    '/demo-video': {
+      get: { tags: ['Demo Video'], summary: 'Get the public demo video metadata', responses: { 200: { description: 'Current demo video, or null when none is set' } } },
+      post: { tags: ['Demo Video'], summary: 'Upload or replace the public demo video', security: adminSecurity, requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['video', 'title'], properties: { video: { type: 'string', format: 'binary' }, title: { type: 'string', maxLength: 120 }, durationSec: { type: 'number' } } } } } }, responses: { 201: { description: 'Uploaded' }, 422: errorResponse } },
+      delete: { tags: ['Demo Video'], summary: 'Delete the public demo video', security: adminSecurity, responses: { 204: { description: 'Deleted' }, 403: errorResponse } },
+    },
+    '/demo-video/file': { get: { tags: ['Demo Video'], summary: 'Stream the public demo video', responses: { 200: { description: 'Video stream', content: { 'video/mp4': {} } }, 404: errorResponse } } },
     '/submissions': {
       get: { tags: ['Submissions'], summary: 'List the current user submissions', security: userSecurity, responses: { 200: { description: 'Submissions' }, 401: errorResponse } },
       post: { tags: ['Submissions'], summary: 'Submit a recording', security: userSecurity, requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['recording', 'videoId'], properties: { recording: { type: 'string', format: 'binary' }, videoId: { type: 'string' }, trimStart: { type: 'number' }, trimEnd: { type: 'number' }, mirrored: { type: 'boolean' }, duration: { type: 'number' } } } } } }, responses: { 201: { description: 'Created' }, 400: errorResponse } },

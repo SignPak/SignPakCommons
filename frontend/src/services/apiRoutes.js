@@ -41,6 +41,13 @@ export const apiRoutes = {
     remove: (id) => `${API_BASE}/videos/${id}`,
   },
 
+  demoVideo: {
+    get: () => `${API_BASE}/demo-video`,
+    file: () => `${API_BASE}/demo-video/file`,
+    upload: () => `${API_BASE}/demo-video`,
+    remove: () => `${API_BASE}/demo-video`,
+  },
+
   submissions: {
     list: () => `${API_BASE}/submissions`,
     create: () => `${API_BASE}/submissions`,
