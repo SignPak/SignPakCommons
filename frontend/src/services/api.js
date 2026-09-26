@@ -10,6 +10,22 @@ const readLocal = (key, fallback) => {
 }
 
 const writeLocal = (key, value) => window.localStorage.setItem(PREFIX + key, JSON.stringify(value))
+function getDeviceId() {
+  try {
+    const key = `${PREFIX}device-id`
+    let id = window.localStorage.getItem(key)
+    if (!id) {
+      const bytes = new Uint8Array(16)
+      window.crypto.getRandomValues(bytes)
+      bytes[6] = (bytes[6] & 0x0f) | 0x40
+      bytes[8] = (bytes[8] & 0x3f) | 0x80
+      const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+      id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+      window.localStorage.setItem(key, id)
+    }
+    return id
+  } catch { return '' }
+}
 const asTimestamp = (value) => value ? Date.parse(value) || value : value
 const apiOrigin = (import.meta.env.VITE_API_ORIGIN || '').replace(/\/$/, '')
 const normalize = (value) => {
@@ -32,6 +48,8 @@ const toBlob = async (value) => {
 
 async function request(path, options = {}) {
   const headers = new Headers(options.headers)
+  const deviceId = getDeviceId()
+  if (deviceId) headers.set('X-Device-ID', deviceId)
   const isForm = options.body instanceof FormData
   if (!isForm && options.body !== undefined) headers.set('Content-Type', 'application/json')
   const response = await fetch(path, { ...options, headers, credentials: 'include' })
@@ -75,6 +93,14 @@ export const api = {
 
   users: {
     async list() { return normalizeList(await request(apiRoutes.users.list())) },
+    async setStatus(id, patch) { return normalize(await request(apiRoutes.users.update(id), json('PATCH', patch))) },
+    async remove(id) { await request(apiRoutes.users.remove(id), { method: 'DELETE' }) },
+  },
+
+  admin: {
+    async restrictions() { return normalizeList(await request(apiRoutes.admin.restrictions())) },
+    async createRestriction(values) { return normalize(await request(apiRoutes.admin.createRestriction(), json('POST', values))) },
+    async removeRestriction(id) { await request(apiRoutes.admin.removeRestriction(id), { method: 'DELETE' }) },
   },
 
   categories: {

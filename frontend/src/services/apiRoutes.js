@@ -20,6 +20,8 @@ export const apiRoutes = {
   users: {
     me: () => `${API_BASE}/users/me`,
     list: () => `${API_BASE}/admin/users`,
+    update: (id) => `${API_BASE}/admin/users/${id}`,
+    remove: (id) => `${API_BASE}/admin/users/${id}`,
   },
 
   categories: {
@@ -51,6 +53,9 @@ export const apiRoutes = {
 
   admin: {
     users: () => `${API_BASE}/admin/users`,
+    restrictions: () => `${API_BASE}/admin/restrictions`,
+    createRestriction: () => `${API_BASE}/admin/restrictions`,
+    removeRestriction: (id) => `${API_BASE}/admin/restrictions/${id}`,
     stats: (days) => `${API_BASE}/admin/stats${qs({ days })}`,
     messages: (limit) => `${API_BASE}/admin/messages${qs({ limit })}`,
   },

@@ -6,6 +6,7 @@ import { paths } from './routes/appRoutes'
 import AdminCategories from './pages/admin/AdminCategories'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminLayout from './pages/admin/AdminLayout'
+import AdminUsers from './pages/admin/AdminUsers'
 import AdminVideos from './pages/admin/AdminVideos'
 import CategoryBrowser from './pages/CategoryBrowser'
 import Demo from './pages/Demo'
@@ -42,6 +43,7 @@ export default function App() {
         <Route element={<RequireAdmin />}>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
             <Route path="videos" element={<AdminVideos />} />
             <Route path="categories" element={<AdminCategories />} />
           </Route>

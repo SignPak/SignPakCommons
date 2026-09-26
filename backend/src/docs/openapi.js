@@ -74,7 +74,8 @@ export const openapi = {
         type: 'object',
         properties: {
           id: { type: 'string' }, firstName: { type: 'string' }, surname: { type: 'string' }, email: { type: 'string', format: 'email' },
-          role: { type: 'string', enum: ['user', 'admin'] }, connections: { type: 'object', additionalProperties: { type: 'string', nullable: true } },
+          role: { type: 'string', enum: ['user', 'admin'] }, status: { type: 'string', enum: ['active', 'suspended'] }, statusReason: { type: 'string' },
+          connections: { type: 'object', additionalProperties: { type: 'string', nullable: true } },
         },
       },
       AuthInput: {
@@ -135,6 +136,16 @@ export const openapi = {
     },
     '/contact': { post: { tags: ['Contact'], summary: 'Send a contact message', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name', 'email', 'message'], properties: { name: { type: 'string' }, email: { type: 'string', format: 'email' }, message: { type: 'string' } } } } } }, responses: { 201: { description: 'Message sent' }, 400: errorResponse } } },
     '/admin/users': { get: { tags: ['Admin'], summary: 'List all users', security: adminSecurity, responses: { 200: { description: 'Users' }, 403: errorResponse } } },
+    '/admin/users/{id}': {
+      parameters: [idParameter],
+      patch: { tags: ['Admin'], summary: 'Activate or suspend a user', security: adminSecurity, requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'string', enum: ['active', 'suspended'] }, reason: { type: 'string', maxLength: 500 } } } } } }, responses: { 200: { description: 'Updated user' }, 403: errorResponse, 404: errorResponse } },
+      delete: { tags: ['Admin'], summary: 'Delete a user and their submitted recordings', security: adminSecurity, responses: { 204: { description: 'Deleted' }, 403: errorResponse, 404: errorResponse } },
+    },
+    '/admin/restrictions': {
+      get: { tags: ['Admin'], summary: 'List IP and device restrictions', security: adminSecurity, responses: { 200: { description: 'Restrictions' } } },
+      post: { tags: ['Admin'], summary: 'Restrict an IP address or device ID', security: adminSecurity, requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['type', 'value'], properties: { type: { type: 'string', enum: ['ip', 'device'] }, value: { type: 'string' }, reason: { type: 'string', maxLength: 500 } } } } } }, responses: { 201: { description: 'Restriction created' }, 422: errorResponse } },
+    },
+    '/admin/restrictions/{id}': { parameters: [idParameter], delete: { tags: ['Admin'], summary: 'Remove an IP or device restriction', security: adminSecurity, responses: { 204: { description: 'Removed' }, 404: errorResponse } } },
     '/admin/stats': { get: { tags: ['Admin'], summary: 'Get dashboard statistics', security: adminSecurity, parameters: [{ name: 'days', in: 'query', schema: { type: 'integer', minimum: 7, maximum: 90, default: 14 } }], responses: { 200: { description: 'Statistics' }, 403: errorResponse } } },
     '/admin/messages': { get: { tags: ['Admin'], summary: 'List contact messages', security: adminSecurity, parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } }], responses: { 200: { description: 'Messages' }, 403: errorResponse } } },
   },
