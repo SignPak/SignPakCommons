@@ -60,7 +60,7 @@ export const videoService = {
       }
       const order = input.categoryId ? (await videoRepo.maxOrder(input.categoryId)) + 1 : 1
       return await videoRepo.create({
-        title: input.title, level: input.level, status: input.status, durationSec: input.durationSec,
+        title: input.title, status: input.status, durationSec: input.durationSec,
         category: input.categoryId, order, videoFile, posterFile, createdBy: admin._id,
       })
     } catch (error) {
@@ -80,7 +80,7 @@ export const videoService = {
       // Moving into a category puts the video at the end of that path unless an order was given.
       if (moved && patch.categoryId && patch.order === undefined) video.order = (await videoRepo.maxOrder(patch.categoryId)) + 1
     }
-    for (const key of ['title', 'level', 'status', 'order']) {
+    for (const key of ['title', 'status', 'order']) {
       if (patch[key] !== undefined) video[key] = patch[key]
     }
     return videoRepo.save(video)

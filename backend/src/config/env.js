@@ -55,6 +55,11 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default('uploads'),
   GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
+  // Optional: a second Google account/folder dedicated to archived recordings, kept separate
+  // from the base-video account above. When unset, ARCHIVE_STORAGE_DRIVER falls back to the
+  // shared GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_DRIVE_FOLDER_ID pair (see storage/index.js).
+  GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  GOOGLE_ARCHIVE_DRIVE_FOLDER_ID: z.string().optional(),
   MAX_VIDEO_UPLOAD_MB: z.coerce.number().positive().default(300),
   MAX_RECORDING_UPLOAD_MB: z.coerce.number().positive().default(100),
 

@@ -10,7 +10,7 @@ export function inspectVideoFile(file) {
     video.preload = 'metadata'
     video.muted = true
     video.playsInline = true
-    video.onerror = () => finish({ duration: 0, poster: '' })
+    video.onerror = () => finish({ durationSec: 0, poster: '' })
     video.onloadedmetadata = () => {
       video.currentTime = Math.min(1, (video.duration || 0) / 2)
     }
@@ -21,9 +21,9 @@ export function inspectVideoFile(file) {
         canvas.width = width
         canvas.height = Math.round((video.videoHeight / (video.videoWidth || 1)) * width) || 360
         canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
-        finish({ duration: Math.round(video.duration || 0), poster: canvas.toDataURL('image/jpeg', 0.7) })
+        finish({ durationSec: Math.round(video.duration || 0), poster: canvas.toDataURL('image/jpeg', 0.7) })
       } catch {
-        finish({ duration: Math.round(video.duration || 0), poster: '' })
+        finish({ durationSec: Math.round(video.duration || 0), poster: '' })
       }
     }
     video.src = url

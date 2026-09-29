@@ -85,12 +85,21 @@ export const authService = {
     return { user, token: signToken(user.id, user.authVersion || 0) }
   },
 
+  /**
+   * Resend and password-reset both used to `await issueOtp(...)`, which calls out to Brevo.
+   * An unknown email returned instantly (no user, nothing to await); a known email waited on
+   * the network call. That timing gap let someone enumerate registered emails just by timing
+   * the response, even though the response body is identical either way (see authController,
+   * which always returns the same generic message). Firing the OTP issuance in the background
+   * closes that gap: both cases now return at roughly the same speed.
+   */
   async resendVerification(email) {
     const user = await userRepo.findByEmail(email, { withOtp: true })
     if (!user || user.emailVerified) return false
     const sentAt = user.emailVerificationSentAt?.getTime() || 0
     if (Date.now() - sentAt < env.AUTH_OTP_RESEND_SECONDS * 1000) return false
-    return this.issueOtp(user, 'email-verification')
+    void this.issueOtp(user, 'email-verification').catch((error) => logger.error({ err: error }, 'Could not issue verification OTP'))
+    return true
   },
 
   async requestPasswordReset(email) {
@@ -98,7 +107,8 @@ export const authService = {
     if (!user) return false
     const sentAt = user.passwordResetSentAt?.getTime() || 0
     if (Date.now() - sentAt < env.AUTH_OTP_RESEND_SECONDS * 1000) return false
-    return this.issueOtp(user, 'password-reset')
+    void this.issueOtp(user, 'password-reset').catch((error) => logger.error({ err: error }, 'Could not issue password reset OTP'))
+    return true
   },
 
   async resetPassword({ email, code, password }) {

@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto'
 import { AccessRestriction } from '../models/AccessRestriction.js'
 import { conflict, notFound } from '../utils/AppError.js'
 
-const hash = (value) => createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
+// Guarded against undefined/empty input: req.ip can be undefined if TRUST_PROXY is ever
+// misconfigured behind a host's proxy, and this used to throw (value.trim() on undefined),
+// turning every /api/v1/* request into a 500. An empty value still hashes safely; it just
+// means "no IP could be determined" shares one bucket, which is a fine degraded fallback
+// as long as TRUST_PROXY is set correctly in normal operation.
+const hash = (value) => createHash('sha256').update(String(value || '').trim().toLowerCase()).digest('hex')
 
 function hint(type, value) {
   if (type === 'ip') {

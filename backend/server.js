@@ -6,9 +6,9 @@ import { storageService } from './src/services/storage/index.js'
 import { logger } from './src/utils/logger.js'
 
 /**
- * Startup work (DB, storage, admin bootstrap). The promise is cached so warm serverless
- * instances and concurrent requests share one run, but a FAILED run is forgotten so the
- * next request retries instead of being stuck with the same rejected promise forever.
+ * Startup work (DB, storage, admin bootstrap). The promise is cached so warm instances and
+ * concurrent requests share one run, but a FAILED run is forgotten so the next request
+ * retries instead of being stuck with the same rejected promise forever.
  */
 let initPromise = null
 function initServices() {
@@ -26,9 +26,9 @@ function initServices() {
 }
 
 /**
- * When init fails the Express app (and its cors middleware) never runs, so the browser would
- * report a misleading "CORS header missing". Send the CORS headers ourselves so the real
- * error is visible to the frontend and in the Network tab.
+ * When init fails, app.js (and its cors middleware) never runs, so the browser would report
+ * a misleading "CORS header missing" instead of the real error. Send the CORS headers
+ * ourselves so the frontend and the Network tab show the actual failure.
  */
 function sendInitFailure(req, res, error) {
   const origin = req.headers.origin
@@ -38,16 +38,14 @@ function sendInitFailure(req, res, error) {
     res.setHeader('Vary', 'Origin')
   }
   const body = { error: { code: 'SERVICE_UNAVAILABLE', message: 'The service is starting up or misconfigured. Try again shortly.' } }
-  // Opt-in only (set DEBUG_INIT_ERRORS=true in Vercel while debugging, then remove it).
+  // Opt-in only: set DEBUG_INIT_ERRORS=true while debugging, then remove it.
   if (process.env.DEBUG_INIT_ERRORS === 'true') body.error.detail = error?.message
   res.status(503).json(body)
 }
 
-// Vercel calls this exported function directly for every request.
+// Vercel would call this exported function directly for every request; harmless if unused.
 async function handler(req, res) {
-  // Preflight needs no database, so answer it through the app without waiting on init.
   if (req.method === 'OPTIONS') return app(req, res)
-
   try {
     await initServices()
   } catch (error) {
@@ -57,17 +55,16 @@ async function handler(req, res) {
   return app(req, res)
 }
 
-// Run app.listen only when running locally (not on Vercel serverless)
+// Railway / any normal host: listen on a port like a regular Node server.
 if (!process.env.VERCEL) {
   initServices()
     .then(() => {
       app.listen(env.PORT, () => logger.info(`API listening on http://localhost:${env.PORT}`))
     })
     .catch((error) => {
-      logger.fatal({ err: error }, 'Failed to start local server')
+      logger.fatal({ err: error }, 'Failed to start server')
       process.exit(1)
     })
 }
 
-// CRITICAL FOR VERCEL: Export the Express app instance
 export default handler
