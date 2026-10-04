@@ -17,9 +17,10 @@ router.get('/', optionalAuthenticate, videoController.list)
 router.get('/:id', optionalAuthenticate, validate({ params: idParams }), videoController.get)
 router.get('/:id/poster', optionalAuthenticate, validate({ params: idParams }), videoController.poster)
 
-// Published video files are public reference media; unpublished/admin media still requires visibility checks in the service.
+// Published video files are public reference media; unpublished/admin media still requires
+// visibility checks in the service, which optionalAuthenticate + findVisible() already cover
+// for both anonymous and logged-in requesters, so a single route handles every case.
 router.get('/:id/file', optionalAuthenticate, validate({ params: idParams }), videoController.file)
-router.get('/:id/file', authenticate, validate({ params: idParams }), videoController.file)
 
 // Order matters: log in, check role, then accept the upload, then validate the text fields that came with it.
 router.post('/', ...adminOnly, uploadLimiter, videoUpload, validate({ body: createVideoSchema }), videoController.create)

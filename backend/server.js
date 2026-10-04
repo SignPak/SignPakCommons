@@ -1,32 +1,26 @@
 import app from './src/app.js'
-import { connectDb, disconnectDb } from './src/config/db.js'
 import { env } from './src/config/env.js'
-import { authService } from './src/services/authService.js'
-import { storageService } from './src/services/storage/index.js'
+import { initServices } from './src/services/initialization.js'
 import { logger } from './src/utils/logger.js'
 
-async function start() {
-  await connectDb()
-  await storageService.init()
-  await authService.ensureAdminFromEnv()
-
-  const server = app.listen(env.PORT, () => logger.info(`API listening on http://localhost:${env.PORT}`))
-
-  let closing = false
-  const shutdown = async (signal) => {
-    if (closing) return
-    closing = true
-    logger.info({ signal }, 'Shutting down')
-    server.close(async () => {
-      await disconnectDb()
-      process.exit(0)
-    })
-    setTimeout(() => process.exit(1), 10_000).unref() // do not hang forever on open connections
-  }
-  process.on('SIGINT', () => shutdown('SIGINT'))
-  process.on('SIGTERM', () => shutdown('SIGTERM'))
+// Vercel serverless handler export
+async function handler(req, res) {
+  return app(req, res)
 }
 
-process.on('unhandledRejection', (reason) => { logger.fatal({ err: reason }, 'Unhandled rejection'); process.exit(1) })
+// Standalone execution (Railway / Docker / Local Node)
+// Ignore process.env.VERCEL if running via direct `node server.js` command
+const PORT = env.PORT || process.env.PORT || 5000
 
-start().catch((error) => { logger.fatal({ err: error }, 'Failed to start'); process.exit(1) })
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`==================================================`)
+  console.log(`API SERVER LISTENING ON http://0.0.0.0:${PORT}`)
+  console.log(`==================================================`)
+})
+
+// Trigger background initialization immediately after port binding
+initServices().catch((error) => {
+  console.error('[BOOT ERROR] Service initialization failed on boot:', error.message)
+})
+
+export default handler
