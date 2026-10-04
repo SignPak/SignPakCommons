@@ -10,6 +10,7 @@ import { env } from './config/env.js'
 import { openapi } from './docs/openapi.js'
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js'
 import { enforceAccessRestrictions } from './middlewares/enforceAccessRestrictions.js'
+import { ensureServicesInitialized } from './services/initialization.js'
 import { apiLimiter } from './middlewares/rateLimiter.js'
 import { verifyOrigin } from './middlewares/verifyOrigin.js'
 import routes from './routes/index.js'
@@ -20,6 +21,8 @@ const app = express()
 
 app.disable('x-powered-by')
 if (env.TRUST_PROXY) app.set('trust proxy', 1) // needed behind nginx/Render/Railway so rate limits see real IPs
+
+app.use(ensureServicesInitialized)
 
 // Request logging with an id that is also sent back, so a support report can be matched to a log line.
 app.use(pinoHttp({
