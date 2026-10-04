@@ -26,45 +26,57 @@ function initServices() {
 }
 
 /**
- * When init fails, app.js (and its cors middleware) never runs, so the browser would report
- * a misleading "CORS header missing" instead of the real error. Send the CORS headers
- * ourselves so the frontend and the Network tab show the actual failure.
+ * When init fails, send CORS headers and a 503 response instead of a proxy 502.
  */
 function sendInitFailure(req, res, error) {
   const origin = req.headers.origin
-  if (origin && env.clientOrigins.includes(origin)) {
+  if (origin && env.clientOrigins?.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Vary', 'Origin')
   }
-  const body = { error: { code: 'SERVICE_UNAVAILABLE', message: 'The service is starting up or misconfigured. Try again shortly.' } }
-  // Opt-in only: set DEBUG_INIT_ERRORS=true while debugging, then remove it.
-  if (process.env.DEBUG_INIT_ERRORS === 'true') body.error.detail = error?.message
+  const body = { 
+    error: { 
+      code: 'SERVICE_UNAVAILABLE', 
+      message: 'The service is starting up or misconfigured. Try again shortly.' 
+    } 
+  }
+  // Set DEBUG_INIT_ERRORS=true in Railway variables to see full error messages in HTTP responses
+  if (process.env.DEBUG_INIT_ERRORS === 'true') {
+    body.error.detail = error?.message
+  }
   res.status(503).json(body)
 }
 
-// Vercel would call this exported function directly for every request; harmless if unused.
-async function handler(req, res) {
-  if (req.method === 'OPTIONS') return app(req, res)
+// 1. Guard all routes with initServices() middleware
+app.use(async (req, res, next) => {
+  if (req.method === 'OPTIONS') return next()
   try {
     await initServices()
+    next()
   } catch (error) {
     logger.fatal({ err: error }, 'Failed to initialize services')
     return sendInitFailure(req, res, error)
   }
+})
+
+// Vercel serverless handler export
+async function handler(req, res) {
   return app(req, res)
 }
 
-// Railway / any normal host: listen on a port like a regular Node server.
+// 2. Railway / standalone host: Start app.listen IMMEDIATELY so port 5000 is open right away
 if (!process.env.VERCEL) {
-  initServices()
-    .then(() => {
-      app.listen(env.PORT, () => logger.info(`API listening on http://localhost:${env.PORT}`))
-    })
-    .catch((error) => {
-      logger.fatal({ err: error }, 'Failed to start server')
-      process.exit(1)
-    })
+  const PORT = env.PORT || process.env.PORT || 5000
+
+  app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`API listening on http://0.0.0.0:${PORT}`)
+  })
+
+  // Start initialization in background on container boot
+  initServices().catch((error) => {
+    logger.fatal({ err: error }, 'Background initialization failed on boot')
+  })
 }
 
 export default handler
