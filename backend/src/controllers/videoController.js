@@ -12,14 +12,7 @@ export const videoController = {
       const result = await videoService.create(req.user, req.body, req.files)
       return created(res, result)
     } catch (err) {
-      console.error('================ VIDEO CREATE FAILURE ================')
-      console.error('Timestamp:', new Date().toISOString())
-      console.error('Error Name:', err?.name)
-      console.error('Error Message:', err?.message)
-      console.error('Status/Code:', err?.status || err?.statusCode || err?.code)
-      if (err?.cause) console.error('Error Cause:', err.cause)
-      console.error('Stack Trace:', err?.stack)
-      console.error('======================================================')
+      console.error('UPLOAD ERROR:', err.message, err.status, err.stack)
       throw err // Re-throws to express global error handler
     }
   }),
