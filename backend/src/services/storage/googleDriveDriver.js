@@ -127,6 +127,7 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
     const uploadUrl = session.headers.get('Location')
     if (!uploadUrl) throw new Error('Google Drive upload session is missing the upload URL.')
 
+    // Calculate the exact byte range expected by Google Drive
     const contentRange = fileSize > 0 ? `bytes 0-${fileSize - 1}/${fileSize}` : 'bytes */0'
 
     const finalResponse = await fetch(uploadUrl, {
@@ -135,7 +136,7 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
       headers: {
         'Content-Type': safeMime,
         'Content-Length': String(fileSize),
-        'Content-Range': contentRange,
+        'Content-Range': contentRange, 
       },
       body: createReadStream(tempPath),
     })
