@@ -122,6 +122,7 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
 
     const finalResponse = await fetch(uploadUrl, {
       method: 'PUT',
+      duplex: 'half',
       headers: {
         'Content-Type': mimeType,
         'Content-Length': String(fileSize),
