@@ -8,8 +8,53 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder'
 
 const escapeQueryValue = (value) => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
 
-export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId }) {
-  const credentials = JSON.parse(serviceAccountJson)
+/**
+ * Safely parses service account credentials from raw strings or env vars.
+ * Handles double-escaped strings, trailing quotes, and formatted newlines.
+ */
+function parseCredentials(raw) {
+  if (!raw) return null
+  if (typeof raw === 'object') return raw
+
+  let cleaned = String(raw).trim()
+
+  // Strip wrapping outer quotes if passed from stringified env configs
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1)
+  }
+
+  let credentials
+  try {
+    credentials = JSON.parse(cleaned)
+    // Handle double-encoded JSON strings
+    if (typeof credentials === 'string') {
+      credentials = JSON.parse(credentials)
+    }
+  } catch (err) {
+    throw new Error(`Failed to parse Service Account JSON: ${err.message}`)
+  }
+
+  // Fix escaped line breaks in private_key for OpenSSL compatibility
+  if (credentials?.private_key) {
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n')
+  }
+
+  return credentials
+}
+
+export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driverName = 'gdrive' }) {
+  const credentials = parseCredentials(serviceAccountJson)
+  
+  if (!credentials) {
+    throw new Error(`[${driverName}] Missing valid service account credentials.`)
+  }
+  if (!rootFolderId) {
+    throw new Error(`[${driverName}] Missing rootFolderId.`)
+  }
+
   const auth = new google.auth.GoogleAuth({ credentials, scopes: [DRIVE_SCOPE] })
   const drive = google.drive({ version: 'v3', auth })
   const folderIds = new Map()
@@ -96,7 +141,7 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId }) {
   }
 
   return {
-    name: 'gdrive',
+    name: driverName,
     tempDir: null,
 
     async init() {
