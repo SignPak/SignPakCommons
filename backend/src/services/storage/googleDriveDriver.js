@@ -66,9 +66,13 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
   }
 
   async function folderIdFor(folderPath) {
+    if (!folderPath) return rootFolderId
+
     let parentId = rootFolderId
     let cacheKey = ''
-    for (const name of folderPath.split('/').filter(Boolean)) {
+    const segments = String(folderPath).split('/').filter(Boolean)
+
+    for (const name of segments) {
       cacheKey = `${cacheKey}/${name}`
       if (folderIds.has(cacheKey)) {
         parentId = folderIds.get(cacheKey)
@@ -80,6 +84,7 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
         pageSize: 1,
         spaces: 'drive',
         supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
       })
       let id = listed.data.files?.[0]?.id
       if (!id) {
@@ -98,15 +103,17 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
 
   async function uploadWithResumableSession({ tempPath, parentId, fileName, mimeType, ext }) {
     const fileSize = (await fs.promises.stat(tempPath)).size
+    const safeMime = mimeType || 'video/mp4'
     const suffix = ext ? (ext.startsWith('.') ? ext : `.${ext}`) : ''
-    const metadata = { name: fileName || `${randomUUID()}${suffix}`, parents: [parentId], mimeType }
+    const metadata = { name: fileName || `${randomUUID()}${suffix}`, parents: [parentId], mimeType: safeMime }
     const token = await accessToken()
+
     const session = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json; charset=UTF-8',
-        'X-Upload-Content-Type': mimeType,
+        'X-Upload-Content-Type': safeMime,
         'X-Upload-Content-Length': String(fileSize),
       },
       body: JSON.stringify(metadata),
@@ -120,12 +127,15 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
     const uploadUrl = session.headers.get('Location')
     if (!uploadUrl) throw new Error('Google Drive upload session is missing the upload URL.')
 
+    const contentRange = fileSize > 0 ? `bytes 0-${fileSize - 1}/${fileSize}` : 'bytes */0'
+
     const finalResponse = await fetch(uploadUrl, {
       method: 'PUT',
       duplex: 'half',
       headers: {
-        'Content-Type': mimeType,
+        'Content-Type': safeMime,
         'Content-Length': String(fileSize),
+        'Content-Range': contentRange,
       },
       body: createReadStream(tempPath),
     })
