@@ -11,6 +11,7 @@ export default function AdminDemoVideo() {
   const [current, setCurrent] = useState(null)
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [previewFailed, setPreviewFailed] = useState(false)
   const [title, setTitle] = useState('')
   const [durationSec, setDurationSec] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -37,6 +38,7 @@ export default function AdminDemoVideo() {
     if (!selected) {
       setFile(null)
       setPreviewUrl('')
+      setPreviewFailed(false)
       return
     }
     if (!selected.type.startsWith('video/')) {
@@ -46,6 +48,7 @@ export default function AdminDemoVideo() {
       return
     }
     setFile(selected)
+    setPreviewFailed(false)
     setPreviewUrl(URL.createObjectURL(selected))
     setTitle(titleFromFile(selected.name))
     setDurationSec((await inspectVideoFile(selected)).durationSec)
@@ -61,6 +64,7 @@ export default function AdminDemoVideo() {
       setCurrent(saved)
       setFile(null)
       setPreviewUrl('')
+      setPreviewFailed(false)
       setMessage({ tone: 'success', text: 'Demo video uploaded and live on the public demo page.' })
     } catch (error) {
       setMessage({ tone: 'error', text: error.message || 'The demo video could not be uploaded.' })
@@ -102,7 +106,9 @@ export default function AdminDemoVideo() {
     <form className="upload" onSubmit={upload} noValidate>
       <div className="upload-drop">
         {previewUrl
-          ? <video src={previewUrl} controls playsInline className="upload-preview" aria-label="Preview of the selected demo video" />
+          ? previewFailed
+            ? <Alert tone="info">Firefox could not preview this file. You can still upload it; playback depends on its video format and codec.</Alert>
+            : <video src={previewUrl} controls playsInline onError={() => setPreviewFailed(true)} className="upload-preview" aria-label="Preview of the selected demo video" />
           : <label className="upload-pick"><span className="display display-sm">Choose a video</span><span>MP4, WebM or MOV from this device.</span><input type="file" accept="video/*" className="sr-only" onChange={pick} /></label>}
         {file && <p className="upload-file"><b>{file.name}</b> · {formatBytes(file.size)} · {formatTime(durationSec)} <label className="link-accent">Change<input type="file" accept="video/*" className="sr-only" onChange={pick} /></label></p>}
       </div>

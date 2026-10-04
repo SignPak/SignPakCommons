@@ -76,6 +76,7 @@ function UploadPanel() {
   const { categories, addVideo } = useLibrary()
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [previewFailed, setPreviewFailed] = useState(false)
   const [meta, setMeta] = useState({ durationSec: 0, poster: '' })
   const [form, setForm] = useState({ title: '', categoryId: '', status: 'published' })
   const [busy, setBusy] = useState(false)
@@ -86,13 +87,14 @@ function UploadPanel() {
     const chosen = event.target.files?.[0]
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setMessage(null)
-    if (!chosen) { setFile(null); setPreviewUrl(''); return }
+    if (!chosen) { setFile(null); setPreviewUrl(''); setPreviewFailed(false); return }
     if (!chosen.type.startsWith('video/')) {
-      setFile(null); setPreviewUrl('')
+      setFile(null); setPreviewUrl(''); setPreviewFailed(false)
       setMessage({ tone: 'error', text: 'Choose a video file (MP4, WebM or MOV).' })
       return
     }
     setFile(chosen)
+    setPreviewFailed(false)
     setPreviewUrl(URL.createObjectURL(chosen))
     setForm((current) => ({ ...current, title: current.title || titleFromFile(chosen.name) }))
     setMeta(await inspectVideoFile(chosen))
@@ -107,7 +109,7 @@ function UploadPanel() {
       await addVideo({ file, ...form, ...meta })
       setMessage({ tone: 'success', text: `“${form.title.trim()}” uploaded${form.status === 'published' && form.categoryId ? ' and live for contributors.' : '. Assign a category and publish it to make it visible.'}` })
       URL.revokeObjectURL(previewUrl)
-      setFile(null); setPreviewUrl(''); setForm({ title: '', categoryId: '', status: 'published' })
+      setFile(null); setPreviewUrl(''); setPreviewFailed(false); setForm({ title: '', categoryId: '', status: 'published' })
     } catch (error) {
       setMessage({ tone: 'error', text: error?.message || 'The upload failed. Check that your browser has storage space and try again.' })
     } finally { setBusy(false) }
@@ -118,7 +120,9 @@ function UploadPanel() {
     <form className="upload" onSubmit={submit} noValidate>
       <div className="upload-drop">
         {previewUrl
-          ? <video src={previewUrl} controls playsInline className="upload-preview" aria-label="Preview of the selected video" />
+          ? previewFailed
+            ? <Alert tone="info">Firefox could not preview this file. You can still upload it; playback depends on its video format and codec.</Alert>
+            : <video src={previewUrl} controls playsInline onError={() => setPreviewFailed(true)} className="upload-preview" aria-label="Preview of the selected video" />
           : <label className="upload-pick"><span className="display display-sm">Choose a video</span><span>MP4, WebM or MOV from this device.</span><input type="file" accept="video/*" className="sr-only" onChange={pick} /></label>}
         {file && <p className="upload-file"><b>{file.name}</b> · {formatBytes(file.size)} · {formatTime(meta.durationSec)} <label className="link-accent">Change<input type="file" accept="video/*" className="sr-only" onChange={pick} /></label></p>}
       </div>
@@ -171,7 +175,7 @@ function VideoRow({ video, videos, categories, selected, onToggleSelect }) {
         <button type="button" className="is-danger" onClick={() => setMode('delete')}>Delete</button>
       </div>
     </div>
-    {mode === 'preview' && (video.videoUrl ? <video src={video.videoUrl} controls playsInline className="video-row-preview" aria-label={`Preview of ${video.title}`} /> : <Alert tone="error">This video's file is missing from this browser.</Alert>)}
+    {mode === 'preview' && (video.videoUrl ? <video src={video.videoUrl} crossOrigin="use-credentials" controls playsInline className="video-row-preview" aria-label={`Preview of ${video.title}`} /> : <Alert tone="error">This video's file is missing from this browser.</Alert>)}
     {mode === 'edit' && <div className="video-row-edit">
       <Field label="Title" name="title" value={draft.title} onChange={change} />
       <Field as="select" label="Category" name="categoryId" value={draft.categoryId} onChange={change}><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Field>
