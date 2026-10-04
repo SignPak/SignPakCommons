@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { env } from '../../config/env.js'
+import { AppError } from '../../utils/AppError.js'
 import { logger } from '../../utils/logger.js'
 import { createGoogleDriveDriver } from './googleDriveDriver.js'
 import { createLocalDriver } from './localDriver.js'
@@ -61,6 +62,19 @@ const defaultDriver = () => driverFor(env.STORAGE_DRIVER)
 const archiveDriverName = () =>
   env.ARCHIVE_STORAGE_DRIVER === 'gdrive' ? 'gdrive-archive' : env.ARCHIVE_STORAGE_DRIVER
 
+const throwStorageError = (err, action) => {
+  logger.error(
+    {
+      err,
+      action,
+      googleStatus: err?.code ?? err?.response?.status,
+      googleBody: err?.response?.data ?? err?.errors,
+    },
+    'Storage operation failed'
+  )
+  throw new AppError(502, 'STORAGE_ERROR', 'The video could not be stored. Try again later.')
+}
+
 export const storageService = {
   tempDir: localDriver.tempDir,
 
@@ -69,40 +83,52 @@ export const storageService = {
   /** Saves standard upload files to the primary storage driver. */
   async save({ tempPath, originalName = '', mimeType, ext }, { folder }) {
     const driver = defaultDriver()
-    const { key } = await driver.save({ tempPath, ext, folder, mimeType })
-    const { size } = await driver.stat(key)
-    return {
-      driver: driver.name,
-      key,
-      mimeType,
-      size,
-      originalName: originalName.slice(0, 200),
+    try {
+      const { key } = await driver.save({ tempPath, ext, folder, mimeType })
+      const { size } = await driver.stat(key)
+      return {
+        driver: driver.name,
+        key,
+        mimeType,
+        size,
+        originalName: originalName.slice(0, 200),
+      }
+    } catch (err) {
+      throwStorageError(err, 'save')
     }
   },
 
   /** Saves archive recordings to the dedicated archive storage driver. */
   async archive({ tempPath, originalName = '', mimeType, ext, folder, fileName }) {
     const driver = driverFor(archiveDriverName())
-    const { size } = await fs.stat(tempPath)
-    const { key } = await driver.save({ tempPath, ext, folder, fileName, mimeType })
-    return {
-      driver: driver.name,
-      key,
-      mimeType,
-      size,
-      originalName: originalName.slice(0, 200),
-      archivePath: `${folder}/${fileName || key}`,
+    try {
+      const { size } = await fs.stat(tempPath)
+      const { key } = await driver.save({ tempPath, ext, folder, fileName, mimeType })
+      return {
+        driver: driver.name,
+        key,
+        mimeType,
+        size,
+        originalName: originalName.slice(0, 200),
+        archivePath: `${folder}/${fileName || key}`,
+      }
+    } catch (err) {
+      throwStorageError(err, 'save')
     }
   },
 
   /** Returns readable file stream descriptor by looking up stored driver name. */
   async describe(ref) {
     const driver = driverFor(ref.driver)
-    const { size } = await driver.stat(ref.key)
-    return {
-      size,
-      mimeType: ref.mimeType,
-      createReadStream: (range) => driver.createReadStream(ref.key, range),
+    try {
+      const { size } = await driver.stat(ref.key)
+      return {
+        size,
+        mimeType: ref.mimeType,
+        createReadStream: (range) => driver.createReadStream(ref.key, range),
+      }
+    } catch (err) {
+      throwStorageError(err, 'stat')
     }
   },
 
@@ -111,8 +137,8 @@ export const storageService = {
     if (!ref) return
     try {
       await driverFor(ref.driver).remove(ref.key)
-    } catch (error) {
-      logger.error({ err: error, key: ref.key }, 'Could not delete stored file')
+    } catch (err) {
+      throwStorageError(err, 'remove')
     }
   },
 }

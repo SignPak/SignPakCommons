@@ -32,8 +32,7 @@ app.use(pinoHttp({
   customLogLevel: (req, res, error) => (error || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),
 }))
 
-// same-site lets the app on localhost:5173 load videos and posters from the API on localhost:5000.
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }))
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 app.use(cors({ origin: env.clientOrigins, credentials: true }))
 app.use(compression())
 app.use(express.json({ limit: '100kb' }))

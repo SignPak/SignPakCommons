@@ -1,7 +1,7 @@
-import fs from 'node:fs'
 import { createReadStream } from 'node:fs'
 import { google } from 'googleapis'
 import { randomUUID } from 'node:crypto'
+import { logger } from '../../utils/logger.js'
 
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
@@ -59,12 +59,6 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
   const drive = google.drive({ version: 'v3', auth })
   const folderIds = new Map()
 
-  async function accessToken() {
-    const client = await auth.getClient()
-    const token = await client.getAccessToken()
-    return token.token
-  }
-
   async function folderIdFor(folderPath) {
     if (!folderPath) return rootFolderId
 
@@ -102,53 +96,43 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
   }
 
   async function uploadWithResumableSession({ tempPath, parentId, fileName, mimeType, ext }) {
-    const fileSize = (await fs.promises.stat(tempPath)).size
     const safeMime = mimeType || 'video/mp4'
     const suffix = ext ? (ext.startsWith('.') ? ext : `.${ext}`) : ''
-    const metadata = { name: fileName || `${randomUUID()}${suffix}`, parents: [parentId], mimeType: safeMime }
-    const token = await accessToken()
+    const uploadName = fileName || `${randomUUID()}${suffix}`
 
-    const session = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json; charset=UTF-8',
-        'X-Upload-Content-Type': safeMime,
-        'X-Upload-Content-Length': String(fileSize),
-      },
-      body: JSON.stringify(metadata),
-    })
-
-    if (!session.ok) {
-      const text = await session.text()
-      throw new Error(`Google Drive upload session creation failed (${session.status}): ${text}`)
+    let res
+    try {
+      res = await drive.files.create({
+        requestBody: { name: uploadName, parents: [parentId], mimeType: safeMime },
+        media: { mimeType: safeMime, body: createReadStream(tempPath) },
+        fields: 'id',
+        supportsAllDrives: true,
+      })
+    } catch (err) {
+      const responseText =
+        typeof err?.response?.data === 'string'
+          ? err.response.data
+          : JSON.stringify(err?.response?.data ?? err?.errors ?? err?.message ?? {})
+      logger.error(
+        {
+          err,
+          googleStatus: err?.code ?? err?.response?.status,
+          googleBody: err?.response?.data ?? err?.errors,
+          responseText,
+        },
+        'Google Drive upload session creation failed'
+      )
+      throw new Error(
+        `Google Drive upload session creation failed (${err?.code ?? err?.response?.status ?? 'unknown'}): ${responseText}`
+      )
     }
 
-    const uploadUrl = session.headers.get('Location')
-    if (!uploadUrl) throw new Error('Google Drive upload session is missing the upload URL.')
-
-    // Calculate the exact byte range expected by Google Drive
-    const contentRange = fileSize > 0 ? `bytes 0-${fileSize - 1}/${fileSize}` : 'bytes */0'
-
-    const finalResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      duplex: 'half',
-      headers: {
-        'Content-Type': safeMime,
-        'Content-Length': String(fileSize),
-        'Content-Range': contentRange, 
-      },
-      body: createReadStream(tempPath),
-    })
-
-    if (!finalResponse.ok) {
-      const text = await finalResponse.text()
-      throw new Error(`Google Drive single-request upload failed (${finalResponse.status}): ${text}`)
+    const key = res.data.id
+    if (!key) {
+      const responseText = 'Google Drive upload succeeded but no file id was returned.'
+      logger.error({ responseText }, 'Google Drive single-request upload failed')
+      throw new Error(`Google Drive single-request upload failed: ${responseText}`)
     }
-
-    const json = await finalResponse.json().catch(() => ({}))
-    const key = json.id || json.fileId
-    if (!key) throw new Error('Google Drive upload succeeded but no file id was returned.')
     return { key }
   }
 
