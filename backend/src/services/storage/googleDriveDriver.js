@@ -45,17 +45,18 @@ function parseCredentials(raw) {
   return credentials
 }
 
-export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driverName = 'gdrive' }) {
-  const credentials = parseCredentials(serviceAccountJson)
-  
-  if (!credentials) {
-    throw new Error(`[${driverName}] Missing valid service account credentials.`)
-  }
-  if (!rootFolderId) {
-    throw new Error(`[${driverName}] Missing rootFolderId.`)
-  }
+export function createGoogleDriveDriver({ serviceAccountJson, oauth, rootFolderId, driverName = 'gdrive' }) {
+  if (!rootFolderId) throw new Error(`[${driverName}] Missing rootFolderId.`)
 
-  const auth = new google.auth.GoogleAuth({ credentials, scopes: [DRIVE_SCOPE] })
+  let auth
+  if (oauth?.clientId && oauth?.clientSecret && oauth?.refreshToken) {
+    auth = new google.auth.OAuth2(oauth.clientId, oauth.clientSecret)
+    auth.setCredentials({ refresh_token: oauth.refreshToken })
+  } else {
+    const credentials = parseCredentials(serviceAccountJson)
+    if (!credentials) throw new Error(`[${driverName}] Missing Google credentials.`)
+    auth = new google.auth.GoogleAuth({ credentials, scopes: [DRIVE_SCOPE] })
+  }
   const drive = google.drive({ version: 'v3', auth })
   const folderIds = new Map()
 

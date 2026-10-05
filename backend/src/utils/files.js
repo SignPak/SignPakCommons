@@ -3,6 +3,9 @@ import fs from 'node:fs/promises'
 /** Best-effort delete; a missing file is fine. */
 export const removeQuietly = async (path) => { if (path) await fs.unlink(path).catch(() => {}) }
 
+export const safeName = (value, fallback = 'Untitled') =>
+  String(value ?? '').replace(/[\\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || fallback
+
 async function readHead(path, length = 16) {
   const handle = await fs.open(path, 'r')
   try {

@@ -31,5 +31,6 @@ react-snap-routes.json
 *.njsproj
 *.sln
 *.sw?
+*.tmp
 
 %SystemDrive%/

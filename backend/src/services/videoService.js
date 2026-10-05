@@ -2,7 +2,7 @@ import { POSTER_MAX_BYTES, ROLES, VIDEO_STATUS } from '../config/constants.js'
 import { categoryRepo } from '../repositories/categoryRepo.js'
 import { videoRepo } from '../repositories/videoRepo.js'
 import { notFound, validationError } from '../utils/AppError.js'
-import { sniffImage, sniffVideo } from '../utils/files.js'
+import { safeName, sniffImage, sniffVideo } from '../utils/files.js'
 import { logger } from '../utils/logger.js'
 import { storageService } from './storage/index.js'
 
@@ -47,15 +47,24 @@ export const videoService = {
       posterKind = await sniffImage(posterUpload.path)
       if (!posterKind) throw validationError({ poster: 'The poster must be a JPEG, PNG or WebP image.' })
     }
-    await assertCategoryExists(input.categoryId)
+    const category = input.categoryId ? await categoryRepo.findById(input.categoryId) : null
+    if (input.categoryId && !category) throw validationError({ categoryId: 'That category does not exist.' })
+    const folder = `videos/${safeName(category?.label, 'Unassigned')}`
+    const base = safeName(input.title)
 
     const stored = []
     try {
-      const videoFile = await storageService.save({ tempPath: upload.path, originalName: upload.originalname, mimeType: videoKind.mimeType, ext: videoKind.ext }, { folder: 'videos' })
+      const videoFile = await storageService.save(
+        { tempPath: upload.path, originalName: upload.originalname, mimeType: videoKind.mimeType, ext: videoKind.ext },
+        { folder, fileName: `${base}${videoKind.ext}` },
+      )
       stored.push(videoFile)
       let posterFile = null
       if (posterUpload) {
-        posterFile = await storageService.save({ tempPath: posterUpload.path, originalName: posterUpload.originalname, mimeType: posterKind.mimeType, ext: posterKind.ext }, { folder: 'posters' })
+        posterFile = await storageService.save(
+          { tempPath: posterUpload.path, originalName: posterUpload.originalname, mimeType: posterKind.mimeType, ext: posterKind.ext },
+          { folder, fileName: `${base} (poster)${posterKind.ext}` },
+        )
         stored.push(posterFile)
       }
       const order = input.categoryId ? (await videoRepo.maxOrder(input.categoryId)) + 1 : 1

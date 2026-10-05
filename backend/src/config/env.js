@@ -66,11 +66,17 @@ const schema = z.object({
   ARCHIVE_STORAGE_DRIVER: z.enum(['local', 'gdrive']).default('local'),
   UPLOAD_DIR: z.string().default('uploads'),
   GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_OAUTH_REFRESH_TOKEN: z.string().optional(),
   GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
+  GOOGLE_ARCHIVE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_ARCHIVE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_ARCHIVE_OAUTH_REFRESH_TOKEN: z.string().optional(),
   GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   GOOGLE_ARCHIVE_DRIVE_FOLDER_ID: z.string().optional(),
-  MAX_VIDEO_UPLOAD_MB: z.coerce.number().positive().default(300),
-  MAX_RECORDING_UPLOAD_MB: z.coerce.number().positive().default(100),
+  MAX_VIDEO_UPLOAD_MB: z.coerce.number().positive().default(90),
+  MAX_RECORDING_UPLOAD_MB: z.coerce.number().positive().default(80),
 
   RATE_LIMIT_ENABLED: bool.default(true),
   SUBMISSION_COOLDOWN_MS: z.coerce.number().int().positive().default(30_000),
@@ -86,13 +92,61 @@ const schema = z.object({
       context.addIssue({ code: 'custom', path: ['WEB3FORMS_ACCESS_KEY'], message: 'Required in production to deliver contact messages.' })
     }
   }
-  const needsGoogle = data.STORAGE_DRIVER === 'gdrive' || data.ARCHIVE_STORAGE_DRIVER === 'gdrive'
-  if (needsGoogle) {
-    if (!data.GOOGLE_SERVICE_ACCOUNT_JSON) {
-      context.addIssue({ code: 'custom', path: ['GOOGLE_SERVICE_ACCOUNT_JSON'], message: 'Required when STORAGE_DRIVER=gdrive.' })
+  const hasOauth = (clientId, clientSecret, refreshToken) =>
+    Boolean(clientId && clientSecret && refreshToken)
+  const baseOauth = hasOauth(
+    data.GOOGLE_OAUTH_CLIENT_ID,
+    data.GOOGLE_OAUTH_CLIENT_SECRET,
+    data.GOOGLE_OAUTH_REFRESH_TOKEN
+  )
+  const archiveOauth = hasOauth(
+    data.GOOGLE_ARCHIVE_OAUTH_CLIENT_ID,
+    data.GOOGLE_ARCHIVE_OAUTH_CLIENT_SECRET,
+    data.GOOGLE_ARCHIVE_OAUTH_REFRESH_TOKEN
+  )
+  const hasAny = (...values) => values.some(Boolean)
+
+  for (const [prefix, values] of [
+    ['GOOGLE_OAUTH', [
+      data.GOOGLE_OAUTH_CLIENT_ID,
+      data.GOOGLE_OAUTH_CLIENT_SECRET,
+      data.GOOGLE_OAUTH_REFRESH_TOKEN,
+    ]],
+    ['GOOGLE_ARCHIVE_OAUTH', [
+      data.GOOGLE_ARCHIVE_OAUTH_CLIENT_ID,
+      data.GOOGLE_ARCHIVE_OAUTH_CLIENT_SECRET,
+      data.GOOGLE_ARCHIVE_OAUTH_REFRESH_TOKEN,
+    ]],
+  ]) {
+    if (hasAny(...values) && !values.every(Boolean)) {
+      context.addIssue({
+        code: 'custom',
+        path: [`${prefix}_CLIENT_ID`],
+        message: 'Set all three OAuth client ID, client secret, and refresh token variables together.',
+      })
+    }
+  }
+
+  if (data.STORAGE_DRIVER === 'gdrive') {
+    if (!baseOauth && !data.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      context.addIssue({ code: 'custom', path: ['GOOGLE_OAUTH_REFRESH_TOKEN'], message: 'Set the Google OAuth variables or a service-account JSON.' })
     }
     if (!data.GOOGLE_DRIVE_FOLDER_ID) {
       context.addIssue({ code: 'custom', path: ['GOOGLE_DRIVE_FOLDER_ID'], message: 'Required when STORAGE_DRIVER=gdrive.' })
+    }
+  }
+
+  if (data.ARCHIVE_STORAGE_DRIVER === 'gdrive') {
+    const archiveHasCredentials =
+      archiveOauth ||
+      data.GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON ||
+      baseOauth ||
+      data.GOOGLE_SERVICE_ACCOUNT_JSON
+    if (!archiveHasCredentials) {
+      context.addIssue({ code: 'custom', path: ['GOOGLE_ARCHIVE_OAUTH_REFRESH_TOKEN'], message: 'Set the archive Google OAuth variables, shared Google credentials, or an archive service-account JSON.' })
+    }
+    if (!data.GOOGLE_ARCHIVE_DRIVE_FOLDER_ID && !data.GOOGLE_DRIVE_FOLDER_ID) {
+      context.addIssue({ code: 'custom', path: ['GOOGLE_ARCHIVE_DRIVE_FOLDER_ID'], message: 'Required when ARCHIVE_STORAGE_DRIVER=gdrive and no shared Drive folder is configured.' })
     }
   }
 })

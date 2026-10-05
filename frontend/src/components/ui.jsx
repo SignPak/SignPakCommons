@@ -42,7 +42,7 @@ export function ProgressBar({ value, label }) {
 }
 
 export function Avatar({ user, size = 'md' }) {
-  return <span className={`avatar avatar-${size}`} aria-hidden="true">{initialsOf(user)}</span>
+  return <span className={`avatar avatar-${size}`} aria-hidden="true"><span className="avatar-initials">{initialsOf(user)}</span></span>
 }
 
 export function Badge({ tone = 'neutral', children }) {

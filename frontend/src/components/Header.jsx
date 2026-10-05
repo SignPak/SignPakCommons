@@ -25,7 +25,7 @@ export default function Header() {
         <ThemeToggle />
         {user && <NotificationBell />}
         {user
-          ? <><Link to={paths.profile} className="chip-link"><Avatar user={user} size="sm" /></Link></>
+          ? <Link to={paths.profile} className="header-avatar-link" aria-label="Your profile" title="Your profile"><Avatar user={user} size="sm" /></Link>
           : <><ButtonLink variant="ghost" to={paths.login} className="hide-on-mobile">Log in</ButtonLink><ButtonLink to={paths.signup}>Get started <Arrow /></ButtonLink></>}
         <button type="button" className="menu-toggle" aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen(!open)}>{open ? '✕' : '☰'}</button>
       </div>

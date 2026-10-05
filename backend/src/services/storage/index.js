@@ -15,9 +15,24 @@ const localDriver = createLocalDriver(
  * Builds a Google Drive driver instance with a explicit instance name
  * so that primary ('gdrive') and archive ('gdrive-archive') drivers can coexist seamlessly.
  */
-const buildGdrive = (driverName, { serviceAccountJson, rootFolderId }) =>
+const baseOauth = {
+  clientId: env.GOOGLE_OAUTH_CLIENT_ID,
+  clientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+  refreshToken: env.GOOGLE_OAUTH_REFRESH_TOKEN,
+}
+
+const archiveOauth = {
+  clientId: env.GOOGLE_ARCHIVE_OAUTH_CLIENT_ID,
+  clientSecret: env.GOOGLE_ARCHIVE_OAUTH_CLIENT_SECRET,
+  refreshToken: env.GOOGLE_ARCHIVE_OAUTH_REFRESH_TOKEN,
+}
+
+const hasArchiveOauth = Object.values(archiveOauth).every(Boolean)
+
+const buildGdrive = (driverName, { serviceAccountJson, oauth, rootFolderId }) =>
   createGoogleDriveDriver({
     serviceAccountJson,
+    oauth,
     rootFolderId,
     driverName,
   })
@@ -27,6 +42,7 @@ const baseGdrive =
   env.STORAGE_DRIVER === 'gdrive'
     ? buildGdrive('gdrive', {
         serviceAccountJson: env.GOOGLE_SERVICE_ACCOUNT_JSON,
+        oauth: baseOauth,
         rootFolderId: env.GOOGLE_DRIVE_FOLDER_ID,
       })
     : null
@@ -38,6 +54,11 @@ const archiveGdrive =
     ? buildGdrive('gdrive-archive', {
         serviceAccountJson:
           env.GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON || env.GOOGLE_SERVICE_ACCOUNT_JSON,
+        oauth: hasArchiveOauth
+          ? archiveOauth
+          : env.GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON
+            ? null
+            : baseOauth,
         rootFolderId:
           env.GOOGLE_ARCHIVE_DRIVE_FOLDER_ID || env.GOOGLE_DRIVE_FOLDER_ID,
       })
@@ -81,10 +102,10 @@ export const storageService = {
   init: () => Promise.all(Object.values(drivers).map((driver) => driver.init?.())),
 
   /** Saves standard upload files to the primary storage driver. */
-  async save({ tempPath, originalName = '', mimeType, ext }, { folder }) {
+  async save({ tempPath, originalName = '', mimeType, ext }, { folder, fileName }) {
     const driver = defaultDriver()
     try {
-      const { key } = await driver.save({ tempPath, ext, folder, mimeType })
+      const { key } = await driver.save({ tempPath, ext, folder, fileName, mimeType })
       const { size } = await driver.stat(key)
       return {
         driver: driver.name,
