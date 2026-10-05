@@ -33,7 +33,7 @@ Dependencies only point down. Controllers never touch models; services never see
 
 `src/app.js` builds the app (no port), `server.js` connects and listens, so tests can import `app` directly.
 
-Interactive API documentation is available at `http://localhost:5000/api/v1/docs` when the server is running. The raw OpenAPI document is at `/api/v1/docs.json`. See [docs/API.md](docs/API.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the human-readable reference.
+Interactive API documentation is available at `http://localhost:5000/api/v1/docs` when the server is running. The raw OpenAPI document is at `/api/v1/docs.json`. See [docs/API.md](docs/API.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/TEST-CASES.md](docs/TEST-CASES.md) for the human-readable reference and test case inventory.
 
 ## Responses
 
@@ -95,7 +95,7 @@ Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, 
 
 ## Testing
 
-`npm test` runs the HTTP integration suite for auth, roles, uploads, Range streaming, the cooldown rule, stats, contact quotas, and cleanup of temporary files. Brevo and Web3Forms delivery are stubbed in tests; configure their environment keys to enable real email delivery.
+`npm test` runs each backend test suite from its own `.test.js` file. The HTTP integration suites cover auth, roles, uploads, Range streaming, the cooldown rule, stats, contact quotas, and cleanup of temporary files; focused unit and storage tests cover safe names, video creation, and local storage. See [docs/TEST-CASES.md](docs/TEST-CASES.md) for the per-case inventory. Brevo and Web3Forms delivery are stubbed in tests; configure their environment keys to enable real email delivery.
 
 - Set `MONGODB_URI_TEST` to run against a MongoDB you already have (it uses that database and **drops it**, so point it at a throwaway one).
 - Otherwise it starts `mongodb-memory-server`, which downloads a MongoDB binary on first use.
