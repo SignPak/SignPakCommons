@@ -295,8 +295,9 @@ describe('videos', () => {
     draft = (await admin.upload('/videos', videoForm({ title: 'Secret draft', categoryId: daily.id, status: 'draft' }))).body.data
     const loose = (await admin.upload('/videos', videoForm({ title: 'Unassigned', categoryId: '' }))).body.data
     assert.equal(loose.categoryId, null)
-    assert.equal(filesIn('videos').length, 4)
-    assert.equal(filesIn('posters').length, 1)
+    const storedVideos = filesIn('videos')
+    assert.equal(storedVideos.filter((file) => !file.includes('(poster).')).length, 4)
+    assert.equal(storedVideos.filter((file) => file.includes('(poster).')).length, 1, 'the poster is stored alongside its video')
     assert.deepEqual(filesIn('tmp'), [])
   })
 
