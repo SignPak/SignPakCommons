@@ -30,7 +30,8 @@
   .recorder-video.is-hidden { @apply hidden; }
   .recorder-empty { @apply px-4 text-center; }
   .rec-dot { @apply mr-1 text-danger; }
-  .recorder-delete { @apply mx-auto my-4 block rounded-full px-3 py-1 text-sm font-semibold text-muted underline underline-offset-4 hover:text-danger; }
+  .recorder-delete { @apply mx-auto my-4 block rounded-full px-4 py-2 text-sm font-semibold text-danger shadow-soft transition; background-color: var(--danger-soft); }
+  .recorder-delete:hover { background-color: color-mix(in srgb, var(--danger) 14%, var(--danger-soft)); }
   .recorder-save { @apply mt-2; }
   .cooldown .btn-block { @apply mt-6; }
   .cooldown-copy, .cooldown .recorder-copy { @apply mt-4 max-w-xs text-base leading-relaxed text-muted; }
@@ -55,6 +56,7 @@
   .toggle input { @apply h-5 w-5; accent-color: var(--brand); }
   :root[data-theme='dark'] .toggle input { accent-color: var(--color-turquoise); }
   .editor-submit { @apply mt-6; }
+  .trim-confirm { @apply mt-2; }
   .editor-back { @apply mx-auto mt-5 block text-center text-sm font-semibold text-muted underline-offset-4 hover:text-accent-ink hover:underline; }
 
   /* Two overlapping range inputs form the dual-handle trim slider. Only the thumbs take pointer events. */
@@ -71,6 +73,11 @@
   .trim input:focus-visible { outline: none; }
   .trim input:focus-visible::-webkit-slider-thumb { outline: 3px solid var(--focus); outline-offset: 2px; }
   .trim input:focus-visible::-moz-range-thumb { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  @media (max-width: 767px) {
+    .recorder-stage { aspect-ratio: 3 / 4; max-height: min(75svh, 34rem); }
+    .recorder-video { @apply object-contain; }
+  }
 
   /* After submitting */
   .submitted { @apply py-20 sm:py-28; }

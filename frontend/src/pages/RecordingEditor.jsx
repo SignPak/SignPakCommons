@@ -42,6 +42,8 @@ function Editor({ video, recording, onEdit, onSubmit }) {
   const preview = useRef(null)
   const { start, end, mirrored } = recording.edit
   const total = recording.duration
+  const [trimRange, setTrimRange] = useState({ start, end })
+  const [trimApplied, setTrimApplied] = useState(true)
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(start)
   const [confirming, setConfirming] = useState(false)
@@ -55,26 +57,32 @@ function Editor({ video, recording, onEdit, onSubmit }) {
     const fix = () => {
       if (element.duration !== Infinity) return
       element.currentTime = 1e101
-      element.addEventListener('timeupdate', () => { element.currentTime = start }, { once: true })
+      element.addEventListener('timeupdate', () => { element.currentTime = trimRange.start }, { once: true })
     }
     element.addEventListener('loadedmetadata', fix)
     return () => element.removeEventListener('loadedmetadata', fix)
-  }, [recording.url, start])
+  }, [recording.url, trimRange.start])
 
   const togglePlay = () => {
     const element = preview.current
     if (!element.paused) { element.pause(); return }
-    if (element.currentTime < start || element.currentTime >= end - 0.05) element.currentTime = start
+    if (element.currentTime < trimRange.start || element.currentTime >= trimRange.end - 0.05) element.currentTime = trimRange.start
     element.play().catch(() => {})
   }
   const onTimeUpdate = (event) => {
     const element = event.currentTarget
     setTime(element.currentTime)
-    if (!element.paused && element.currentTime >= end) { element.pause(); element.currentTime = end }
+    if (!element.paused && element.currentTime >= trimRange.end) { element.pause(); element.currentTime = trimRange.end }
   }
   const change = (patch) => {
-    onEdit(patch)
-    if (preview.current) preview.current.currentTime = patch.start ?? patch.end ?? 0
+    setTrimRange((current) => ({ ...current, ...patch }))
+    setTrimApplied(false)
+    if (preview.current) preview.current.currentTime = patch.start ?? patch.end ?? trimRange.start
+  }
+  const applyTrim = () => {
+    onEdit(trimRange)
+    setTrimApplied(true)
+    if (preview.current) preview.current.currentTime = trimRange.start
   }
   const submit = async () => {
     setBusy(true)
@@ -93,24 +101,25 @@ function Editor({ video, recording, onEdit, onSubmit }) {
           <video ref={preview} src={recording.url} className={`editor-video ${mirrored ? 'is-mirrored' : ''}`} playsInline onClick={togglePlay}
             onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={onTimeUpdate} aria-label="Preview of your recording" />
           <button type="button" className="editor-play" onClick={togglePlay} aria-label={playing ? 'Pause preview' : 'Play preview'}>{playing ? 'Ⅱ' : '▶'}</button>
-          <span className="editor-time">{formatTime(Math.max(time - start, 0))} / {formatTime(end - start)}</span>
+          <span className="editor-time">{formatTime(Math.max(time - trimRange.start, 0))} / {formatTime(trimRange.end - trimRange.start)}</span>
         </div>
       </div>
 
       <aside className="editor-side">
         <h2 className="editor-side-title display display-sm">Trim video</h2>
         <p className="editor-side-copy">Drag the handles to keep only the part you want. Your preview only plays the selected range.</p>
-        <TrimSlider total={total} start={start} end={end} onChange={change} />
-        <div className="trim-times"><span>Start {formatTime(start)}</span><span>Keeping {formatTime(end - start)}</span><span>End {formatTime(end)}</span></div>
+        <TrimSlider total={total} start={trimRange.start} end={trimRange.end} onChange={change} />
+        <div className="trim-times"><span>Start {formatTime(trimRange.start)}</span><span>Keeping {formatTime(trimRange.end - trimRange.start)}</span><span>End {formatTime(trimRange.end)}</span></div>
+        <Button variant="outline" block className="trim-confirm" onClick={applyTrim} disabled={trimApplied}>{trimApplied ? 'Trim confirmed' : 'Confirm trim'}</Button>
         <label className="toggle"><span>Mirror video</span><input type="checkbox" checked={mirrored} onChange={(event) => onEdit({ mirrored: event.target.checked })} /></label>
 
         {error && <Alert tone="error">{error}</Alert>}
         {confirming
           ? <div className="confirm">
             <p>Submit this recording? Once submitted it can't be watched, edited or deleted, but you can record this video again after a short cooldown.</p>
-            <div className="confirm-actions"><Button onClick={submit} disabled={busy}>{busy ? 'Submitting…' : 'Yes, submit'}</Button><Button variant="outline" onClick={() => setConfirming(false)} disabled={busy}>Keep editing</Button></div>
+            <div className="confirm-actions"><Button onClick={submit} disabled={busy || !trimApplied}>{busy ? 'Submitting…' : 'Yes, submit'}</Button><Button variant="outline" onClick={() => setConfirming(false)} disabled={busy}>Keep editing</Button></div>
           </div>
-          : <Button block className="editor-submit" onClick={() => setConfirming(true)}>Submit recording <Arrow /></Button>}
+          : <Button block className="editor-submit" onClick={() => setConfirming(true)} disabled={!trimApplied}>Submit recording <Arrow /></Button>}
         <Link to={watchUrl(video.id)} className="editor-back">Back to player</Link>
       </aside>
     </section>
