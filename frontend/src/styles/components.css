@@ -61,7 +61,8 @@
   /* ---------- Small pieces ---------- */
   .progress { @apply h-2.5 w-full overflow-hidden rounded-full bg-line; }
   .progress-bar { @apply block h-full rounded-full transition-[width] duration-500; background: var(--progress); }
-  .avatar { @apply grid shrink-0 place-items-center rounded-full bg-secondary-soft font-ui font-bold text-heading; }
+  .avatar { @apply grid shrink-0 place-items-center rounded-full p-[2px] font-ui font-bold; background: linear-gradient(135deg, #feda75, #fa7e1e 28%, #d62976 55%, #962fbf 78%, #4f5bd5); }
+  .avatar-initials { @apply grid h-full w-full place-items-center rounded-full bg-surface text-heading; }
   .avatar-sm { @apply h-10 w-10 text-sm; }
   .avatar-md { @apply h-12 w-12 text-base; }
   .avatar-lg { @apply h-24 w-24 text-3xl; }
@@ -69,6 +70,11 @@
   .badge-neutral { @apply bg-panel text-muted; }
   .badge-success { @apply bg-success-soft text-success; }
   .chip-link { @apply flex items-center gap-3 rounded-full border border-line bg-surface py-1.5 pl-1.5 pr-5 text-sm font-semibold transition hover:border-accent-ink hover:shadow-soft; }
+  .field-password-wrap { @apply relative; }
+  .field-password-input { padding-right: 3.25rem; }
+  .password-visibility-toggle { @apply absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-muted transition hover:bg-panel hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-2; }
+  .password-visibility-toggle svg { @apply h-5 w-5; }
+  .header-avatar-link { @apply grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2; }
 
   .panel { @apply rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8; }
   .panel-outline { @apply bg-transparent shadow-none; }

@@ -2,7 +2,7 @@
 @layer components {
   .faq-head { @apply max-w-2xl py-16 sm:py-24; }
   .faq-body { @apply pb-24; }
-  .faq-list { @apply max-w-3xl border-t border-line; }
+  .faq-list { @apply mx-auto max-w-3xl border-t border-line; }
   .faq-item { @apply border-b border-line py-5; }
   .faq-item summary { @apply flex cursor-pointer list-none items-center justify-between gap-6 font-ui text-lg font-bold text-heading marker:content-none; }
   .faq-item summary::-webkit-details-marker { display: none; }

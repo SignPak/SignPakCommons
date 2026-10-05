@@ -1,7 +1,7 @@
-import fs from 'node:fs'
 import { createReadStream } from 'node:fs'
 import { google } from 'googleapis'
 import { randomUUID } from 'node:crypto'
+import { logger } from '../../utils/logger.js'
 
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
@@ -45,30 +45,29 @@ function parseCredentials(raw) {
   return credentials
 }
 
-export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driverName = 'gdrive' }) {
-  const credentials = parseCredentials(serviceAccountJson)
-  
-  if (!credentials) {
-    throw new Error(`[${driverName}] Missing valid service account credentials.`)
-  }
-  if (!rootFolderId) {
-    throw new Error(`[${driverName}] Missing rootFolderId.`)
-  }
+export function createGoogleDriveDriver({ serviceAccountJson, oauth, rootFolderId, driverName = 'gdrive' }) {
+  if (!rootFolderId) throw new Error(`[${driverName}] Missing rootFolderId.`)
 
-  const auth = new google.auth.GoogleAuth({ credentials, scopes: [DRIVE_SCOPE] })
+  let auth
+  if (oauth?.clientId && oauth?.clientSecret && oauth?.refreshToken) {
+    auth = new google.auth.OAuth2(oauth.clientId, oauth.clientSecret)
+    auth.setCredentials({ refresh_token: oauth.refreshToken })
+  } else {
+    const credentials = parseCredentials(serviceAccountJson)
+    if (!credentials) throw new Error(`[${driverName}] Missing Google credentials.`)
+    auth = new google.auth.GoogleAuth({ credentials, scopes: [DRIVE_SCOPE] })
+  }
   const drive = google.drive({ version: 'v3', auth })
   const folderIds = new Map()
 
-  async function accessToken() {
-    const client = await auth.getClient()
-    const token = await client.getAccessToken()
-    return token.token
-  }
-
   async function folderIdFor(folderPath) {
+    if (!folderPath) return rootFolderId
+
     let parentId = rootFolderId
     let cacheKey = ''
-    for (const name of folderPath.split('/').filter(Boolean)) {
+    const segments = String(folderPath).split('/').filter(Boolean)
+
+    for (const name of segments) {
       cacheKey = `${cacheKey}/${name}`
       if (folderIds.has(cacheKey)) {
         parentId = folderIds.get(cacheKey)
@@ -80,6 +79,7 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
         pageSize: 1,
         spaces: 'drive',
         supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
       })
       let id = listed.data.files?.[0]?.id
       if (!id) {
@@ -97,46 +97,43 @@ export function createGoogleDriveDriver({ serviceAccountJson, rootFolderId, driv
   }
 
   async function uploadWithResumableSession({ tempPath, parentId, fileName, mimeType, ext }) {
-    const fileSize = (await fs.promises.stat(tempPath)).size
+    const safeMime = mimeType || 'video/mp4'
     const suffix = ext ? (ext.startsWith('.') ? ext : `.${ext}`) : ''
-    const metadata = { name: fileName || `${randomUUID()}${suffix}`, parents: [parentId], mimeType }
-    const token = await accessToken()
-    const session = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json; charset=UTF-8',
-        'X-Upload-Content-Type': mimeType,
-        'X-Upload-Content-Length': String(fileSize),
-      },
-      body: JSON.stringify(metadata),
-    })
+    const uploadName = fileName || `${randomUUID()}${suffix}`
 
-    if (!session.ok) {
-      const text = await session.text()
-      throw new Error(`Google Drive upload session creation failed (${session.status}): ${text}`)
+    let res
+    try {
+      res = await drive.files.create({
+        requestBody: { name: uploadName, parents: [parentId], mimeType: safeMime },
+        media: { mimeType: safeMime, body: createReadStream(tempPath) },
+        fields: 'id',
+        supportsAllDrives: true,
+      })
+    } catch (err) {
+      const responseText =
+        typeof err?.response?.data === 'string'
+          ? err.response.data
+          : JSON.stringify(err?.response?.data ?? err?.errors ?? err?.message ?? {})
+      logger.error(
+        {
+          err,
+          googleStatus: err?.code ?? err?.response?.status,
+          googleBody: err?.response?.data ?? err?.errors,
+          responseText,
+        },
+        'Google Drive upload session creation failed'
+      )
+      throw new Error(
+        `Google Drive upload session creation failed (${err?.code ?? err?.response?.status ?? 'unknown'}): ${responseText}`
+      )
     }
 
-    const uploadUrl = session.headers.get('Location')
-    if (!uploadUrl) throw new Error('Google Drive upload session is missing the upload URL.')
-
-    const finalResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': mimeType,
-        'Content-Length': String(fileSize),
-      },
-      body: createReadStream(tempPath),
-    })
-
-    if (!finalResponse.ok) {
-      const text = await finalResponse.text()
-      throw new Error(`Google Drive single-request upload failed (${finalResponse.status}): ${text}`)
+    const key = res.data.id
+    if (!key) {
+      const responseText = 'Google Drive upload succeeded but no file id was returned.'
+      logger.error({ responseText }, 'Google Drive single-request upload failed')
+      throw new Error(`Google Drive single-request upload failed: ${responseText}`)
     }
-
-    const json = await finalResponse.json().catch(() => ({}))
-    const key = json.id || json.fileId
-    if (!key) throw new Error('Google Drive upload succeeded but no file id was returned.')
     return { key }
   }
 

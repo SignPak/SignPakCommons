@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto'
  * STORAGE DRIVER CONTRACT
  * Any driver (local disk now, Google Drive later) implements these four methods and nothing else:
  *
- *   save({ tempPath, ext, folder }) -> Promise<{ key }>      move/upload a finished temp file, return an opaque key
+ *   save({ tempPath, ext, folder, fileName }) -> Promise<{ key }>  move/upload a finished temp file, return an opaque key
  *   stat(key)                       -> Promise<{ size }>     throws if the file is gone
  *   createReadStream(key, { start, end }) -> Readable        inclusive byte range, for HTTP Range requests
  *   remove(key)                     -> Promise<void>         idempotent
@@ -35,7 +35,15 @@ export function createLocalDriver(rootDir) {
     },
 
     async save({ tempPath, ext = '', folder, fileName }) {
-      const key = `${folder}/${fileName || `${randomUUID()}${ext}`}`
+      let key = `${folder}/${fileName || `${randomUUID()}${ext}`}`
+      if (fileName) {
+        const dot = fileName.lastIndexOf('.')
+        const stem = dot > 0 ? fileName.slice(0, dot) : fileName
+        const suffix = dot > 0 ? fileName.slice(dot) : ''
+        for (let n = 2; await fs.stat(resolveKey(key)).then(() => true, () => false); n += 1) {
+          key = `${folder}/${stem} (${n})${suffix}`
+        }
+      }
       const destination = resolveKey(key)
       await fs.mkdir(path.dirname(destination), { recursive: true })
       try {
