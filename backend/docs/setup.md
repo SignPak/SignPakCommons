@@ -6,7 +6,7 @@ This guide explains how to install, configure, run, test, and deploy the SignPak
 
 Install:
 
-- Node.js 20 or newer
+- Node.js 22 or newer
 - npm
 - MongoDB 7+ locally, or a MongoDB Atlas cluster
 - Git
@@ -80,7 +80,7 @@ URL-encode special characters in the database username or password.
 | `NODE_ENV` | Set manually: `development`, `test`, or `production` | Selects runtime behavior and production cookie defaults. |
 | `PORT` | Set manually; default `5000` | Port used by the Express server. |
 | `LOG_LEVEL` | Set manually: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent` | Controls structured log verbosity. |
-| `TRUST_PROXY` | Set `true` behind Render, Railway, nginx, or another reverse proxy | Makes rate limiting use the original client IP. |
+| `TRUST_PROXY` | Set `true` behind a trusted reverse proxy | Enables Express proxy awareness for client IPs used by rate limits and access restrictions. |
 | `CLIENT_ORIGIN` | Frontend URL, for example `http://localhost:5173` | CORS allowlist and state-changing request origin check. Separate multiple origins with commas. |
 
 ### Authentication and cookies
@@ -92,6 +92,9 @@ URL-encode special characters in the database username or password.
 | `COOKIE_SECURE` | Usually leave unset; production defaults to `true` | Sends cookies only over HTTPS when true. Use false only for local HTTP development. |
 | `COOKIE_SAMESITE` | Usually `lax`; use `none` only for cross-site HTTPS deployment | Controls cross-site cookie behavior. `none` requires `COOKIE_SECURE=true`. |
 | `BCRYPT_ROUNDS` | Set manually from `4` to `15`; default `12` | Password hashing cost. Increase only when deployment CPU allows it. |
+| `AUTH_OTP_TTL_MINUTES` | Set manually; default `5`, range `1`–`30` | Lifetime of email verification and password-reset codes. |
+| `AUTH_OTP_RESEND_SECONDS` | Set manually; default `60`, range `0`–`3600` | Minimum interval between verification-code resend requests. |
+| `AUTH_OTP_MAX_ATTEMPTS` | Set manually; default `5`, range `1`–`10` | Maximum code verification attempts. |
 
 Generate a JWT secret:
 
@@ -116,11 +119,24 @@ The admin is ensured on every startup. Changing `ADMIN_PASSWORD` later does not 
 | --- | --- | --- |
 | `STORAGE_DRIVER` | `local` or `gdrive` | Storage for readable base videos and posters. Use `local` for development. |
 | `ARCHIVE_STORAGE_DRIVER` | `local` or `gdrive` | Append-only storage for contributor recordings. Use `gdrive` for production archives. |
-| `UPLOAD_DIR` | Local filesystem path; default `uploads` | Temporary uploads and local storage root. |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | Download from Google Cloud, described below | Service-account credentials used when either storage driver is `gdrive`. |
-| `GOOGLE_DRIVE_FOLDER_ID` | The ID of the shared Google Drive root folder | Parent folder for application-created Drive folders. |
-| `MAX_VIDEO_UPLOAD_MB` | Set manually; default `300` | Maximum base-video upload size. |
-| `MAX_RECORDING_UPLOAD_MB` | Set manually; default `100` | Maximum contributor-recording upload size. |
+| `UPLOAD_DIR` | Local filesystem path; default `uploads` | Local storage root; temporary uploads are kept in its `tmp` subdirectory. |
+| `MAX_VIDEO_UPLOAD_MB` | Set manually; default `90` | Maximum reference-video or demo-video upload size, in MiB. |
+| `MAX_RECORDING_UPLOAD_MB` | Set manually; default `80` | Maximum contributor-recording upload size, in MiB. |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | Service-account JSON from Google Cloud | Shared Google Drive credentials, available as fallback for either driver. |
+| `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth client configuration | Shared OAuth client ID; set with the corresponding secret and refresh token. |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth client configuration | Shared OAuth client secret. |
+| `GOOGLE_OAUTH_REFRESH_TOKEN` | OAuth consent flow | Shared OAuth refresh token. |
+| `GOOGLE_DRIVE_FOLDER_ID` | ID of the shared Google Drive root folder | Shared parent folder; archive storage can fall back to this folder. |
+| `GOOGLE_ARCHIVE_OAUTH_CLIENT_ID` | Optional second Google OAuth client | Archive-specific OAuth client ID. |
+| `GOOGLE_ARCHIVE_OAUTH_CLIENT_SECRET` | Optional second Google OAuth client | Archive-specific OAuth client secret. |
+| `GOOGLE_ARCHIVE_OAUTH_REFRESH_TOKEN` | OAuth consent flow for archive account | Archive-specific refresh token. |
+| `GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON` | Optional second service-account JSON | Archive-specific service-account credentials. |
+| `GOOGLE_ARCHIVE_DRIVE_FOLDER_ID` | Optional archive folder ID | Archive-specific parent folder; falls back to `GOOGLE_DRIVE_FOLDER_ID`. |
+
+For each OAuth account, provide **all three** values (client ID, client secret,
+refresh token). The archive driver prefers complete archive-specific OAuth
+credentials; otherwise it can use archive-specific service-account JSON, then the
+shared credentials.
 
 ### Application controls
 
@@ -128,10 +144,20 @@ The admin is ensured on every startup. Changing `ADMIN_PASSWORD` later does not 
 | --- | --- | --- |
 | `RATE_LIMIT_ENABLED` | `true` or `false`; default `true` | Enables API and upload rate limits. Keep enabled outside local debugging. |
 | `SUBMISSION_COOLDOWN_MS` | Set manually; default `30000` | Minimum delay between submissions for the same user and reference video. |
+| `WEB3FORMS_ACCESS_KEY` | Create an access key at Web3Forms | Required in production for contact-message delivery. |
+| `CONTACT_DAILY_LIMIT` | Set manually; default `25` | Maximum successfully delivered messages per UTC day. |
+| `CONTACT_USER_DAILY_LIMIT` | Set manually; default `1` | Maximum contact messages per account per UTC day. |
+| `CONTACT_ABUSE_BLOCK_MINUTES` | Set manually; default `10`, range `1`–`1440` | Temporary device/IP restriction for anonymous, mismatched-email, or over-limit contact attempts. |
+
+In production, `BREVO_API_KEY`, a valid `BREVO_SENDER_EMAIL`, and
+`WEB3FORMS_ACCESS_KEY` are required. The OTP, contact, and upload values above
+have validated ranges; see `.env.example` for the development template.
 
 ## 6. Google Drive append-only archives
 
-Google Drive is optional for base videos and submission archives. When `ARCHIVE_STORAGE_DRIVER=gdrive`, contributor recordings are created under this structure:
+Google Drive is optional for base videos and submission archives. When
+`ARCHIVE_STORAGE_DRIVER=gdrive`, contributor recordings are created under this
+structure:
 
 ```text
 {GOOGLE_DRIVE_FOLDER_ID}/
@@ -144,34 +170,43 @@ Google Drive is optional for base videos and submission archives. When `ARCHIVE_
 
 A repeated submission receives the next sequence number instead of replacing an existing file. The API writes the file and stores its pointer and metadata in MongoDB. It does not expose a read, update, or delete route for archived recordings.
 
-### Create Google credentials
+### Configure Google credentials
 
-1. Open [Google Cloud Console](https://console.cloud.google.com/).
-2. Create or select a project.
-3. Open **APIs & Services > Library** and enable **Google Drive API**.
-4. Open **IAM & Admin > Service Accounts**.
-5. Create a service account for the backend.
-6. Create a JSON key under **Keys > Add key > Create new key > JSON**.
-7. Store the downloaded JSON in a secret manager. Do not commit the JSON file.
-8. Create a folder in Google Drive and copy its ID from the folder URL:
+1. Open [Google Cloud Console](https://console.cloud.google.com/), create or select
+   a project, and enable **Google Drive API**.
+2. Choose either a service account or OAuth credentials for each configured
+   driver. Service-account JSON can be stored in a secret manager as one
+   environment value. OAuth requires a client ID, client secret, and refresh
+   token generated through the Google OAuth consent flow.
+3. Create a folder in Google Drive and copy its ID from the folder URL:
 
 ```text
 https://drive.google.com/drive/folders/FOLDER_ID
 ```
 
-9. Share that folder with the service account email, usually shaped like `name@project.iam.gserviceaccount.com`.
-10. Give the service account permission to create files and folders.
-11. Put the complete JSON document into the deployment environment as one value:
+4. For service-account credentials, share the folder with the service account
+   email (usually `name@project.iam.gserviceaccount.com`) and grant permission to
+   create files and folders.
+5. Set the selected storage driver to `gdrive`, the corresponding folder ID, and
+   its credentials. For shared service-account credentials:
 
 ```env
 ARCHIVE_STORAGE_DRIVER=gdrive
-GOOGLE_DRIVE_FOLDER_ID=FOLDER_ID
+GOOGLE_ARCHIVE_DRIVE_FOLDER_ID=FOLDER_ID
 GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 ```
 
-For hosting platforms that provide a secret editor, paste the JSON there. For local development, keep it in `.env` only. Do not put the JSON in `public/`, source control, or a frontend environment variable.
+When using the archive-specific service-account JSON, set
+`GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON` instead of the shared
+`GOOGLE_SERVICE_ACCOUNT_JSON`. For a separate OAuth account, use the
+`GOOGLE_ARCHIVE_OAUTH_*` variables. Keep all credentials in a host secret manager
+or local `.env`; never put them in `public/`, source control, or frontend
+environment variables.
 
-`STORAGE_DRIVER=gdrive` can also be used for base videos, but base videos need to remain readable by the public demo or authenticated library. Use `ARCHIVE_STORAGE_DRIVER=gdrive` when the intended behavior is write-only contributor archives.
+`STORAGE_DRIVER=gdrive` stores reference and demo videos, which must remain
+readable by their intended users. `ARCHIVE_STORAGE_DRIVER=gdrive` controls
+contributor recording archives independently. Archive-specific OAuth credentials
+and folder IDs allow archives to use a separate Google account.
 
 ## 7. Start the backend
 
@@ -187,13 +222,15 @@ Production-style start:
 npm start
 ```
 
-The startup sequence is:
+For a standalone Node process, `server.js` binds the HTTP listener and starts
+service initialization. Requests await the same shared initialization promise
+before routing. On Vercel, `server.js` exports an Express-compatible handler and
+the first request performs initialization. Initialization does the following:
 
-1. Validate environment variables.
-2. Connect to MongoDB.
-3. Initialize the selected storage drivers.
+1. Validate environment variables while loading the app.
+2. Connect to MongoDB if it is not already connected.
+3. Initialize selected storage drivers.
 4. Create or promote the configured admin account.
-5. Start listening on `PORT`.
 
 Check the service:
 
@@ -233,7 +270,7 @@ The browser must send credentials for the HTTP-only authentication cookie. In pr
 - Set the exact production frontend URL in `CLIENT_ORIGIN`.
 - Use HTTPS with `COOKIE_SECURE=true`.
 - Keep `COOKIE_SAMESITE=lax` when frontend and API share a site; use `none` only when required by cross-site deployment.
-- Use `ARCHIVE_STORAGE_DRIVER=gdrive` with a restricted service account for append-only recordings.
+- Use `ARCHIVE_STORAGE_DRIVER=gdrive` with dedicated archive credentials and a restricted Drive folder for append-only recordings.
 - Keep `RATE_LIMIT_ENABLED=true`.
 - Confirm the upload limits match available storage and request limits.
 - Never commit `.env`, Google service-account JSON, JWT secrets, or database credentials.

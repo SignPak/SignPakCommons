@@ -1,113 +1,130 @@
-# SignPakCommons: backend
+# SignPak Commons: backend
 
-Express + Node.js + MongoDB (Mongoose). Cookie-based auth, local base-video storage, optional append-only Google Drive recording archives, layered architecture.
+Express 4 + Node.js 22+ + MongoDB (Mongoose). Cookie-based authentication,
+local-by-default media storage, optional Google Drive storage, and a
+layered service/repository architecture.
 
 ## Run it
 
 ```bash
 cd backend
 npm install
-cp .env.example .env      # then fill in JWT_SECRET, ADMIN_PASSWORD, MONGODB_URI and service credentials
-npm run dev               # http://localhost:5000, health check at /api/v1/health
-npm test                  # integration tests (see "Testing")
+cp .env.example .env      # set local MongoDB URI, JWT secret, and admin password
+npm run dev               # http://localhost:5000
+npm test                  # all API, unit, and storage suites
 ```
 
-Needs Node 20+ and a MongoDB (local install or an Atlas connection string). On start the API validates `.env` and tells you exactly what is missing, then connects, creates the admin account from `ADMIN_EMAIL` / `ADMIN_PASSWORD`, and listens.
+Use Node.js 22+ and a MongoDB instance (local or Atlas). Environment values are
+validated while loading the app. The standalone server binds its listener and
+initializes MongoDB, selected storage drivers, and the configured admin.
+Requests wait for the same shared initialization to finish. `server.js` also
+exports a handler for Vercel.
 
-## How a request flows
+## Architecture
 
-routes  ->  middlewares  ->  controllers  ->  services  ->  repositories  ->  models  ->  MongoDB
+```text
+routes -> middlewares -> controllers -> services -> repositories -> models -> MongoDB
+```
 
-Dependencies only point down. Controllers never touch models; services never see `req`/`res`.
+Dependencies point downward: controllers do not query models, services do not
+read `req` or write `res`, and repositories encapsulate persistence without
+business rules.
 
-| Folder | Job |
+| Folder | Responsibility |
 | --- | --- |
-| `src/routes/` | Which URL + method goes where, and which guards it passes through |
-| `src/middlewares/` | Auth, roles, validation (`validators/` holds the Zod schemas), uploads, rate limits, origin check, error handler |
-| `src/controllers/` | Read the request, call one service, send `{ data }`. No logic |
-| `src/services/` | All business rules. `storage/` is the file-storage driver layer |
-| `src/repositories/` | The only place that queries the database. No rules |
-| `src/models/` | Mongoose schemas, indexes, JSON shape |
-| `src/utils/` | Typed errors, logger, tokens, file sniffing, Range streaming |
-| `src/config/` | Validated env, DB connection, constants |
+| `src/routes/` | Map URLs and methods to controllers and compose route guards. |
+| `src/middlewares/` | Auth, roles, Zod validation, uploads, rate limits, origin/access checks, errors. |
+| `src/controllers/` | Translate requests to service calls and standard responses. |
+| `src/services/` | Business rules and coordination of repositories, storage, and providers. |
+| `src/services/storage/` | Local and Google Drive storage implementations. |
+| `src/repositories/` | MongoDB queries and persistence operations. |
+| `src/models/` | Mongoose schemas, indexes, and JSON serialization. |
+| `src/config/` | Validated environment, database connection, and shared constants. |
+| `src/docs/openapi.js` | OpenAPI schema for the JSON spec and development Swagger UI. |
+| `tests/` | One `.test.js` per API suite and focused unit/storage suites. |
 
-`src/app.js` builds the app (no port), `server.js` connects and listens, so tests can import `app` directly.
+`src/app.js` composes the Express app without binding a port;
+`src/services/initialization.js` initializes MongoDB, storage, and the configured
+admin idempotently; `server.js` is the standalone and Vercel entry point.
 
-Interactive API documentation is available at `http://localhost:5000/api/v1/docs` when the server is running. The raw OpenAPI document is at `/api/v1/docs.json`. See [docs/API.md](docs/API.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/TEST-CASES.md](docs/TEST-CASES.md) for the human-readable reference and test case inventory.
+Read the full references: [API](docs/API.md),
+[architecture](docs/ARCHITECTURE.md), [setup](docs/SETUP.md), and
+[test-case inventory](docs/TEST-CASES.md).
 
 ## Responses
 
 ```jsonc
-// success: data is the resource, or an array of them
+// Success
 { "data": { "id": "...", "title": "..." } }
 
-// failure: `fields` maps input names to messages, ready for form errors
+// Failure
 { "error": { "code": "VALIDATION_ERROR", "message": "Some fields need attention.", "fields": { "email": "Enter a valid email address." } } }
 ```
 
-Codes: `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, `CONFLICT` 409, `PAYLOAD_TOO_LARGE` 413, `VALIDATION_ERROR` 422, `TOO_MANY_REQUESTS` 429, `INTERNAL_ERROR` 500. `DELETE` returns `204` with no body. Every response carries an `X-Request-Id` that matches the log line.
+Known errors include `BAD_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403),
+`NOT_FOUND` (404), `CONFLICT` (409), `PAYLOAD_TOO_LARGE` (413),
+`VALIDATION_ERROR` (422), `TOO_MANY_REQUESTS` (429), and `INTERNAL_ERROR` (500).
+Successful deletes return `204` with no body. Responses include an
+`X-Request-Id` for log correlation.
 
-## Endpoints (all under `/api/v1`)
+## Endpoint overview
 
-| Method + path | Who | Notes |
+All paths are under `/api/v1`.
+
+| Method + path | Access | Notes |
 | --- | --- | --- |
-| `GET /health` | anyone | 503 if the database is down |
-| `POST /auth/signup` | anyone | Creates an unverified contributor and emails a verification code |
-| `POST /auth/login` | anyone | Sets the cookie |
-| `POST /auth/verify-email` | anyone | Verifies an email and sets the session cookie |
-| `POST /auth/resend-verification` | anyone | Resends a verification code (generic response) |
-| `POST /auth/forgot-password` | anyone | Sends a password-reset code (generic response) |
-| `POST /auth/reset-password` | anyone | Resets password and invalidates existing sessions |
-| `POST /auth/logout` | anyone | Clears the cookie |
-| `GET /auth/session` | anyone | `{ data: user }`, or `{ data: null }` for visitors |
-| `GET /users/me` | logged in | |
-| `PATCH /users/me` | logged in | `{ connections: { github, linkedin } }`; a handle or a profile link; `null` disconnects |
-| `GET /categories` | anyone | |
-| `POST /categories`, `PATCH`/`DELETE /categories/:id` | admin | Deleting unassigns its videos, it does not delete them |
-| `GET /videos`, `GET /videos/:id` | anyone | Visitors and contributors: published + categorised only. Admin: everything |
-| `GET /videos/:id/poster` | anyone (same visibility) | |
-| `GET /videos/:id/file` | anyone (same visibility) | Published reference videos stream with Range support |
-| `POST /videos` | admin | `multipart/form-data`: `video` (required), `poster` (optional), `title`, `categoryId`, `level`, `status`, `durationSec` |
-| `PATCH`/`DELETE /videos/:id` | admin | Moving to another category appends to the end of that path |
-| `GET /submissions` | logged in | Contributors: their own. Admin: all |
-| `POST /submissions` | logged in | `multipart/form-data`: `recording`, `videoId`, `trimStart`, `trimEnd`, `mirrored`, `duration` |
-| `GET /submissions/:id/recording` | none | Deliberately unavailable; submissions are append-only archives |
-| `POST /contact` | verified user | Account email must match; one per user/day and 25 total/day; delivered via Web3Forms |
-| `GET /admin/users`, `/admin/stats?days=14`, `/admin/messages` | admin | |
+| `GET /health` | Public | Reports database readiness. |
+| `/auth/*` | Public | Signup, login, email verification, password reset, logout, and session. |
+| `GET/PATCH /users/me` | Authenticated user | Read profile and update supported connections. |
+| `GET /categories`; `POST/PATCH/DELETE /categories/:id` | Public read; admin write | Deleting a category unassigns its videos. |
+| `GET /videos`, `GET /videos/:id[/file/poster]` | Public or admin | Public visibility is published and categorised only; file streaming supports byte ranges. |
+| `POST /videos`; `PATCH/DELETE /videos/:id` | Admin | Manage reference videos and optional posters. |
+| `GET /demo-video[/file]`; `POST/DELETE /demo-video` | Public read; admin write | Singleton public walkthrough media. |
+| `GET/POST /submissions` | Authenticated user | Contributors list their own; admins list all. New submissions are append-only. |
+| `POST /contact` | Signed-in account | Email must match account; account and global daily quotas apply. |
+| `/admin/users*`, `/admin/restrictions*`, `/admin/stats`, `/admin/messages` | Admin | Account moderation, access restrictions, statistics, and inbox. |
 
-## Decisions worth knowing
+See [API.md](docs/API.md) for the complete route table, limits, visibility, and
+request behavior. The OpenAPI JSON is available at `/api/v1/docs.json` in every
+environment. Interactive Swagger UI (`/api/v1/docs`, `/docs`, `/api-docs`) is only
+mounted outside production.
 
-**Auth.** A signed JWT in an `httpOnly` cookie (`signpak_token`), so page scripts cannot read it. Signup requires email verification before login; OTPs are hashed in MongoDB, expire, and have bounded attempts. Password reset uses the same one-time-code policy and increments the session version to invalidate existing cookies. Configure `BREVO_API_KEY` and a verified `BREVO_SENDER_EMAIL` for transactional email. The user is reloaded from the database on every request, so role changes and deletions apply immediately. Login answers identically for "wrong password" and "no such email", and does the same amount of hashing work for both.
+## Operational rules
 
-**CSRF.** `SameSite=Lax` plus an `Origin` check: any `POST/PATCH/DELETE` carrying an `Origin` header outside `CLIENT_ORIGIN` is refused with 403.
-
-**Admin.** Created or promoted from `ADMIN_EMAIL` / `ADMIN_PASSWORD` on every start. Signup ignores any `role` in the body. Changing `ADMIN_PASSWORD` later does not reset an existing admin's password.
-
-**The cooldown rule.** This is a data-collection tool, not a one-shot quiz: a contributor can submit the same video more than once (more varied takes make better training data), but not back to back. `SUBMISSION_COOLDOWN_MS` (default 30s, in `.env`) is the minimum gap between two submissions for the same `(user, video)`. It is enforced atomically, not by a simple read-then-write: `repositories/submissionRepo.js#claimCooldown` does a conditional `findOneAndUpdate` with `upsert: true` against a `SubmissionCooldown` collection that has a unique index on `(user, video)`. If a live cooldown already exists, the upsert's insert path collides with that unique index (`E11000`), which is treated as "still cooling down" — so three simultaneous submissions for the same video still produce exactly one success (verified: `tests/api.test.js`'s concurrent-submit test). A submission that fails after claiming the cooldown (a storage or DB error) releases it, so a failed attempt never costs the contributor their next try. Regardless of timing, no submission can ever be edited, deleted, or read back once archived. Admins receive archive metadata only.
-
-**Uploads.** Multer writes to `uploads/tmp`, the service checks the file's real type from its first bytes (MP4, WebM or MOV; JPEG, PNG or WebP for posters; the browser-supplied type is not trusted), then hands it to storage. Failures at any step leave no files behind.
-
-**Storage and Google Drive.** Base videos use the readable storage driver selected by `STORAGE_DRIVER`. Submission recordings use the separate append-only driver selected by `ARCHIVE_STORAGE_DRIVER`; set it to `gdrive` with `GOOGLE_SERVICE_ACCOUNT_JSON` and `GOOGLE_DRIVE_FOLDER_ID`. MongoDB stores the archive pointer and metadata, while the API never reads, updates, or deletes the archived recording. Existing file records keep working because each one remembers its driver.
-
-**Stats.** Per-category counts only include submissions whose video still exists. Totals and daily activity always count everything. Days are UTC. Per-day bucketing is done in code from a timestamps-only query; if submissions reach hundreds of thousands, move it to a MongoDB aggregation.
-
-**Client-reported values.** `durationSec` and `duration` come from the browser until the ffmpeg step exists to measure them on the server.
+- Authentication uses an HTTP-only `signpak_token` cookie. Email verification is
+  required before login; password reset invalidates existing sessions.
+- `CLIENT_ORIGIN` controls credentialed CORS and the check for browser
+  state-changing requests that carry an `Origin` header.
+- The global, auth, contact, and upload rate limits can be disabled with
+  `RATE_LIMIT_ENABLED=false`; keep them enabled in production.
+- `STORAGE_DRIVER` selects reference and demo media storage.
+  `ARCHIVE_STORAGE_DRIVER` independently selects append-only contributor archive
+  storage. Both default to local; Google Drive credentials can be shared or
+  configured separately for archives.
+- Upload defaults are 90 MB for base/demo videos and 80 MB for contributor
+  recordings. File contents are verified by signature, not browser MIME type.
+- `SUBMISSION_COOLDOWN_MS` defaults to 30 seconds per contributor/video pair.
+  Atomic claiming prevents simultaneous duplicate submissions; failed processing
+  releases the claim.
+- Contact delivery uses Web3Forms. A signed-in account can send from its own
+  email; quotas are one per account per UTC day and 25 per UTC day globally by
+  default. Abusive attempts can temporarily restrict a device or IP.
 
 ## Testing
 
-`npm test` runs each backend test suite from its own `.test.js` file. The HTTP integration suites cover auth, roles, uploads, Range streaming, the cooldown rule, stats, contact quotas, and cleanup of temporary files; focused unit and storage tests cover safe names, video creation, and local storage. See [docs/TEST-CASES.md](docs/TEST-CASES.md) for the per-case inventory. Brevo and Web3Forms delivery are stubbed in tests; configure their environment keys to enable real email delivery.
-
-- Set `MONGODB_URI_TEST` to run against a MongoDB you already have (it uses that database and **drops it**, so point it at a throwaway one).
-- Otherwise it starts `mongodb-memory-server`, which downloads a MongoDB binary on first use.
-
-## Not built yet
-
-- **ffmpeg trimming and probing.** Submissions store `trimStart` / `trimEnd` / `mirrored` but the recording is saved untouched.
-
-## Housekeeping
-
-`package.json` still lists packages this code does not use: `bcryptjs`, `express-validator`, `morgan`, `pg`, `pg-hstore`, `sequelize`. `sequelize` is also the cause of the two moderate `npm audit` warnings (an old `uuid`). Safe to remove:
+Run from `backend/`:
 
 ```bash
-npm uninstall bcryptjs express-validator morgan pg pg-hstore sequelize
+npm test
 ```
+
+The command runs Node's built-in test runner serially across every
+`tests/*.test.js` file. The API suites use MongoDB Memory Server unless
+`MONGODB_URI_TEST` is supplied. That configured database is dropped by the tests,
+so use only a disposable database. Provider delivery is stubbed. The 56 cases and
+their test types are documented in [docs/TEST-CASES.md](docs/TEST-CASES.md).
+
+## Current limitation
+
+The backend stores submission trim and mirror metadata but does not use FFmpeg to
+probe or physically edit the uploaded recording.

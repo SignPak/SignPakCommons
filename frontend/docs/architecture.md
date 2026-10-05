@@ -1,208 +1,152 @@
-# Frontend Architecture
+# Frontend architecture
 
-## Purpose
+## Purpose and runtime
 
-This frontend is a React application for SignPakCommons, a video data collection and contributor workflow. The app supports public browsing, authenticated contributor flows, recording and submission, admin management, and SEO-friendly static pages.
+The frontend is a React 19 single-page application built with Vite, React Router,
+and Tailwind CSS v4. It contains public information pages, authenticated
+contributor workflows, and an admin workspace. The backend API is the source of
+truth for accounts, categories, reference videos, and submitted recordings.
 
-The project uses:
+The frontend requires Node.js 20.19 or newer, as declared by
+`package.json`. Its package scripts are `dev`, `lint`, `build`, `preview`,
+`seo:generate`, and `snap`; there is no frontend test script.
 
-- React 19
-- Vite
-- Tailwind CSS v4
-- React Router
-- Context-based state management
+## Bootstrap and providers
 
-## Runtime Architecture
+`src/main.jsx` mounts `src/App.jsx` inside `StrictMode`, `ThemeProvider`,
+`BrowserRouter`, `AuthProvider`, `NotificationProvider`, `LibraryProvider`, and
+`RecordingProvider`. This order lets the inner providers consume auth state and
+lets route screens access the shared contexts.
 
-### 1. App bootstrap
+`src/App.jsx` defines nested route groups and renders the shared `AppLayout`.
+`src/routes/appRoutes.js` centralizes the path constants and URL builders:
 
-The application starts in `src/main.jsx`.
-
-- Wraps the app in `ThemeProvider`
-- Mounts the app inside `BrowserRouter`
-- Installs the authentication, notification, library, and recording providers in nested order
-- Renders the root app component
-
-This pattern keeps global app state centralized and predictable while preserving a simple top-level composition model.
-
-### 2. Route composition
-
-The route tree lives in `src/App.jsx`.
-
-The app uses nested route groups:
-
-- Public routes: landing, demo, FAQ, login, signup
-- Authenticated contributor routes: home, library, watch, profile, editor
-- Admin-only routes: dashboard, video management, category management
-
-Access control is enforced by route guards:
-
-- `RequireAuth` redirects unauthenticated users to login
-- `RequireAdmin` restricts admin-only screens
-- `GuestOnly` prevents signed-in users from visiting login/signup flows again
-
-This keeps screen-level permissions declarative and consistent across the UI.
-
-## State Management
-
-The app relies primarily on React context providers instead of a full external state library.
-
-### Auth
-
-- `src/context/AuthContext.js`
-- `src/context/AuthProvider.jsx`
-
-Owns user session state, auth checks, loading state, and admin status. UI route guards read directly from this context.
-
-### Library
-
-- `src/context/LibraryContext.js`
-- `src/context/LibraryProvider.jsx`
-
-Tracks the category/video browsing workflow and related UI state.
-
-### Recording
-
-- `src/context/RecordingContext.js`
-- `src/context/RecordingProvider.jsx`
-
-Controls recording-session state, playback/editing flow, and submission-related UI state.
-
-### Notifications
-
-- `src/context/NotificationContext.js`
-- `src/context/NotificationProvider.jsx`
-
-Handles per-user notifications and read state, mirroring the local persistence pattern used elsewhere in the app.
-
-### Theme
-
-- `src/context/ThemeContext.js`
-- `src/context/ThemeProvider.jsx`
-
-Manages light/dark mode and persists user preference with local storage while honoring the OS preference on first load.
-
-## UI and Layout Structure
-
-### Shared shell
-
-The app uses a shared layout system from `src/components/Layouts.jsx` and a set of reusable pieces such as:
-
-- `Header`
-- `Footer`
-- `AuthShell`
-- `NotificationBell`
-- `ThemeToggle`
-- `RouteGuards`
-- UI primitives like `Field`, `PageState`, and `ButtonLink`
-
-This keeps navigation, auth framing, and page-level chrome consistent across route groups.
-
-### Page organization
-
-Pages are organized by feature:
-
-- `src/pages/` for public and user-facing views
-- `src/pages/admin/` for admin screens and nested admin layout
-
-Examples:
-
-- `Landing`, `Demo`, `Faq`
-- `Login`, `Signup`, `Home`
-- `CategoryBrowser`, `Player`, `RecordingEditor`, `ProfileDashboard`
-- `AdminDashboard`, `AdminVideos`, `AdminCategories`
-
-Each page is mostly self-contained and uses shared providers and reusable UI primitives instead of a large global component tree.
-
-## Data Flow
-
-The frontend is designed around a service boundary rather than direct fetch calls scattered across components.
-
-### Service layer
-
-The project expects data access to happen through service modules under `src/services/`.
-
-That boundary keeps the UI independent from transport details while the app uses the live Express API. Browser-local state is limited to preferences and intentionally local notifications.
-
-### Live API strategy
-
-Core users, categories, videos, submissions, and contact messages are managed by the backend API. The frontend keeps only theme/preferences and notifications in browser storage.
-
-## Styling Architecture
-
-The app uses Tailwind CSS with semantic component classes and theme tokens rather than scattered raw color literals.
-
-### Design approach
-
-- Utility classes are not the primary pattern for this app
-- CSS is organized around semantic selectors such as `.btn`, `.lesson-card`, `.recorder`, and theme-related tokens
-- The app uses CSS custom properties to support light/dark mode
-- Theme values are centralized and switchable from a single theme definition
-
-This makes style updates easier and reduces the risk of inconsistent colors or mismatched ui states.
-
-## SEO and static generation
-
-The frontend includes dedicated SEO support under `src/seo/` and scripts in the project root of the frontend.
-
-### SEO flow
-
-- `src/seo/seoCatalog.mjs` defines public routes and metadata
-- `scripts/generateSeoAssets.js` generates assets like `sitemap.xml` and `robots.txt`
-- `npm run seo:generate` runs before build
-- `npm run snap` can prerender pages for static HTML output
-
-This architecture supports discoverability and strong initial metadata for public pages while keeping route metadata data-driven.
-
-## Routing and URL conventions
-
-The app uses path-based navigation and query-string IDs for media items.
-
-Examples:
-
-- `/` landing page
-- `/demo` walkthrough page
-- `/home` contributor dashboard
-- `/library/:categoryId` category browsing
-- `/watch?v=<videoId>` media playback
-- `/watch/edit?v=<videoId>` editing flow
-- `/admin` admin dashboard
-
-This design separates content identity from route structure, making links less brittle as categories or catalog ordering change.
-
-## Folder Map
+- `categoryUrl(id)` builds `/library/:categoryId`.
+- `watchUrl(id)` builds `/watch?v=:videoId`.
+- `watchEditUrl(id)` builds `/watch/edit?v=:videoId`.
+
+Video identity is carried in the query string so links do not depend on category
+or display ordering. `/contact` and `/policy` redirect to sections on the landing
+page; they are not separate page screens.
+
+### Route access
+
+`src/components/RouteGuards.jsx` implements three declarative access guards:
+
+- `GuestOnly` allows signed-out visitors through auth pages and sends signed-in
+  users to their original destination or `/home`.
+- `RequireAuth` waits for the session check and redirects visitors to `/login`.
+- `RequireAdmin` allows the admin role and otherwise redirects to `/home`.
+
+The route tree includes public landing, demo, and FAQ pages; signed-out login,
+signup, email verification, and password recovery pages; signed-in home, library,
+watch, editor, and profile pages; and admin dashboard, user, video, and category
+pages.
+
+## State and ownership
+
+React context providers coordinate shared state without an external state
+management library.
+
+| Provider | Responsibility and persistence |
+| --- | --- |
+| `AuthProvider` | Loads the current session from the API and exposes login, signup, email verification, logout, and connection updates. |
+| `LibraryProvider` | Loads categories, visible videos, and the current user's submissions; provides derived category, contribution, and cooldown state plus admin mutations. |
+| `RecordingProvider` | Holds unsubmitted recording blobs and trim/mirror edits in memory, keyed by video ID. These drafts are discarded on submit, replacement, user change, or tab close. |
+| `NotificationProvider` | Stores per-user notification items and read state in browser `localStorage`; notifications do not sync across devices. |
+| `ThemeProvider` | Follows the OS theme until a user selects one, then persists the selection locally. |
+
+Browser-local data is limited to preferences, the generated device ID, local
+notifications, and the active unsubmitted recording draft. The backend owns
+persistent account, library, and submission data.
+
+## API and data flow
+
+`src/services/api.js` is the HTTP client and `src/services/apiRoutes.js` builds
+endpoint URLs. Pages and providers use the service methods rather than calling
+`fetch` directly.
+
+The client:
+
+- Adds `credentials: 'include'` so the HTTP-only `signpak_token` cookie is sent.
+- Sends `X-Device-ID` when browser storage is available.
+- Sends JSON for structured requests and `FormData` for video uploads.
+- Returns the backend's `data` envelope value and throws errors containing the
+  server message, status, and field-level validation messages.
+- Converts API-relative media URLs to absolute URLs when `VITE_API_ORIGIN` is
+  configured.
+
+Vite proxies `/api` to `http://localhost:5000` for local development. The
+optional `VITE_API_ORIGIN` variable selects a separately hosted API; leave it
+empty when using the local proxy. `VITE_SUBMISSION_COOLDOWN_MS` sets the UI's
+countdown duration and defaults to 30,000 ms. This countdown is only a user
+interface hint; the backend independently enforces the cooldown.
+
+### Recording flow
+
+`useRecorder` captures camera and microphone media through browser media APIs.
+The `RecordingProvider` keeps the current take available while a contributor
+moves between `/watch` and `/watch/edit`. The editor applies trim and mirror
+settings as submission metadata, then uploads the recording blob and metadata
+through the API service. The backend stores the uploaded recording and metadata;
+it does not physically trim or transcode the file.
+
+## UI and styling
+
+`src/components/` holds shared layouts, navigation, form fields, buttons,
+dialogs, notifications, and route guards. `src/pages/` contains route-level
+screens; `src/pages/admin/` contains the admin workspace.
+
+`src/index.css` imports feature stylesheets from `src/styles/`. Components
+primarily use semantic selectors and shared theme tokens. `theme.css` defines
+light and dark CSS custom properties. `ThemeProvider` applies the active theme
+to the document root, while an inline bootstrap in `index.html` selects the
+saved or OS preference before the first paint.
+
+## SEO and prerendering
+
+`src/seo/seoCatalog.mjs` is the source for static route metadata and the
+canonical site URL. Only indexable entries in the catalog are included in the
+sitemap and React Snap route list; entries marked `noindex` are excluded. Set
+`SITE_URL` to the deployed frontend origin before generating production SEO
+assets.
+
+`npm run seo:generate` writes the sitemap, robots file, and
+`react-snap-routes.json`; it runs as part of `npm run build`. `npm run snap`
+prerenders the generated public route list into `dist/` and requires the built
+site plus an available headless Chromium executable.
+
+## Hosting and client-side routing
+
+The Vite development server provides the `/api` proxy. For Vercel, `vercel.json`
+rewrites application routes to `/` so that direct navigation or a reload on a
+client-side route such as `/admin/categories` serves the SPA entry point. When
+the frontend and API are deployed on different origins, configure
+`VITE_API_ORIGIN` in the frontend build environment and set the backend's
+`CLIENT_ORIGIN` to the frontend origin. Cross-site session cookies require HTTPS
+and compatible backend cookie settings.
+
+## Project map
 
 ```text
 frontend/
   src/
-    App.jsx                    # route layout and screen composition
-    main.jsx                   # app bootstrap and provider nesting
-    components/                # reusable UI and layout pieces
-    context/                   # global state providers
-    hooks/                     # custom React hooks
-    pages/                     # route-level screens
-    pages/admin/               # admin screens
-    routes/                    # route helpers and path definitions
-    services/                  # API/service boundary
-    seo/                       # metadata and SEO catalog
-    styles/                    # theme and shared CSS
-    utils/                     # helpers and shared utilities
-    config/                    # production UI constants
+    App.jsx                 # Route tree and page composition
+    main.jsx                # Browser entry and provider nesting
+    components/             # Shared layout and UI pieces
+    config/                 # UI configuration
+    context/                # Shared state providers and contexts
+    hooks/                  # Reusable UI and media hooks
+    pages/                  # Public and contributor screens
+    pages/admin/            # Admin screens
+    routes/                 # Client-side paths and URL builders
+    services/               # API client and endpoint builders
+    seo/                    # SEO metadata and helpers
+    styles/                 # Theme tokens and feature styles
+    utils/                  # Shared browser and media utilities
   docs/
-    architecture.md           # this document
+    ARCHITECTURE.md         # This guide
   scripts/
-    generateSeoAssets.js
-    runReactSnap.js
+    generateSeoAssets.js    # Sitemap, robots, and prerender route generation
+    runReactSnap.js         # Static route prerendering
 ```
-
-## Architectural Principles
-
-1. Keep route-level access logic declarative with guards.
-2. Keep global app state in context providers instead of prop drilling.
-3. Centralize backend communication behind service boundaries.
-4. Keep shared UI and theme tokens reusable across screens.
-5. Separate navigation, content state, and provider orchestration so the app is easy to evolve.
-
-## Summary
-
-The frontend is a modular React application organized around a clear provider-based state model, route-driven screens, reusable UI shells, and a live backend service boundary.
