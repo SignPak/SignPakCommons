@@ -34,7 +34,9 @@
   .btn-light { @apply bg-white text-deep shadow-soft hover:bg-turquoise; }
   .btn-outline { @apply border-line-strong text-heading hover:border-accent-ink hover:bg-surface; }
   .btn-ghost { @apply px-4 text-heading hover:bg-panel; }
-  .btn-danger { @apply bg-danger text-danger-ink hover:brightness-110; }
+  .btn-danger { @apply bg-danger-soft text-danger shadow-soft; border-color: color-mix(in srgb, var(--danger) 28%, transparent); }
+  .btn-danger:hover:not(:disabled), .btn.is-danger:hover:not(:disabled) { background-color: color-mix(in srgb, var(--danger) 14%, var(--danger-soft)); }
+  .btn.is-danger { @apply bg-danger-soft text-danger shadow-soft; border-color: color-mix(in srgb, var(--danger) 28%, transparent); }
 
   /* ---------- Forms ---------- */
   .field { @apply mt-5 block; }
@@ -61,7 +63,7 @@
   /* ---------- Small pieces ---------- */
   .progress { @apply h-2.5 w-full overflow-hidden rounded-full bg-line; }
   .progress-bar { @apply block h-full rounded-full transition-[width] duration-500; background: var(--progress); }
-  .avatar { @apply grid shrink-0 place-items-center rounded-full p-[2px] font-ui font-bold; background: linear-gradient(135deg, #feda75, #fa7e1e 28%, #d62976 55%, #962fbf 78%, #4f5bd5); }
+  .avatar { @apply grid shrink-0 place-items-center rounded-full p-[2px] font-ui font-bold; background: linear-gradient(135deg, var(--color-deep), var(--color-turquoise) 52%, var(--color-deep)); }
   .avatar-initials { @apply grid h-full w-full place-items-center rounded-full bg-surface text-heading; }
   .avatar-sm { @apply h-10 w-10 text-sm; }
   .avatar-md { @apply h-12 w-12 text-base; }

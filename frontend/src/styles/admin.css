@@ -14,7 +14,8 @@
   .admin-user-table { min-width: 58rem; }
   .admin-row-actions { @apply flex flex-wrap gap-2; }
   .admin-row-actions .btn, .restriction-list .btn { @apply min-h-9 px-3 py-1.5 text-xs; }
-  .admin-row-actions .is-danger { @apply text-danger; }
+  .admin-row-actions .is-danger { @apply bg-danger-soft text-danger shadow-soft; }
+  .admin-row-actions .is-danger:hover:not(:disabled) { background-color: color-mix(in srgb, var(--danger) 14%, var(--danger-soft)); }
   .admin-status-reason { @apply mt-1 block max-w-52 text-xs text-muted; }
   .admin-restriction-form { @apply grid gap-x-4 sm:grid-cols-2; }
   .admin-restriction-form .btn { @apply mt-13 self-start; }
@@ -86,7 +87,8 @@
   .video-row-info small { @apply mt-1 block text-sm text-muted; }
   .row-actions { @apply flex flex-wrap gap-x-1 gap-y-1 text-sm; }
   .row-actions button { @apply rounded-full px-3 py-1.5 font-semibold text-muted transition hover:bg-panel hover:text-heading; }
-  .row-actions .is-danger { @apply text-danger; }
+  .row-actions .is-danger { @apply bg-danger-soft text-danger shadow-soft; }
+  .row-actions .is-danger:hover { background-color: color-mix(in srgb, var(--danger) 14%, var(--danger-soft)); }
   .video-row-preview { @apply mt-4 block aspect-video w-full max-w-xl rounded-2xl bg-black; }
   .video-row-edit { @apply mt-2 grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
   .row-form-actions { @apply mt-6 flex flex-wrap gap-2 sm:col-span-2; }

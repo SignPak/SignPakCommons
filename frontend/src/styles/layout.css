@@ -38,6 +38,9 @@
   .notif-item small { @apply mt-0.5 block text-sm text-muted; }
   .notif-item time { @apply mt-1 block font-ui text-xs font-semibold text-faint; }
   .notif-empty { @apply px-4 py-8 text-center text-sm text-muted; }
+  @media (max-width: 767px) {
+    .notif-panel { @apply fixed left-4 right-4 top-[calc(72px+0.75rem)] w-auto max-w-none; }
+  }
   .menu-toggle { @apply grid h-11 w-11 place-items-center rounded-full text-xl text-heading hover:bg-panel md:hidden; }
   .mobile-nav { @apply mx-auto mb-4 grid w-[calc(100%-2.5rem)] gap-1 rounded-2xl border border-line bg-surface p-2 shadow-lift md:hidden; }
   .mobile-nav a, .mobile-nav button { @apply rounded-xl px-4 py-3 text-left font-ui text-base font-semibold text-heading hover:bg-panel; }

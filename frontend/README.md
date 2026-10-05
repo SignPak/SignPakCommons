@@ -1,113 +1,134 @@
-# SignPakCommons: frontend
+# SignPak Commons: frontend
 
-React 19 + Vite + Tailwind CSS v4 + React Router. The frontend uses the Express + MongoDB backend through `src/services/api.js`.
+React 19 single-page application built with Vite, React Router, and Tailwind CSS
+v4. It provides the public project pages, contributor recording workflow, and
+admin workspace. The Express API owns accounts, categories, videos, and submitted
+recordings; the browser keeps local preferences, a device ID, notifications,
+and an unsubmitted recording draft.
 
-## Run it
+## Run locally
+
+Use Node.js 20.19+ (see `package.json` for the current engine requirement).
 
 ```bash
 cd frontend
 npm install
-npm run dev      # http://localhost:5173
+npm run dev       # http://localhost:5173
 npm run lint
 npm run build
+npm run preview   # serve the production build locally
 ```
+
+Vite proxies `/api` to `http://localhost:5000` during development. Start the
+backend separately, or set `VITE_API_ORIGIN` to another API origin.
 
 ## Routes
 
-| Path                        | Who        | What                                             |
-| --------------------------- | ---------- | ------------------------------------------------ |
-| `/`                         | public     | Landing: hero, about, policy, contact            |
-| `/demo`                     | public     | "How it works" walkthrough video                 |
-| `/signup`, `/login`         | logged out | Account forms                                    |
-| `/verify-email`             | logged out | Verify signup code sent by email                 |
-| `/forgot-password`          | logged out | Request a code and reset password                |
-| `/home`                     | learner    | Categories                                       |
-| `/library/:categoryId`      | learner    | Videos in a category (search, filter, sort)      |
-| `/watch?v=<videoId>`        | learner    | Player and recorder                              |
-| `/watch/edit?v=<videoId>`   | learner    | Review, trim, submit                             |
-| `/profile`                  | learner    | Progress, submissions, GitHub / LinkedIn         |
-| `/admin`                    | admin      | Dashboard                                        |
-| `/admin/videos`             | admin      | Upload, preview, edit, publish, delete           |
-| `/admin/categories`         | admin      | Create categories, assign videos                 |
+| Route | Access | Page |
+| --- | --- | --- |
+| `/` | Public | Landing page; about, contact, and policy are in-page sections. |
+| `/demo` | Public | Walkthrough video. |
+| `/faq` | Public | Frequently asked questions. |
+| `/login`, `/signup` | Signed out | Sign in or register; redirects signed-in users. |
+| `/verify-email`, `/forgot-password` | Signed out | Email verification and password recovery. |
+| `/home` | Signed in | Category overview. |
+| `/library/:categoryId` | Signed in | Videos in a category. |
+| `/watch?v=:videoId` | Signed in | Watch a reference video and record a take. |
+| `/watch/edit?v=:videoId` | Signed in | Review, trim, and submit the current take. |
+| `/profile` | Signed in | Contribution history and profile connections. |
+| `/admin` | Admin | Admin dashboard. |
+| `/admin/users` | Admin | Account controls. |
+| `/admin/videos` | Admin | Manage reference videos and the demo video. |
+| `/admin/categories` | Admin | Manage categories. |
 
-## Folder layout
+Route declarations live in `src/App.jsx`; shared path names and URL builders live
+in `src/routes/appRoutes.js`. Auth guards in `src/components/RouteGuards.jsx`
+redirect visitors who do not meet the route's access requirement.
 
+## Backend connection
+
+All HTTP requests go through `src/services/api.js`; endpoint paths are composed
+in `src/services/apiRoutes.js`. Requests include credentials for the HTTP-only
+session cookie, attach a browser device ID when available, unwrap the API's
+`{ data }` success envelope, and surface server error messages and field errors.
+JSON and multipart upload requests use the same request helper.
+
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_ORIGIN` | Optional API origin, e.g. `https://api.example.com`. Empty by default; requests use the Vite `/api` proxy locally. |
+| `VITE_SUBMISSION_COOLDOWN_MS` | Optional client countdown duration in milliseconds. Defaults to `30000`; the backend independently enforces its cooldown. |
+
+Put local Vite variables in `frontend/.env.local` (do not commit secrets there).
+Vite variables prefixed with `VITE_` are exposed in the browser bundle, so never
+put credentials or private keys in them. Backend variables are documented in
+[`../backend/.env.example`](../backend/.env.example).
+
+Contributor recordings stay in memory as a `Blob` while the user moves between
+the player and editor; closing the tab discards an unsubmitted take. On
+submission, the frontend uploads the video and trim/mirror metadata to the
+backend. The backend validates and stores the recording and enforces the
+submission cooldown. Theme preference, device ID, and notifications are stored
+locally in the browser; notifications are not synchronized between devices.
+
+## Structure
+
+```text
 src/
-  components/   shared UI (Header, Footer, Field, players, route guards)
-  context/      Auth, Library and Recording state
-  hooks/        useRecorder (camera + MediaRecorder)
-  config/       production constants used by the UI
-  pages/        one file per screen, admin/ for the workspace
-  services/     api.js: the only file that talks to "the server"
-  styles/       all styling; index.css just imports these
-  utils/        formatting, validation, IndexedDB and video helpers
+  App.jsx             Route tree and page composition
+  main.jsx            Browser entry point and provider setup
+  components/         Shared layouts, controls, navigation, and route guards
+  config/             UI configuration
+  context/            Auth, library, recording, notification, and theme state
+  hooks/              Reusable hooks, including camera/MediaRecorder handling
+  pages/              Public and contributor pages
+  pages/admin/        Admin workspace pages
+  routes/             Client-side path names and URL builders
+  services/           Backend API client and endpoint builders
+  seo/                Static route SEO metadata and helpers
+  styles/             Theme tokens and feature stylesheets
+  utils/              Validation, media, and browser storage helpers
+docs/
+  ARCHITECTURE.md     Runtime, state, data flow, and deployment overview
+```
 
-## Styling
+## Styling and themes
 
-No inline utility classes in JSX. Components use semantic class names (`.btn`, `.lesson-card`, `.recorder`...) defined in `src/styles/*.css` with Tailwind's `@apply`. Colours and fonts are tokens in `styles/theme.css`, so a palette change is one file.
+The app uses semantic component classes and CSS custom properties rather than
+scattering colors through JSX. `src/index.css` imports the stylesheets in
+`src/styles/`; theme tokens are defined in `src/styles/theme.css`.
+`ThemeProvider` follows the operating-system preference until a user selects a
+theme, then saves that choice in `localStorage`. An inline bootstrap in
+`index.html` applies the theme before the first paint.
 
-## Backend integration
+## SEO and prerendering
 
-Every server call goes through `src/services/api.js`. Requests use the `/api/v1` backend routes, include the HTTP-only session cookie, unwrap the `{ data }` response envelope, and support multipart video and recording uploads.
+`src/seo/seoCatalog.mjs` is the source for static page metadata and the production
+site URL. Replace its placeholder `SITE_URL` before deployment. The build runs
+`npm run seo:generate` automatically to produce the sitemap, robots file, and
+React Snap route list. After building, `npm run snap` can prerender those public
+routes; it requires a working headless Chromium installation.
 
-- Set `VITE_API_ORIGIN` when the deployed frontend and backend use different origins. Leave it empty during local development to use the Vite `/api` proxy.
-- Backend environment values are documented in `../backend/.env.example`.
-- Admin video uploads are stored by the backend; the browser does not keep the base library in IndexedDB.
-- Recording submissions upload the recorded `Blob` with trim metadata. The backend enforces the submission cooldown.
-- Notifications remain browser-local until a persisted backend notification API is added.
-- Signup requires a Brevo-delivered email code before the API establishes a session; password recovery uses a separate one-time code.
-- Contact messages require a verified signed-in account and must use its email address; the backend limits accounts to one message per UTC day and all messages to 25 per UTC day.
+## Deployment
 
-## Theming
+`vercel.json` rewrites direct route requests to the SPA entry point so refreshing
+URLs such as `/admin/categories` loads the client router instead of returning a
+host-level 404. Configure the frontend build with `frontend/` as its root when
+deploying this app separately, set `VITE_API_ORIGIN` for a separately hosted
+backend, and configure the backend's `CLIENT_ORIGIN` to the exact frontend
+origin. API cookies require compatible HTTPS and cookie settings.
 
-Light and dark, both derived from the same analogous palette (deep green → turquoise → cyan), with white for contrast text. All app colours are CSS custom properties in `src/styles/theme.css`: one block of values for light, one for dark under `:root[data-theme='dark']`. Components never use raw hex; they use semantic Tailwind tokens (`bg-page`, `text-heading`, `border-line`...) that resolve to whichever theme is active, so a look change only ever touches `theme.css`.
+## Checks
 
-- **Switching:** the header's sun/moon button, powered by `context/ThemeProvider.jsx`. Before a person picks, the theme follows their OS setting (`prefers-color-scheme`) and keeps following it live. Once they click the toggle, that choice is saved to `localStorage` and wins from then on, on every page, until they change it again.
-- **No flash on load:** a small inline script in `index.html` reads the saved theme (or the OS setting) and sets it on `<html>` before the page paints, before React runs.
-- **Cyan needed help:** `#0096FF` alone is only ~3.1:1 against white, below the 4.5:1 that body text needs, so it's used for large accents (focus rings, chart lines, gradients) and for the `--accent-ink` shade instead, a deeper blue in light mode and a lighter one in dark mode, both checked at 4.5:1+. Every text/background pair in both themes was checked against WCAG AA; running `node e2e/audit.mjs`-style checks (see below) currently reports zero contrast violations across all 14 screens × 2 themes.
+The frontend package currently provides `npm run lint`, `npm run build`,
+`npm run seo:generate`, and `npm run snap`. It does not define an automated
+frontend test script.
 
-## Fonts
+## Project model
 
-Google Fonts, loaded in `index.html`:
+SignPak Commons is a video data-collection tool: categories group reference
+videos, and contributors can submit multiple recordings over time. A cooldown
+prevents back-to-back submissions for the same contributor/video pair; it does
+not mark a video as completed or prevent future takes.
 
-- **Barlow Condensed** (600/700) — headlines and big numbers (`.display`)
-- **Quicksand** (500/600/700) — buttons, labels, nav, anything UI chrome (`font-ui`)
-- **Inter** (400–700) — body copy, the readable default
-
-## Verifying this yourself
-
-This redesign was checked, not just eyeballed:
-
-- **axe-core** ran against all 14 pages/states in both themes: 0 accessibility violations (contrast, labels, roles).
-- The existing 74-check Playwright journey suite (signup → record → trim → submit → admin) still passes after the restyle.
-- 26 additional checks cover theme switching (OS-follow, persistence, no-flash-on-load, keyboard operation) and font loading.
-- A phone-width (375px) sweep confirmed no page causes horizontal scroll.
-
-These checks used local test scripts, not shipped in this codebase.
-
-## Data collection, not a course
-
-This is a video **data-collection** tool, not a learning platform: there's no curriculum, no "complete this lesson," nothing to finish. Terminology reflects that throughout — a **category** groups **videos** by topic, and a **contributor** can record any video as many times as they like.
-
-**Recording again — the 30-second cooldown.** A contributor can submit more than one recording for the same video, but not back-to-back. The Player UI shows a countdown, and the backend atomically enforces the same cooldown through `SUBMISSION_COOLDOWN_MS`.
-
-## Routing
-
-- **`src/routes/appRoutes.js`** — every client-side path the app links to, plus builders for the ones that take an id (`watchUrl(id)`, `watchEditUrl(id)`, `categoryUrl(id)`). Components import from here rather than writing `` `/watch?v=${id}` `` inline.
-- **A video's address is `/watch?v=<id>`**, not `/lesson/<id>` — the same shape YouTube uses. A query parameter keeps a video's URL independent of anything else about it (which category it's in, its position in a list), so links stay valid even if the catalog is reorganised. Editing a take is `/watch/edit?v=<id>`.
-- **`src/services/apiRoutes.js`** — the real backend's endpoint paths (from `backend/README.md`), collected in one file for when `services/api.js` stops using `localStorage` and starts calling Express. Nothing imports this yet; it's ready for that day.
-
-## SEO
-
-- **`src/seo/seoCatalog.mjs`** — the list of static, public routes worth a search engine's time (home, demo, FAQ; login/signup/profile are listed but marked `noindex` since they're per-user or auth-only). Update `SITE_URL` here before deploying — it's currently a placeholder.
-- **`src/seo/seoUtils.js`** — a `useSeo(path)` hook that sets the page title, meta description and canonical link from the catalog. Called once per static page (see `Landing.jsx`, `Demo.jsx`, `Faq.jsx`).
-- **`npm run seo:generate`** (`scripts/generateSeoAssets.js`) reads the catalog and writes `public/sitemap.xml`, `public/robots.txt` and `react-snap-routes.json`. It runs automatically before `npm run build`, so Vite copies the generated assets into `dist/`. These local production outputs are ignored by Git; update `src/seo/seoCatalog.mjs` instead.
-- **`npm run snap`** (`scripts/runReactSnap.js`) prerenders those same routes to static HTML with `react-snap`, so the built `dist/` has real markup instead of an empty `<div id="root">` for search engines and no-JS clients. Run `npm run build` first. Not part of `postbuild` — it needs headless Chromium and is slow, so it's a separate, manual step. This was tested end-to-end in a sandbox with no real network access: `react-snap` bundles an old Puppeteer (1.20.0, from ~2019) whose own Chromium download was skipped in favour of pointing `PUPPETEER_EXECUTABLE_PATH` at an already-installed Chromium, plus `--no-sandbox` (needed because the whole container runs as root). None of that should be necessary on a normal machine or CI runner with regular internet access; a plain `npm install && npm run build && npm run snap` should just work. One thing worth knowing: `react-snap` bundles a genuinely old, unmaintained Puppeteer with known CVEs in its own dependency tree (`npm audit` will flag it) — that's a property of the tool itself, not something this integration adds on top of it.
-
-## FAQ
-
-`/faq` (`src/pages/Faq.jsx`), a plain accordion (native `<details>`/`<summary>`, no extra JS) answering real questions about contributing: what the project is, whether it's a course (it isn't), the cooldown, privacy of recordings, and who is behind it. Linked from the header for both visitors and contributors.
-
-## Notifications
-
-The bell in the header (`components/NotificationBell.jsx`, `context/NotificationProvider.jsx`) is browser-local and survives a reload. Cross-device notification persistence requires a future backend notification API.
+See [the architecture guide](docs/ARCHITECTURE.md) for provider composition,
+data ownership, URL conventions, and browser-local state.

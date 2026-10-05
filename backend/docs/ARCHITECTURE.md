@@ -1,66 +1,129 @@
 # SignPak Commons Backend Architecture
 
-## Runtime
+## Runtime and startup
 
-The backend is an Express application running on Node.js 20+ with MongoDB through Mongoose. `server.js` owns process startup, environment validation, database connection, admin bootstrap, and the listening port. `src/app.js` builds and exports the HTTP application so integration tests can exercise the same middleware and routes without opening a port.
+The backend is an Express 4 application using Node.js 22+ and MongoDB through
+Mongoose. Environment validation lives in `src/config/env.js`. The HTTP app is
+composed in `src/app.js`; it exports an Express app without binding its own port so
+that tests and serverless hosts can import it.
+
+`server.js` is the deployment entry point. It starts the standalone HTTP listener
+and exports a request handler for Vercel. Background initialization is idempotent
+and shared between startup and requests: `src/services/initialization.js`
+connects MongoDB, initializes the selected storage drivers, and ensures the
+configured admin exists. The app-level initialization middleware awaits this
+setup before processing a request and returns a `503 SERVICE_UNAVAILABLE` response
+if initialization fails.
 
 ## Request flow
 
 ```text
 HTTP request
-	-> app middleware (logging, security headers, CORS, compression, parsing)
-	-> API prefix middleware (rate limit, origin verification)
-	-> route guards (authentication, role checks, validation, upload parsing)
-	-> controller
-	-> service
-	-> repository
-	-> Mongoose model
-	-> MongoDB
+  -> app initialization
+  -> request ID and structured logging
+  -> Helmet, CORS, compression, JSON parsing, cookies
+  -> API-wide rate limit, origin check, device/IP restriction check
+  -> route authentication, role check, validation, upload parsing
+  -> controller
+  -> service
+  -> repository
+  -> Mongoose model
+  -> MongoDB
 ```
 
-The dependency direction is one way: controllers do not query models, services do not read `req` or write `res`, and repositories do not contain business rules.
+The dependency direction is one-way: controllers do not query models, services do
+not read `req` or write `res`, and repositories encapsulate persistence without
+owning business policy.
 
 ## Responsibilities
 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
-| Application | `src/app.js` | Compose global middleware, API routes, and error handling. |
-| Routes | `src/routes/` | Map HTTP methods and paths to guards and controllers. Swagger UI is exposed at `/api/v1/docs`. |
-| Middleware | `src/middlewares/` | Authentication, roles, validation, uploads, rate limits, origin checks, and errors. |
-| Controllers | `src/controllers/` | Translate HTTP input to a service call and return the standard response envelope. |
-| Services | `src/services/` | Enforce domain rules, coordinate repositories, and manage stored files. |
+| Runtime | `server.js` | Export the serverless handler and start the standalone listener. |
+| Application | `src/app.js` | Compose initialization, middleware, API/docs routes, and error handling. |
+| Routes | `src/routes/` | Map paths to controllers and compose route-level guards and validation. |
+| Middleware | `src/middlewares/` | Authentication, roles, input validation, uploads, rate limiting, origin checks, access restrictions, and error mapping. |
+| Controllers | `src/controllers/` | Translate HTTP input to service calls and standard response helpers. |
+| Services | `src/services/` | Enforce domain rules and coordinate persistence, storage, and external providers. |
 | Repositories | `src/repositories/` | Encapsulate MongoDB queries and persistence operations. |
-| Models | `src/models/` | Define Mongoose schemas, indexes, and public JSON serialization. |
-| Storage | `src/services/storage/` | Hide file storage behind save, stat, stream, and remove operations. |
-| Configuration | `src/config/` | Validate environment variables, database state, and shared constants. |
-| Documentation | `src/docs/`, `docs/` | Maintain the OpenAPI contract and human-readable system documentation. |
+| Models | `src/models/` | Define Mongoose schemas, indexes, and JSON serialization. |
+| Storage | `src/services/storage/` | Provide local and Google Drive implementations behind storage operations. |
+| Configuration | `src/config/` | Validate environment variables, manage DB connection, and define constants. |
+| OpenAPI | `src/docs/openapi.js` | Describe API operations and schemas used by Swagger UI and raw JSON. |
+| Tests | `tests/*.test.js` | Separate HTTP API suites and focused utility, storage, and service tests. |
+| Documentation | `docs/` | Human-readable API, setup, architecture, and test references. |
 
-## API boundary
+## API boundary and middleware
 
-All application endpoints are mounted below `/api/v1`. Successful JSON responses use `{ "data": value }`; validation and application failures use `{ "error": { ... } }`. Mutating requests with an `Origin` header must come from a configured client origin. Every request receives an `X-Request-Id` for support and log correlation.
+Application routes are mounted under `/api/v1`. JSON success responses use
+`{ "data": value }`; known and unknown failures are normalized to
+`{ "error": { "code", "message", "fields?" } }`. `204` responses have no body.
+Every request gets an `X-Request-Id` which is included in structured request logs.
 
-The authentication token is stored in the `httpOnly` `signpak_token` cookie. The server reloads the user from MongoDB on authenticated requests, so role and account changes take effect without waiting for a token refresh. See [API.md](./API.md) for the endpoint contract and `/api/v1/docs` for the interactive OpenAPI reference.
+The app applies security headers with Helmet, explicit credentialed CORS, response
+compression, JSON body parsing, cookie parsing, and request logging. A global
+limiter applies to `/api/v1`; auth, contact, and upload endpoints have additional
+limits. State-changing browser requests carrying an `Origin` must use a configured
+`CLIENT_ORIGIN`. Requests are also checked against hashed device/IP restrictions;
+admin routes are exempt from this restriction middleware to allow recovery.
 
-## Data and media
+Authentication uses the HTTP-only `signpak_token` cookie. Authenticated requests
+reload the account from MongoDB, so role changes, suspensions, deletion, and
+session-version changes take effect promptly. See [API.md](./API.md) for route
+access and request behavior.
 
-MongoDB stores users, categories, videos, submissions, cooldown records, and contact messages. Video and recording bytes are stored through the storage driver; MongoDB stores a driver reference, key, MIME type, and size rather than file contents.
+## Persistence and storage
 
-Published videos assigned to a category are visible to anonymous visitors. Their metadata, posters, and reference files can be read by the public demo and library. Draft or unassigned videos remain restricted to admins. Contributor recordings are never publicly playable.
+MongoDB stores users, categories, reference videos, submissions, cooldown claims,
+contact messages and quotas, and access restrictions. File bytes are managed
+through storage drivers; MongoDB records the storage driver and opaque key along
+with media metadata.
 
-Submission recordings use a separate append-only archive path when `ARCHIVE_STORAGE_DRIVER=gdrive`: `commons/{userId}_{sequence}/{category_slug}/{video_slug}/{video_slug}.{ext}`. The API creates the archive object and stores its metadata in MongoDB, but exposes no read, update, or delete operation for the recording. Admin submission responses include the archive path for operational access; contributor responses do not.
+The `STORAGE_DRIVER` controls readable reference videos, posters, and the demo
+video. `ARCHIVE_STORAGE_DRIVER` independently controls contributor recording
+archives. Both default to local storage. A Google Drive archive may use dedicated
+archive OAuth credentials or service-account JSON, and can fall back to shared
+Google credentials and a shared folder when archive-specific settings are absent.
 
-Uploads are first written to a temporary directory, checked by file signatures, and moved into storage only after validation. Failure cleanup removes temporary and already-stored files where necessary.
+Submission recordings are append-only. The archive folder is based on contributor
+and per-video sequence, category slug, and video slug. MongoDB keeps the archive
+reference; the API never streams or mutates the archived file. Contributor
+responses omit archive paths, while admins can see archive metadata. Account
+deletion removes that account's archive objects and related submissions; deleting
+a base video does not remove submissions.
 
-## Security controls
+Uploads first land in a temporary directory. Multer limits file size and count;
+services then inspect file signatures before moving valid assets into the selected
+storage driver. Failure paths remove temporary files and clean up files already
+stored during a failed multi-step operation.
 
-- Helmet security headers and disabled `x-powered-by`.
-- CORS with an explicit client-origin allowlist and credentials enabled.
-- SameSite HTTP-only JWT cookies plus origin verification for state-changing requests.
-- Global and operation-specific rate limits.
-- Zod validation for JSON, multipart fields, route IDs, and query parameters.
-- Role checks for admin routes and archive metadata access.
-- File type sniffing instead of trusting browser-provided MIME types.
+## Security and operational controls
 
-## Testing and extension points
+- JWTs are placed in HTTP-only cookies; password reset invalidates existing
+  sessions.
+- Password login avoids revealing whether an email exists.
+- Verification and password-reset codes are stored as keyed hashes, expire, and
+  have bounded attempts and resend intervals.
+- Zod validates bodies, query parameters, and route IDs.
+- File signatures, rather than supplied MIME types, determine accepted video and
+  image formats.
+- Access restrictions store hashed identifiers and expose only short hints.
+- Contact requires a signed-in account email match and enforces per-account and
+  global daily quotas; abusive attempts may create a temporary device/IP block.
+- `TRUST_PROXY` controls Express proxy awareness and should match the hosting
+  topology used for IP-based rate limits and restrictions.
 
-`npm test` runs the HTTP integration suite. The storage driver contract is the extension point for adding a remote provider such as Google Drive. The OpenAPI definition in `src/docs/openapi.js` should be updated whenever a public route, request shape, response shape, or security rule changes.
+## Testing and API documentation
+
+`npm test` runs Node's test runner serially across all `tests/*.test.js`. Each
+HTTP integration suite has its own file and a fresh API test context;
+`apiContext.js` stubs email/contact providers and provisions isolated test
+fixtures. By default, those suites use MongoDB Memory Server. Set
+`MONGODB_URI_TEST` to use an existing disposable database instead—the tests drop
+it. Focused unit and filesystem/storage integration tests use isolated temporary
+directories. See [TEST-CASES.md](./TEST-CASES.md) for the case inventory.
+
+Raw OpenAPI JSON is available at `/api/v1/docs.json` in every environment.
+Interactive Swagger UI is only mounted outside production. Update
+`src/docs/openapi.js` alongside routes, validators, and this API reference when an
+endpoint contract changes.
