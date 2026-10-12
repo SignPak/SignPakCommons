@@ -9,13 +9,11 @@ import { Arrow, Avatar, Brand, ButtonLink } from './ui'
 const publicLinks = [
   ['How it works', paths.demo],
   ['About', paths.about],
-  ['FAQ', paths.faq],
   ['Contact', paths.contact]
 ]
 
 const memberLinks = [
   ['Library', paths.library],
-  ['FAQ', paths.faq],
   ['My space', paths.profile]
 ]
 

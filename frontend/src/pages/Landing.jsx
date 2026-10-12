@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
 import Field from '../components/Field'
@@ -197,6 +198,9 @@ export default function Landing() {
           </h2>
           <p className="contact-copy">
             Have questions about video contributions, recording specifications, or partnership opportunities? Reach out to our team.
+          </p>
+          <p className="contact-copy">
+            Looking for a quick answer? Visit our <Link className="link-accent" to={paths.faq}>FAQ page</Link>.
           </p>
         </div>
         <ContactForm key={user?.id || 'guest'} />
