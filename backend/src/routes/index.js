@@ -8,6 +8,7 @@ import authRoutes from './authRoutes.js'
 import categoryRoutes from './categoryRoutes.js'
 import contactRoutes from './contactRoutes.js'
 import demoVideoRoutes from './demoVideoRoutes.js'
+import publicStatsRoutes from './publicStatsRoutes.js'
 import submissionRoutes from './submissionRoutes.js'
 import userRoutes from './userRoutes.js'
 import videoRoutes from './videoRoutes.js'
@@ -34,6 +35,7 @@ router.use('/demo-video', demoVideoRoutes)
 router.use('/videos', videoRoutes)
 router.use('/submissions', submissionRoutes)
 router.use('/contact', contactRoutes)
+router.use('/public', publicStatsRoutes)
 router.use('/admin', adminRoutes)
 
 export default router

@@ -144,6 +144,8 @@ shared credentials.
 | --- | --- | --- |
 | `RATE_LIMIT_ENABLED` | `true` or `false`; default `true` | Enables API and upload rate limits. Keep enabled outside local debugging. |
 | `SUBMISSION_COOLDOWN_MS` | Set manually; default `30000` | Minimum delay between submissions for the same user and reference video. |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis database REST URL | Optional shared cache for public landing-page counts. Set together with `UPSTASH_REDIS_REST_TOKEN`. |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis database REST token; keep secret | Enables the public stats cache. Cached values expire after 12 hours; the API continues using MongoDB if Redis is unavailable. |
 | `WEB3FORMS_ACCESS_KEY` | Create an access key at Web3Forms | Required in production for contact-message delivery. |
 | `CONTACT_DAILY_LIMIT` | Set manually; default `25` | Maximum successfully delivered messages per UTC day. |
 | `CONTACT_USER_DAILY_LIMIT` | Set manually; default `1` | Maximum contact messages per account per UTC day. |

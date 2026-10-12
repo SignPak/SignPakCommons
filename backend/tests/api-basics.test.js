@@ -33,6 +33,19 @@ describe('basics', () => {
     assert.deepEqual(res.body.data.database, 'connected')
   })
 
+  test('public landing stats return aggregate counts without authentication', async () => {
+    const client = new Client(base)
+    const response = await client.get('/public/stats')
+    assert.equal(response.status, 200)
+    assert.deepEqual(Object.keys(response.body.data).sort(), ['categories', 'contributors', 'publishedVideos'])
+    for (const value of Object.values(response.body.data)) {
+      assert.ok(Number.isInteger(value) && value >= 0)
+    }
+    assert.equal(response.body.data.categories, (await client.get('/categories')).body.data.length)
+    assert.equal(response.body.data.publishedVideos, (await client.get('/videos')).body.data.length)
+    assert.ok(response.body.data.contributors >= 2)
+  })
+
   test('unknown routes and bad JSON use the error shape', async () => {
     const c = new Client(base)
     const missing = await c.get('/nope')
