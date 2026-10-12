@@ -5,9 +5,10 @@ import { Alert, Arrow, Button } from './ui'
 
 /** Camera preview, record/stop, delete and re-record for one video. */
 export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
-  const { recording, status, error, elapsed, stream, start, stop, discard } = useRecorder(video.id)
+  const { recording, status, error, elapsed, stream, prepare, start, stop, discard } = useRecorder(video.id)
   const live = useRef(null)
   const countdownTimer = useRef(null)
+  const starting = useRef(false)
   const [countdown, setCountdown] = useState(null)
 
   useEffect(() => { 
@@ -18,6 +19,7 @@ export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
 
   const isRecording = status === 'recording'
   const busy = status === 'requesting' || countdown !== null
+  const showCameraPreview = isRecording || countdown !== null || (!recording && stream)
 
   // Recording starts the base video too, so contributors can sign along while watching.
   const startCapture = async () => {
@@ -25,15 +27,21 @@ export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
     const base = baseRef.current
     if (started && base && (base.paused || base.ended)) base.play().catch(() => {})
   }
-
-  const begin = () => {
-    if (busy) return
+  const begin = async () => {
+    if (busy || starting.current) return
+    starting.current = true
+    const ready = await prepare()
+    if (!ready) {
+      starting.current = false
+      return
+    }
     let remaining = 3
     setCountdown(remaining)
     const tick = () => {
       remaining -= 1
       if (remaining === 0) {
         setCountdown(null)
+        starting.current = false
         startCapture()
         return
       }
@@ -54,9 +62,9 @@ export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
       <p className="recorder-copy">Watch the example, then make it yours. You can review, trim and delete your recording before you submit it.</p>
 
       <div className="recorder-stage">
-        <video ref={live} className={`recorder-video ${isRecording ? '' : 'is-hidden'}`} autoPlay muted playsInline aria-label="Live camera preview" />
-        {!isRecording && recording && <video key={recording.url} src={recording.url} className="recorder-video" controls playsInline aria-label="Your recording" />}
-        {!isRecording && !recording && <p className="recorder-empty">{busy ? 'Waiting for camera permission…' : 'Your camera preview will appear here.'}</p>}
+        <video ref={live} className={`recorder-video ${showCameraPreview ? '' : 'is-hidden'}`} autoPlay muted playsInline aria-label="Live camera preview" />
+        {!isRecording && recording && countdown === null && <video key={recording.url} src={recording.url} className="recorder-video" controls playsInline aria-label="Your recording" />}
+        {!isRecording && !recording && !stream && <p className="recorder-empty">{busy ? 'Waiting for camera permission…' : 'Your camera preview will appear here.'}</p>}
         {countdown !== null && (
           <div className="recorder-countdown" role="status" aria-live="assertive">
             <strong>{countdown}</strong>
