@@ -66,7 +66,44 @@ async function request(path, options = {}) {
 
 const json = (method, body) => ({ method, body: JSON.stringify(body) })
 const normalizeList = (items) => (items || []).map(normalize)
+const PUBLIC_STATS_CACHE_KEY = `${PREFIX}public-stats`
+const PUBLIC_STATS_CACHE_TTL_MS = 30 * 60 * 1000
 let publicStatsRequest
+
+function isPublicStats(value) {
+  return value
+    && Number.isInteger(value.contributors) && value.contributors >= 0
+    && Number.isInteger(value.publishedVideos) && value.publishedVideos >= 0
+    && Number.isInteger(value.categories) && value.categories >= 0
+}
+
+function readCachedPublicStats() {
+  try {
+    const raw = window.localStorage.getItem(PUBLIC_STATS_CACHE_KEY)
+    if (!raw) return null
+
+    const cached = JSON.parse(raw)
+    if (!isPublicStats(cached?.value) || !Number.isFinite(cached?.savedAt)) {
+      window.localStorage.removeItem(PUBLIC_STATS_CACHE_KEY)
+      return null
+    }
+    if (Date.now() - cached.savedAt >= PUBLIC_STATS_CACHE_TTL_MS) {
+      window.localStorage.removeItem(PUBLIC_STATS_CACHE_KEY)
+      return null
+    }
+    return cached.value
+  } catch {
+    return null
+  }
+}
+
+function cachePublicStats(value) {
+  try {
+    window.localStorage.setItem(PUBLIC_STATS_CACHE_KEY, JSON.stringify({ value, savedAt: Date.now() }))
+  } catch {
+    // The stats request still succeeds when browser storage is unavailable or full.
+  }
+}
 
 const notifications = {
   async list(userId) { return readLocal('notifications', []).filter((item) => item.userId === userId).sort((a, b) => b.createdAt - a.createdAt) },
@@ -86,10 +123,16 @@ const notifications = {
 export const api = {
   public: {
     stats() {
+      const cached = readCachedPublicStats()
+      if (cached) return Promise.resolve(cached)
       if (!publicStatsRequest) {
-        publicStatsRequest = request(apiRoutes.public.stats()).finally(() => {
-          publicStatsRequest = null
-        })
+        publicStatsRequest = request(apiRoutes.public.stats())
+          .then((stats) => {
+            if (!isPublicStats(stats)) throw new Error('The server returned invalid community statistics.')
+            cachePublicStats(stats)
+            return stats
+          })
+          .finally(() => { publicStatsRequest = null })
       }
       return publicStatsRequest
     },
