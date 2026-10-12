@@ -14,7 +14,7 @@
   .hero-art { @apply relative h-[400px] sm:h-[520px]; }
   .hero-photo {
     @apply absolute inset-0 rounded-[2rem] bg-turquoise bg-cover bg-center;
-    background-image: url('https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1000&q=85');
+    background-image: url('/NUST_H-12.jpg');
     background-blend-mode: multiply;
     box-shadow: 0 30px 60px rgb(0 0 0 / 0.35);
   }
@@ -22,7 +22,16 @@
   .hero-quote { @apply absolute -bottom-5 left-4 z-10 m-0 max-w-[15rem] rounded-2xl bg-white p-5 font-display text-2xl font-semibold leading-tight text-deep shadow-lift sm:-left-6; }
   .hero-quote small { @apply mt-2 block font-sans text-sm font-normal; color: #45604f; } /* card is always white, so its caption cannot use a theme colour */
 
-  .marquee { @apply overflow-hidden whitespace-nowrap bg-turquoise py-4 text-center font-ui text-sm font-bold tracking-[.28em] text-deep; }
+  .marquee { @apply overflow-hidden bg-turquoise py-3 font-ui text-xs font-bold uppercase tracking-[.12em] text-deep sm:py-4 sm:text-sm sm:tracking-[.2em]; }
+  .marquee-track { @apply flex w-max; animation: marquee-slide 24s linear infinite; }
+  .marquee-content { @apply flex shrink-0 items-center gap-4 px-4 sm:gap-8 sm:px-8; }
+  .marquee-star { @apply text-deep; }
+  @keyframes marquee-slide { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track { animation: none; }
+    .marquee-content + .marquee-content { display: none; }
+    .marquee { @apply overflow-x-auto; }
+  }
 
   .landing-section { @apply py-20 sm:py-28; }
   .landing-about { @apply grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-16; }
@@ -51,7 +60,7 @@
   .cta-band-copy .btn { @apply mt-8; }
   .cta-band-art {
     @apply min-h-[300px] bg-turquoise bg-cover bg-center;
-    background-image: url('https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=900&q=85');
+    background-image: url('/MCS_Library.jpg');
     background-blend-mode: multiply;
   }
 

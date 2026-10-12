@@ -75,7 +75,7 @@ export default function Landing() {
             </p>
           </div>
           <div className="hero-art">
-            <div className="hero-photo" role="img" aria-label="Community members collaborating on sign language" />
+            <div className="hero-photo" role="img" aria-label="NUST H-12 Islamabad." />
             <blockquote className="hero-quote">
               “Every sign contributed brings the distance to an end.”
               <small>signpak</small>
@@ -171,7 +171,7 @@ export default function Landing() {
             {user ? 'Open library' : 'Create your account'} <Arrow />
           </ButtonLink>
         </div>
-        <div className="cta-band-art" role="img" aria-label="Hands signing PSL" />
+        <div className="cta-band-art" role="img" aria-label="MCS, NUST Library." />
       </section>
       
       {/* CONTACT SECTION */}
@@ -185,9 +185,6 @@ export default function Landing() {
           <p className="contact-copy">
             Have questions about video contributions, recording specifications, or partnership opportunities? Reach out to our team.
           </p>
-          {/* <a className="link-accent" href="mailto:contact@pslai.org">
-            contact@pslai.org
-          </a> */}
         </div>
         <ContactForm key={user?.id || 'guest'} />
       </section>
