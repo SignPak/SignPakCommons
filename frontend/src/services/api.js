@@ -66,6 +66,7 @@ async function request(path, options = {}) {
 
 const json = (method, body) => ({ method, body: JSON.stringify(body) })
 const normalizeList = (items) => (items || []).map(normalize)
+let publicStatsRequest
 
 const notifications = {
   async list(userId) { return readLocal('notifications', []).filter((item) => item.userId === userId).sort((a, b) => b.createdAt - a.createdAt) },
@@ -83,6 +84,17 @@ const notifications = {
 }
 
 export const api = {
+  public: {
+    stats() {
+      if (!publicStatsRequest) {
+        publicStatsRequest = request(apiRoutes.public.stats()).finally(() => {
+          publicStatsRequest = null
+        })
+      }
+      return publicStatsRequest
+    },
+  },
+
   auth: {
     async session() { return normalize(await request(apiRoutes.auth.session())) },
     async register(values) { return normalize(await request(apiRoutes.auth.signup(), json('POST', values))) },

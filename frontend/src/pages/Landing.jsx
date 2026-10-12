@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Field from '../components/Field'
@@ -46,6 +46,22 @@ const contributorPerks = [
 
 export default function Landing() {
   const { user } = useAuth()
+  const [stats, setStats] = useState(null)
+  const [statsError, setStatsError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    api.public.stats()
+      .then((result) => {
+        if (!active) return
+        setStats(result)
+        setStatsError(false)
+      })
+      .catch(() => {
+        if (active) setStatsError(true)
+      })
+    return () => { active = false }
+  }, [])
 
   return (
     <main>
@@ -117,20 +133,21 @@ export default function Landing() {
           <p>
             By contributing short video clips of signs, you directly help train and fine-tune machine learning models, moving PSL technology beyond isolated letters toward real-world communication.
           </p>
-          <dl className="stats">
+          <dl className="stats" aria-live="polite">
             <div>
-              <dt>language</dt>
-              <dd>PSL</dd>
+              <dt>registered contributors</dt>
+              <dd>{stats?.contributors ?? '—'}</dd>
             </div>
             <div>
-              <dt>project</dt>
-              <dd>AI</dd>
+              <dt>published videos</dt>
+              <dd>{stats?.publishedVideos ?? '—'}</dd>
             </div>
             <div>
-              <dt>community impact</dt>
-              <dd>∞</dd>
+              <dt>categories</dt>
+              <dd>{stats?.categories ?? '—'}</dd>
             </div>
           </dl>
+          {statsError && <p className="contact-copy" role="status">Community counts are temporarily unavailable.</p>}
         </div>
       </section>
 
