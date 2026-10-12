@@ -28,7 +28,18 @@ export default function Login() {
   }
 
   return( 
-  <AuthShell eyebrow="Welcome back" title="Good to see you." subtitle="Pick up where you left off." footer={<>New to Signpak? <Link to={paths.signup}>Create an account</Link></>}>
+  <AuthShell 
+    eyebrow="Welcome back" 
+    title="Good to see you." 
+    subtitle="Pick up where you left off." 
+    footer=
+    {
+      <>New to Signpak? 
+        <Link to={paths.signup}>
+          Create an account
+        </Link>
+      </>
+    }>
     <form onSubmit={submit} noValidate>
       <Field label="Email address" name="email" type="email" value={values.email} onChange={change} error={errors.email} placeholder="you@example.com" autoComplete="email" />
       <Field label="Password" name="password" type="password" value={values.password} onChange={change} error={errors.password} placeholder="••••••••" autoComplete="current-password" />
