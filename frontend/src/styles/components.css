@@ -17,11 +17,10 @@
 
   /* ---------- Brand ---------- */
   .brand { @apply flex items-center gap-2.5 font-ui text-2xl font-bold tracking-tight text-heading; }
-  .brand-mark { @apply grid h-9 w-9 place-items-center rounded-full bg-deep font-display text-xl font-bold leading-none text-turquoise; }
-  :root[data-theme='dark'] .brand-mark { background: var(--color-turquoise); color: var(--color-deep); }
+  .brand-mark { @apply h-9 w-11 shrink-0; --brand-mark-color: var(--color-heading); }
   .brand-accent { @apply text-secondary-ink; }
   .brand-light { color: #fff; }
-  .brand-light .brand-mark { background: var(--color-turquoise); color: var(--color-deep); }
+  .brand-light .brand-mark { --brand-mark-color: #fff; }
   .brand-light .brand-accent { color: var(--color-turquoise); }
 
   /* ---------- Buttons ---------- */
