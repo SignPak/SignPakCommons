@@ -13,26 +13,50 @@ function describeError(error) {
 
 /** Camera + MediaRecorder for one video. The finished take is stored in RecordingContext. */
 export function useRecorder(videoId) {
-  const { recordings, saveRecording, removeRecording } = useRecordings()
+  const { recordings, saveRecording, removeRecording, cameraStream, requestCamera, releaseCamera } = useRecordings()
   const [status, setStatus] = useState('idle') // idle | requesting | recording
   const [error, setError] = useState('')
   const [elapsed, setElapsed] = useState(0)
-  const [stream, setStream] = useState(null)
+  const preparedStream = useRef(null)
   const recorder = useRef(null)
   const chunks = useRef([])
   const timer = useRef(null)
   const startedAt = useRef(0)
   const cancelled = useRef(false)
 
-  const start = useCallback(async () => {
+  const prepare = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
       setError('Recording is not supported in this browser. Try a recent version of Chrome, Edge, Firefox or Safari.')
       return false
     }
+    cancelled.current = false
     setError('')
     setStatus('requesting')
     try {
-      const media = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false })
+      const media = await requestCamera()
+      if (cancelled.current) {
+        releaseCamera(media)
+        return false
+      }
+      preparedStream.current = media
+      setStatus('idle')
+      return true
+    } catch (caught) {
+      if (cancelled.current) return false
+      setError(describeError(caught))
+      setStatus('idle')
+      return false
+    }
+  }, [releaseCamera, requestCamera])
+
+  const start = useCallback(async () => {
+    const media = preparedStream.current || cameraStream
+    if (!media?.getVideoTracks().some((track) => track.readyState === 'live')) {
+      setError('Camera access is no longer available. Allow camera access and try again.')
+      return false
+    }
+    setError('')
+    try {
       const mimeType = pickMimeType()
       const instance = new MediaRecorder(media, mimeType ? { mimeType } : undefined)
       chunks.current = []
@@ -40,12 +64,13 @@ export function useRecorder(videoId) {
       instance.ondataavailable = (event) => { if (event.data.size) chunks.current.push(event.data) }
       instance.onstop = () => {
         clearInterval(timer.current)
-        media.getTracks().forEach((track) => track.stop())
-        setStream(null)
         if (!cancelled.current && chunks.current.length) {
           const type = instance.mimeType || mimeType || 'video/webm'
           saveRecording(videoId, { blob: new Blob(chunks.current, { type }), duration: Math.max((Date.now() - startedAt.current) / 1000, 0.5), mimeType: type })
         }
+        releaseCamera(media)
+        preparedStream.current = null
+        recorder.current = null
         setStatus('idle')
       }
       recorder.current = instance
@@ -53,15 +78,16 @@ export function useRecorder(videoId) {
       setElapsed(0)
       timer.current = setInterval(() => setElapsed((Date.now() - startedAt.current) / 1000), 250)
       instance.start(250)
-      setStream(media)
       setStatus('recording')
       return true
     } catch (caught) {
+      releaseCamera(media)
+      preparedStream.current = null
       setError(describeError(caught))
       setStatus('idle')
       return false
     }
-  }, [saveRecording, videoId])
+  }, [cameraStream, releaseCamera, saveRecording, videoId])
 
   const stop = useCallback(() => {
     if (recorder.current?.state === 'recording') recorder.current.stop()
@@ -72,12 +98,14 @@ export function useRecorder(videoId) {
     removeRecording(videoId)
   }, [removeRecording, videoId])
 
-  // Leaving the page mid-take throws the take away and releases the camera.
+  // Leave no active recording or camera stream behind when navigating away.
   useEffect(() => () => {
     cancelled.current = true
     if (recorder.current?.state === 'recording') recorder.current.stop()
     clearInterval(timer.current)
-  }, [])
+    releaseCamera(preparedStream.current)
+    preparedStream.current = null
+  }, [releaseCamera])
 
-  return { recording: recordings[videoId] || null, status, error, elapsed, stream, start, stop, discard }
+  return { recording: recordings[videoId] || null, status, error, elapsed, stream: cameraStream, prepare, start, stop, discard }
 }

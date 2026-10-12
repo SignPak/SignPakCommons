@@ -80,7 +80,17 @@ const schema = z.object({
 
   RATE_LIMIT_ENABLED: bool.default(true),
   SUBMISSION_COOLDOWN_MS: z.coerce.number().int().positive().default(30_000),
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
 }).superRefine((data, context) => {
+  if (Boolean(data.UPSTASH_REDIS_REST_URL) !== Boolean(data.UPSTASH_REDIS_REST_TOKEN)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['UPSTASH_REDIS_REST_URL'],
+      message: 'Set both UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to enable the Redis cache.',
+    })
+  }
+
   if (data.NODE_ENV === 'production') {
     if (!data.BREVO_API_KEY) {
       context.addIssue({ code: 'custom', path: ['BREVO_API_KEY'], message: 'Required in production for email verification and password reset.' })

@@ -300,6 +300,23 @@ export const openapi = {
         },
       },
     },
+    '/public/stats': {
+      get: {
+        tags: ['Public'],
+        summary: 'Get cached landing-page aggregate counts',
+        responses: {
+          200: jsonResponse('Public stats', {
+            type: 'object',
+            required: ['contributors', 'publishedVideos', 'categories'],
+            properties: {
+              contributors: { type: 'integer', minimum: 0 },
+              publishedVideos: { type: 'integer', minimum: 0 },
+              categories: { type: 'integer', minimum: 0 },
+            },
+          }),
+        },
+      },
+    },
     '/docs.json': {
       get: { tags: ['Health'], summary: 'Get the OpenAPI document', responses: { 200: { description: 'OpenAPI JSON document' } } },
     },

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useLibrary } from '../context/LibraryContext'
 import Field from '../components/Field'
 import Footer from '../components/Footer'
 import { Alert, Arrow, Button, ButtonLink, Eyebrow } from '../components/ui'
@@ -46,7 +46,22 @@ const contributorPerks = [
 
 export default function Landing() {
   const { user } = useAuth()
-  const { publishedVideos, categories } = useLibrary()
+  const [stats, setStats] = useState(null)
+  const [statsError, setStatsError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    api.public.stats()
+      .then((result) => {
+        if (!active) return
+        setStats(result)
+        setStatsError(false)
+      })
+      .catch(() => {
+        if (active) setStatsError(true)
+      })
+    return () => { active = false }
+  }, [])
 
   return (
     <main>
@@ -75,7 +90,7 @@ export default function Landing() {
             </p>
           </div>
           <div className="hero-art">
-            <div className="hero-photo" role="img" aria-label="Community members collaborating on sign language" />
+            <div className="hero-photo" role="img" aria-label="NUST H-12 Islamabad." />
             <blockquote className="hero-quote">
               “Every sign contributed brings the distance to an end.”
               <small>signpak</small>
@@ -86,7 +101,20 @@ export default function Landing() {
 
       {/* MARQUEE BAND */}
       <div className="marquee" aria-hidden="true">
-        RECORD SIGNS &nbsp; ✦ &nbsp; TRAIN AI &nbsp; ✦ &nbsp; HELP COMMUNITY &nbsp; ✦ &nbsp; 
+        <div className="marquee-track">
+          {[0, 1].map((copy) => (
+            <div className="marquee-content" key={copy}>
+              <span>Record signs</span>
+              <span className="marquee-star">✦</span>
+              <span>Train AI</span>
+              <span className="marquee-star">✦</span>
+              <span>Help community</span>
+              <span className="marquee-star">✦</span>
+              <span>Make a difference</span>
+              <span className="marquee-star">✦</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ABOUT SECTION */}
@@ -105,20 +133,21 @@ export default function Landing() {
           <p>
             By contributing short video clips of signs, you directly help train and fine-tune machine learning models, moving PSL technology beyond isolated letters toward real-world communication.
           </p>
-          <dl className="stats">
+          <dl className="stats" aria-live="polite">
             <div>
-              <dt>signs cataloged</dt>
-              <dd>{publishedVideos.length}</dd>
+              <dt>registered contributors</dt>
+              <dd>{stats?.contributors ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>published videos</dt>
+              <dd>{stats?.publishedVideos ?? '—'}</dd>
             </div>
             <div>
               <dt>categories</dt>
-              <dd>{categories.length}</dd>
-            </div>
-            <div>
-              <dt>community impact</dt>
-              <dd>∞</dd>
+              <dd>{stats?.categories ?? '—'}</dd>
             </div>
           </dl>
+          {statsError && <p className="contact-copy" role="status">Community counts are temporarily unavailable.</p>}
         </div>
       </section>
 
@@ -171,7 +200,7 @@ export default function Landing() {
             {user ? 'Open library' : 'Create your account'} <Arrow />
           </ButtonLink>
         </div>
-        <div className="cta-band-art" role="img" aria-label="Hands signing PSL" />
+        <div className="cta-band-art" role="img" aria-label="MCS, NUST Library." />
       </section>
       
       {/* CONTACT SECTION */}
@@ -185,9 +214,9 @@ export default function Landing() {
           <p className="contact-copy">
             Have questions about video contributions, recording specifications, or partnership opportunities? Reach out to our team.
           </p>
-          {/* <a className="link-accent" href="mailto:contact@pslai.org">
-            contact@pslai.org
-          </a> */}
+          <p className="contact-copy">
+            Looking for a quick answer? Visit our <Link className="link-accent" to={paths.faq}>FAQ page</Link>.
+          </p>
         </div>
         <ContactForm key={user?.id || 'guest'} />
       </section>

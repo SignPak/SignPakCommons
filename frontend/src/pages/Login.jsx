@@ -14,6 +14,7 @@ export default function Login() {
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
+  
   const change = (event) => setValues((current) => ({ ...current, [event.target.name]: event.target.value }))
 
   const submit = async (event) => {
@@ -23,20 +24,55 @@ export default function Login() {
     if (Object.keys(found).length) return
     setBusy(true)
     setFormError('')
-    try { await login(values.email, values.password) }
-    catch (error) { setFormError(error.message); setBusy(false) }
+    try { 
+      await login(values.email, values.password) 
+    } catch (error) { 
+      setFormError(error.message)
+      setBusy(false) 
+    }
   }
 
-  return( 
-  <AuthShell eyebrow="Welcome back" title="Good to see you." subtitle="Pick up where you left off." footer={<>New to Signpak? <Link to={paths.signup}>Create an account</Link></>}>
-    <form onSubmit={submit} noValidate>
-      <Field label="Email address" name="email" type="email" value={values.email} onChange={change} error={errors.email} placeholder="you@example.com" autoComplete="email" />
-      <Field label="Password" name="password" type="password" value={values.password} onChange={change} error={errors.password} placeholder="••••••••" autoComplete="current-password" />
-      <p className="auth-footer"><Link to={paths.forgotPassword}>Forgot password?</Link> · <Link to={paths.verifyEmail}>Verify email</Link></p>
-      {location.state?.notice && <Alert tone="success">{location.state.notice}</Alert>}
-      {formError && <Alert tone="error">{formError}</Alert>}
-      <Button type="submit" block className="auth-submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'} <Arrow /></Button>
-    </form>
-  </AuthShell>
-  );
+  return ( 
+    <AuthShell 
+      eyebrow="Welcome back" 
+      title="Good to see you." 
+      subtitle="Pick up where you left off." 
+      footer={
+        <>
+          New to Signpak? <Link to={paths.signup}>Create an account</Link>
+        </>
+      }
+    >
+      <form onSubmit={submit} noValidate>
+        <Field 
+          label="Email address" 
+          name="email" 
+          type="email" 
+          value={values.email} 
+          onChange={change} 
+          error={errors.email} 
+          placeholder="you@example.com" 
+          autoComplete="email" 
+        />
+        <Field 
+          label="Password" 
+          name="password" 
+          type="password" 
+          value={values.password} 
+          onChange={change} 
+          error={errors.password} 
+          placeholder="••••••••" 
+          autoComplete="current-password" 
+        />
+        <p className="auth-footer">
+          <Link to={paths.forgotPassword}>Forgot password?</Link> · <Link to={paths.verifyEmail}>Verify email</Link>
+        </p>
+        {location.state?.notice && <Alert tone="success">{location.state.notice}</Alert>}
+        {formError && <Alert tone="error">{formError}</Alert>}
+        <Button type="submit" block className="auth-submit" disabled={busy}>
+          {busy ? 'Logging in…' : 'Log in'} <Arrow />
+        </Button>
+      </form>
+    </AuthShell>
+  )
 }

@@ -23,6 +23,7 @@ export default function Footer() {
         <div>
           <p className="footer-title">Good to know</p>
           <div className="footer-links">
+            <Link to={paths.faq}>FAQ</Link>
             <Link to={paths.policy}>Policy</Link>
             <Link to={paths.contact}>Contact us</Link>
           </div>

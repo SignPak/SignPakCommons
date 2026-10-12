@@ -9,6 +9,9 @@ const qs = (params = {}) => {
 
 export const apiRoutes = {
   health: () => `${API_BASE}/health`,
+  public: {
+    stats: () => `${API_BASE}/public/stats`,
+  },
 
   auth: {
     signup: () => `${API_BASE}/auth/signup`,
