@@ -60,10 +60,15 @@
   .editor-back { @apply mx-auto mt-5 block text-center text-sm font-semibold text-muted underline-offset-4 hover:text-accent-ink hover:underline; }
 
   /* Two overlapping range inputs form the dual-handle trim slider. Only the thumbs take pointer events. */
-  .trim { @apply relative h-10; }
-  .trim-track { @apply absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full bg-line; }
+  .trim { @apply relative h-32; }
+  .trim-frame-source { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .trim-preview { @apply pointer-events-none absolute top-0 z-10 -translate-x-1/2 overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-lift; }
+  .trim-preview-frame { @apply block h-[4.55rem] w-32 rounded-md bg-black object-cover; }
+  .trim-preview-frame.is-mirrored { transform: scaleX(-1); }
+  .trim-preview span { @apply block pt-1 text-center font-ui text-xs font-semibold tabular-nums text-heading; }
+  .trim-track { @apply absolute inset-x-0 bottom-4 h-2.5 rounded-full bg-line; }
   .trim-fill { @apply absolute h-full rounded-full; background: var(--progress); }
-  .trim input { @apply pointer-events-none absolute inset-0 m-0 h-10 w-full appearance-none bg-transparent; }
+  .trim input { @apply pointer-events-none absolute inset-x-0 bottom-0 m-0 h-10 w-full appearance-none bg-transparent; }
   .trim input::-webkit-slider-runnable-track { background: transparent; }
   .trim input::-moz-range-track { background: transparent; }
   .trim input::-webkit-slider-thumb { @apply pointer-events-auto h-7 w-7 cursor-ew-resize appearance-none rounded-full border-[3px] border-surface bg-brand shadow-soft; }
