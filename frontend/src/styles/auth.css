@@ -8,7 +8,7 @@
   .auth-art::before { content: ''; @apply absolute inset-0; background: linear-gradient(160deg, rgb(0 64 26 / 0.86) 20%, rgb(0 46 18 / 0.94) 100%), radial-gradient(70% 60% at 100% 0%, rgb(64 224 208 / 0.4), transparent 70%); }
   .auth-art-copy { @apply relative pb-2 md:pb-10; }
   .auth-panel { @apply grid min-w-0 place-items-center bg-page px-4 py-6 sm:px-6 sm:py-10 md:px-8 md:py-16; }
-  .auth-card { @apply w-full max-w-110px rounded-2xl border border-line bg-surface p-5 shadow-soft sm:rounded-3xl sm:p-8 md:p-10; }
+  .auth-card { @apply w-full max-w-110 rounded-2xl border border-line bg-surface p-5 shadow-soft sm:rounded-3xl sm:p-8 md:p-10; }
   .auth-back { @apply mb-6 inline-block rounded-full text-sm font-semibold text-muted hover:text-accent-ink sm:mb-8; }
   .auth-sub { @apply mt-4 text-base text-muted; }
   .auth-submit { @apply mt-8; }
