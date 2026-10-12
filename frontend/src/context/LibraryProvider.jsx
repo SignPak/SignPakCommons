@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Button, PageState } from '../components/ui'
 import { api } from '../services/api'
+import { paths } from '../routes/appRoutes'
 import { useAuth } from './AuthContext'
 import { LibraryContext } from './LibraryContext'
 
-const EMPTY = { ready: false, categories: [], videos: [], submissions: [] }
+const EMPTY = { ready: false, ownerId: null, categories: [], videos: [], submissions: [] }
 const SUBMISSION_COOLDOWN_MS = Number(import.meta.env.VITE_SUBMISSION_COOLDOWN_MS || 30_000)
 
 function loadLibrary(user) {
@@ -16,32 +18,61 @@ function loadLibrary(user) {
   ])
 }
 
+function isLibraryRoute(pathname) {
+  return pathname === paths.library
+    || pathname.startsWith('/library/')
+    || pathname === paths.watch
+    || pathname === paths.watchEdit
+    || pathname === paths.profile
+    || pathname === paths.admin
+    || pathname.startsWith(`${paths.admin}/`)
+}
+
 export default function LibraryProvider({ children }) {
   const { user } = useAuth()
+  const location = useLocation()
   const [data, setData] = useState(EMPTY)
-  const [loadError, setLoadError] = useState('')
+  const [loadError, setLoadError] = useState(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
+  const inFlight = useRef(new Map())
+  const shouldLoad = Boolean(user) && isLibraryRoute(location.pathname)
+  const userId = user?.id
 
   const refresh = useCallback(async () => {
+    if (!user) throw new Error('You must be logged in to load the library.')
     const [categories, videos, submissions] = await loadLibrary(user)
-    setData({ ready: true, categories, videos, submissions })
-    setLoadError('')
+    setData({ ready: true, ownerId: user.id, categories, videos, submissions })
+    setLoadError(null)
   }, [user])
 
   useEffect(() => {
+    if (!user || !shouldLoad || (data.ready && data.ownerId === user.id)) return undefined
+
     let active = true
-    loadLibrary(user)
+    let request = inFlight.current.get(user.id)
+    if (!request) {
+      request = loadLibrary(user)
+      inFlight.current.set(user.id, request)
+      const clearRequest = () => {
+        if (inFlight.current.get(user.id) === request) inFlight.current.delete(user.id)
+      }
+      request.then(clearRequest, clearRequest)
+    }
+    request
       .then(([categories, videos, submissions]) => {
         if (active) {
-          setData({ ready: true, categories, videos, submissions })
-          setLoadError('')
+          setData({ ready: true, ownerId: user.id, categories, videos, submissions })
+          setLoadError(null)
         }
       })
       .catch((error) => {
-        if (active) setLoadError(error?.message || 'Unable to load the library. Try again.')
+        if (active) setLoadError({
+          userId: user.id,
+          message: error?.message || 'Unable to load the library. Try again.',
+        })
       })
     return () => { active = false }
-  }, [user, loadAttempt])
+  }, [data.ownerId, data.ready, loadAttempt, shouldLoad, user, userId])
 
   const value = useMemo(() => {
     const { categories, videos, submissions } = data
@@ -98,16 +129,17 @@ export default function LibraryProvider({ children }) {
     }
   }, [data, user, refresh])
 
-  if (!data.ready && loadError) {
+  const dataReadyForUser = Boolean(user) && data.ready && data.ownerId === user.id
+  if (shouldLoad && !dataReadyForUser && loadError?.userId === user.id) {
     return <PageState
       eyebrow="Connection problem"
       title="We couldn't load the library."
       action={<Button onClick={() => {
-        setLoadError('')
+        setLoadError(null)
         setLoadAttempt((attempt) => attempt + 1)
       }}>Try again</Button>}
-    >{loadError}</PageState>
+    >{loadError.message}</PageState>
   }
-  if (!data.ready) return <div className="boot" role="status">Loading your library…</div>
+  if (shouldLoad && !dataReadyForUser) return <div className="boot" role="status">Loading your library…</div>
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>
 }

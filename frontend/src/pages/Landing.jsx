@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useLibrary } from '../context/LibraryContext'
 import Field from '../components/Field'
 import Footer from '../components/Footer'
 import { Alert, Arrow, Button, ButtonLink, Eyebrow } from '../components/ui'
@@ -47,7 +46,6 @@ const contributorPerks = [
 
 export default function Landing() {
   const { user } = useAuth()
-  const { publishedVideos, categories } = useLibrary()
 
   return (
     <main>
@@ -121,12 +119,12 @@ export default function Landing() {
           </p>
           <dl className="stats">
             <div>
-              <dt>signs cataloged</dt>
-              <dd>{publishedVideos.length}</dd>
+              <dt>language</dt>
+              <dd>PSL</dd>
             </div>
             <div>
-              <dt>categories</dt>
-              <dd>{categories.length}</dd>
+              <dt>project</dt>
+              <dd>AI</dd>
             </div>
             <div>
               <dt>community impact</dt>
