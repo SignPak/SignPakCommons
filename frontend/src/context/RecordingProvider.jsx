@@ -76,6 +76,15 @@ export default function RecordingProvider({ children }) {
     return request
   }, [])
 
+  const releaseCamera = useCallback((stream = cameraStreamRef.current) => {
+    if (!stream) return
+    stream.getTracks().forEach((track) => track.stop())
+    if (cameraStreamRef.current === stream) {
+      cameraStreamRef.current = null
+      setCameraStream(null)
+    }
+  }, [])
+
   // Different person logged in on this tab: drop whatever the previous one recorded.
   const userId = user?.id
   useEffect(() => () => {
@@ -88,6 +97,6 @@ export default function RecordingProvider({ children }) {
     setRecordings({})
   }, [userId])
 
-  const value = useMemo(() => ({ recordings, saveRecording, removeRecording, updateEdit, cameraStream, requestCamera }), [recordings, saveRecording, removeRecording, updateEdit, cameraStream, requestCamera])
+  const value = useMemo(() => ({ recordings, saveRecording, removeRecording, updateEdit, cameraStream, requestCamera, releaseCamera }), [recordings, saveRecording, removeRecording, updateEdit, cameraStream, requestCamera, releaseCamera])
   return <RecordingContext.Provider value={value}>{children}</RecordingContext.Provider>
 }
