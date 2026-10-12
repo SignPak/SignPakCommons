@@ -86,7 +86,17 @@ export default function Landing() {
 
       {/* MARQUEE BAND */}
       <div className="marquee" aria-hidden="true">
-        RECORD SIGNS &nbsp; ✦ &nbsp; TRAIN AI &nbsp; ✦ &nbsp; HELP COMMUNITY &nbsp; ✦ &nbsp; 
+        <div className="marquee-track">
+          {[0, 1].map((copy) => (
+            <div className="marquee-content" key={copy}>
+              <span>Record signs</span>
+              <span className="marquee-star">✦</span>
+              <span>Train AI</span>
+              <span className="marquee-star">✦</span>
+              <span>Help community</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ABOUT SECTION */}
