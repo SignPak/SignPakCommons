@@ -23,15 +23,9 @@
   .hero-quote small { @apply mt-2 block font-sans text-sm font-normal; color: #45604f; } /* card is always white, so its caption cannot use a theme colour */
 
   .marquee { @apply overflow-hidden border-y border-deep/10 bg-turquoise py-4 font-ui text-xs font-bold uppercase tracking-[.12em] text-deep sm:py-5 sm:text-sm sm:tracking-[.2em]; }
-  .marquee-track { @apply flex w-full; }
-  .marquee-content { @apply flex w-full shrink-0 items-center justify-evenly gap-4 px-4; }
-  .marquee-content + .marquee-content { @apply hidden; }
+  .marquee-track { @apply flex w-max; animation: marquee-slide 30s linear infinite; }
+  .marquee-content { @apply flex w-max shrink-0 items-center gap-[1.4rem] px-[.7rem]; }
   .marquee-star { @apply text-deep/60; }
-  @media (max-width: 767px) {
-    .marquee-track { @apply w-max; animation: marquee-slide 22s linear infinite; }
-    .marquee-content { @apply w-max justify-start gap-5 px-5; }
-    .marquee-content + .marquee-content { @apply flex; }
-  }
   @keyframes marquee-slide { to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) {
     .marquee-track { animation: none; }

@@ -94,6 +94,9 @@ export default function Landing() {
               <span>Train AI</span>
               <span className="marquee-star">✦</span>
               <span>Help community</span>
+              <span className="marquee-star">✦</span>
+              <span>Make a difference</span>
+              <span className="marquee-star">✦</span>
             </div>
           ))}
         </div>
