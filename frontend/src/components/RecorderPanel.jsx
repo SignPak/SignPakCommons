@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRecorder } from '../hooks/useRecorder'
 import { formatTime } from '../utils/format'
 import { Alert, Arrow, Button } from './ui'
@@ -7,34 +7,80 @@ import { Alert, Arrow, Button } from './ui'
 export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
   const { recording, status, error, elapsed, stream, start, stop, discard } = useRecorder(video.id)
   const live = useRef(null)
-  useEffect(() => { if (live.current) live.current.srcObject = stream }, [stream])
+  const countdownTimer = useRef(null)
+  const [countdown, setCountdown] = useState(null)
+
+  useEffect(() => { 
+    if (live.current) live.current.srcObject = stream 
+  }, [stream])
+
+  useEffect(() => () => clearTimeout(countdownTimer.current), [])
 
   const isRecording = status === 'recording'
-  const busy = status === 'requesting'
+  const busy = status === 'requesting' || countdown !== null
 
   // Recording starts the base video too, so contributors can sign along while watching.
-  const begin = async () => {
+  const startCapture = async () => {
     const started = await start()
     const base = baseRef.current
     if (started && base && (base.paused || base.ended)) base.play().catch(() => {})
   }
 
-  return <div className="recorder">
-    <p className={`recorder-status ${isRecording ? 'is-live' : ''}`}><span aria-hidden="true">●</span> {isRecording ? `Recording ${formatTime(elapsed)}` : recording ? 'Recording ready' : 'Your turn'}</p>
-    <h2 className="display display-md">Record<br /><em>yourself.</em></h2>
-    <p className="recorder-copy">Watch the example, then make it yours. You can review, trim and delete your recording before you submit it.</p>
+  const begin = () => {
+    if (busy) return
+    let remaining = 3
+    setCountdown(remaining)
+    const tick = () => {
+      remaining -= 1
+      if (remaining === 0) {
+        setCountdown(null)
+        startCapture()
+        return
+      }
+      setCountdown(remaining)
+      countdownTimer.current = setTimeout(tick, 1000)
+    }
+    countdownTimer.current = setTimeout(tick, 1000)
+  }
 
-    <div className="recorder-stage">
-      <video ref={live} className={`recorder-video ${isRecording ? '' : 'is-hidden'}`} autoPlay muted playsInline aria-label="Live camera preview" />
-      {!isRecording && recording && <video key={recording.url} src={recording.url} className="recorder-video" controls playsInline aria-label="Your recording" />}
-      {!isRecording && !recording && <p className="recorder-empty">{busy ? 'Waiting for camera permission…' : 'Your camera preview will appear here.'}</p>}
+  return (
+    <div className="recorder">
+      <p className={`recorder-status ${isRecording ? 'is-live' : ''}`}>
+        <span aria-hidden="true">●</span> 
+        {isRecording ? `Recording ${formatTime(elapsed)}` : countdown !== null ? `Starting in ${countdown}…` : recording ? 'Recording ready' : 'Your turn'}
+      </p>
+      
+      <h2 className="display display-md">Record<br /><em>yourself.</em></h2>
+      <p className="recorder-copy">Watch the example, then make it yours. You can review, trim and delete your recording before you submit it.</p>
+
+      <div className="recorder-stage">
+        <video ref={live} className={`recorder-video ${isRecording ? '' : 'is-hidden'}`} autoPlay muted playsInline aria-label="Live camera preview" />
+        {!isRecording && recording && <video key={recording.url} src={recording.url} className="recorder-video" controls playsInline aria-label="Your recording" />}
+        {!isRecording && !recording && <p className="recorder-empty">{busy ? 'Waiting for camera permission…' : 'Your camera preview will appear here.'}</p>}
+        {countdown !== null && (
+          <div className="recorder-countdown" role="status" aria-live="assertive">
+            <strong>{countdown}</strong>
+            <span>Get ready</span>
+          </div>
+        )}
+      </div>
+
+      {isRecording ? (
+        <Button variant="outline" block onClick={stop}>
+          <span><span className="rec-dot" aria-hidden="true">■</span> Stop recording</span>
+        </Button>
+      ) : (
+        <Button variant="outline" block onClick={begin} disabled={busy}>
+          <span><span className="rec-dot" aria-hidden="true">●</span> {countdown !== null ? `Starting in ${countdown}…` : recording ? 'Record again' : 'Start recording'}</span>
+        </Button>
+      )}
+
+      {error && <Alert tone="error">{error}</Alert>}
+      {recording && !isRecording && <button type="button" className="recorder-delete" onClick={discard}>Delete recording</button>}
+      
+      <Button block className="recorder-save" disabled={!recording || isRecording} onClick={onSaveAndEdit}>
+        Save and edit video <Arrow />
+      </Button>
     </div>
-
-    {isRecording
-      ? <Button variant="outline" block onClick={stop}><span><span className="rec-dot" aria-hidden="true">■</span> Stop recording</span></Button>
-      : <Button variant="outline" block onClick={begin} disabled={busy}><span><span className="rec-dot" aria-hidden="true">●</span> {recording ? 'Record again' : 'Start recording'}</span></Button>}
-    {error && <Alert tone="error">{error}</Alert>}
-    {recording && !isRecording && <button type="button" className="recorder-delete" onClick={discard}>Delete recording</button>}
-    <Button block className="recorder-save" disabled={!recording || isRecording} onClick={onSaveAndEdit}>Save and edit video <Arrow /></Button>
-  </div>
+  )
 }
