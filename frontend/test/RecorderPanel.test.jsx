@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useRecorder } from '../hooks/useRecorder'
-import RecorderPanel from './RecorderPanel'
+import { useRecorder } from '../src/hooks/useRecorder'
+import RecorderPanel from '../src/components/RecorderPanel'
 
-vi.mock('../hooks/useRecorder', () => ({
+vi.mock('../src/hooks/useRecorder', () => ({
   useRecorder: vi.fn(),
 }))
 
