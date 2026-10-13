@@ -74,6 +74,6 @@
   .demo-steps li::before { @apply row-span-2 font-display text-5xl font-bold leading-none text-turquoise; content: counter(step); }
   .demo-steps b { @apply font-ui text-lg font-bold text-white; }
   .demo-video { @apply m-0 rounded-3xl border p-3 shadow-lift; border-color: rgb(255 255 255 / 0.18); background-color: rgb(0 0 0 / 0.28); }
-  .demo-video video { @apply block aspect-video w-full rounded-2xl bg-black; }
+  .demo-frame { @apply rounded-2xl; --video-max-h: min(70svh, 38rem); }
   .demo-video figcaption { @apply px-1 pb-1 pt-3 text-sm; color: rgb(255 255 255 / 0.75); }
 }

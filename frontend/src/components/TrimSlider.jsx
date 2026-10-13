@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatTime } from '../utils/format'
+import { DEFAULT_ASPECT } from '../utils/media'
 
 /** Two-handle range slider. Values are seconds; `total` is the full recording length. */
-export default function TrimSlider({ total, start, end, src, mirrored, onChange }) {
+export default function TrimSlider({ total, start, end, src, mirrored, aspect, onChange }) {
   const frameVideo = useRef(null)
   const frameCanvas = useRef(null)
   const latestPreview = useRef(start)
@@ -60,6 +61,10 @@ export default function TrimSlider({ total, start, end, src, mirrored, onChange 
     setShowPreview(true)
   }
 
+  // Hover preview keeps the video's shape: the longest side is 144px, portrait or landscape.
+  const ratio = aspect || DEFAULT_ASPECT
+  const previewWidth = ratio >= 1 ? 144 : Math.round(144 * ratio)
+  const previewHeight = ratio >= 1 ? Math.round(144 / ratio) : 144
   const gap = Math.min(0.5, total / 2)
   const safeTotal = Math.max(total, 0.1)
   const left = (start / safeTotal) * 100
@@ -81,7 +86,7 @@ export default function TrimSlider({ total, start, end, src, mirrored, onChange 
       onSeeked={onFrameSeeked}
     />
     {showPreview && <div className="trim-preview" style={{ left: `clamp(4.5rem, ${previewPosition}%, calc(100% - 4.5rem))` }} aria-hidden="true">
-      <canvas ref={frameCanvas} className={`trim-preview-frame ${mirrored ? 'is-mirrored' : ''}`} width="144" height="81" />
+      <canvas ref={frameCanvas} className={`trim-preview-frame ${mirrored ? 'is-mirrored' : ''}`} width={previewWidth} height={previewHeight} />
       <span>{formatTime(previewTime)}</span>
     </div>}
     <div className="trim-track"><span className="trim-fill" style={{ left: `${left}%`, right: `${right}%` }} /></div>

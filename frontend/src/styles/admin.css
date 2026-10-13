@@ -69,7 +69,7 @@
   .upload { @apply grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_.9fr]; }
   .upload-drop { @apply min-w-0; }
   .upload-pick { @apply grid min-h-70 cursor-pointer place-content-center justify-items-center gap-2 rounded-3xl border-2 border-dashed border-line-strong bg-panel p-6 text-center text-base text-muted transition hover:border-accent-ink hover:bg-secondary-soft; }
-  .upload-preview { @apply block aspect-video w-full rounded-2xl bg-black; }
+  .upload-preview { @apply rounded-2xl; --video-max-h: min(60svh, 30rem); }
   .upload-file { @apply mt-3 text-sm text-muted; }
   .upload-file b { @apply text-heading; }
   .upload-file label { @apply ml-2; }
@@ -89,7 +89,7 @@
   .row-actions button { @apply rounded-full px-3 py-1.5 font-semibold text-muted transition hover:bg-panel hover:text-heading; }
   .row-actions .is-danger { @apply bg-danger-soft text-danger shadow-soft; }
   .row-actions .is-danger:hover { background-color: color-mix(in srgb, var(--danger) 14%, var(--danger-soft)); }
-  .video-row-preview { @apply mt-4 block aspect-video w-full max-w-xl rounded-2xl bg-black; }
+  .video-row-preview { @apply mt-4 rounded-2xl; --video-max-h: min(60svh, 28rem); margin-inline: 0; }
   .video-row-edit { @apply mt-2 grid grid-cols-1 gap-x-5 sm:grid-cols-2; }
   .row-form-actions { @apply mt-6 flex flex-wrap gap-2 sm:col-span-2; }
   .admin-inline-move { @apply mt-2 sm:col-span-2; }

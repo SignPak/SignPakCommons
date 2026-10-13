@@ -8,8 +8,9 @@ contributor workflows, and an admin workspace. The backend API is the source of
 truth for accounts, categories, reference videos, and submitted recordings.
 
 The frontend requires Node.js 20.19 or newer, as declared by
-`package.json`. Its package scripts are `dev`, `lint`, `build`, `preview`,
-`seo:generate`, and `snap`; there is no frontend test script.
+`package.json`. Its package scripts are `dev`, `lint`, `test`, `build`,
+`preview`, `seo:generate`, and `snap`. `npm test` runs Vitest in jsdom, with
+React component tests written using Testing Library.
 
 ## Bootstrap and providers
 
@@ -89,7 +90,26 @@ The `RecordingProvider` keeps the current take available while a contributor
 moves between `/watch` and `/watch/edit`. The editor applies trim and mirror
 settings as submission metadata, then uploads the recording blob and metadata
 through the API service. The backend stores the uploaded recording and metadata;
-it does not physically trim or transcode the file.
+it does not physically trim or transcode contributor recordings.
+
+### Admin video preparation and responsive playback
+
+Before uploading reference or demo videos, admins use `VideoPrep` to preview the
+local file, optionally remove audio, and trim its start and end. When processing
+is needed, `processVideo` loads ffmpeg.wasm on demand and processes the file in
+the browser; trimming re-encodes the selected range, while audio-only removal
+copies the video stream. No processing happens on the backend. The core is
+downloaded from jsDelivr on first use, so the browser needs network access to
+that CDN to apply changes. If processing fails, the UI reports the error and
+allows an unchanged original upload.
+
+`inspectVideoFile` reads the browser-reported duration and displayed dimensions
+(including rotation metadata) and captures a poster frame locally. The upload
+stores `durationSec`, `width`, and `height` with the video; unknown dimensions
+are represented as zero. `ResponsiveVideo` uses stored dimensions to size the
+frame before media metadata loads, then prefers the dimensions reported by the
+loaded video. This keeps portrait, square, and landscape videos in their native
+aspect ratio while fitting the player layout.
 
 ## UI and styling
 
@@ -144,7 +164,9 @@ frontend/
     seo/                    # SEO metadata and helpers
     styles/                 # Theme tokens and feature styles
     utils/                  # Shared browser and media utilities
-  docs/
+    test/
+      RecorderPanel.test.jsx # Recorder workflow component tests
+    docs/
     ARCHITECTURE.md         # This guide
   scripts/
     generateSeoAssets.js    # Sitemap, robots, and prerender route generation

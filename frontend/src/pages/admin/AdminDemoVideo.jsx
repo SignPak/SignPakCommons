@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react'
 import Field from '../../components/Field'
+import ResponsiveVideo from '../../components/ResponsiveVideo'
+import VideoPrep from '../../components/VideoPrep'
 import { Alert, Button } from '../../components/ui'
 import { api } from '../../services/api'
 import { formatBytes, formatTime } from '../../utils/format'
-import { inspectVideoFile } from '../../utils/media'
+import { aspectOf } from '../../utils/media'
 
 const titleFromFile = (name) => name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim()
 
 export default function AdminDemoVideo() {
   const [current, setCurrent] = useState(null)
   const [file, setFile] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState('')
-  const [previewFailed, setPreviewFailed] = useState(false)
+  const [prepared, setPrepared] = useState(null) // { file, durationSec, width, height } once muted/trimmed
   const [title, setTitle] = useState('')
-  const [durationSec, setDurationSec] = useState(0)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -28,43 +28,34 @@ export default function AdminDemoVideo() {
     return () => { active = false }
   }, [])
 
-  useEffect(() => () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-  }, [previewUrl])
-
-  const pick = async (event) => {
+  const pick = (event) => {
     const selected = event.target.files?.[0]
+    event.target.value = ''
     setMessage(null)
+    setPrepared(null)
     if (!selected) {
       setFile(null)
-      setPreviewUrl('')
-      setPreviewFailed(false)
       return
     }
     if (!selected.type.startsWith('video/')) {
       setFile(null)
-      setPreviewUrl('')
       setMessage({ tone: 'error', text: 'Choose a video file (MP4, WebM or MOV).' })
       return
     }
     setFile(selected)
-    setPreviewFailed(false)
-    setPreviewUrl(URL.createObjectURL(selected))
     setTitle(titleFromFile(selected.name))
-    setDurationSec((await inspectVideoFile(selected)).durationSec)
   }
 
   const upload = async (event) => {
     event.preventDefault()
-    if (!file || !title.trim()) return
+    if (!prepared || !title.trim()) return
     setBusy(true)
     setMessage(null)
     try {
-      const saved = await api.demoVideo.upload({ file, title: title.trim(), durationSec })
+      const saved = await api.demoVideo.upload({ file: prepared.file, title: title.trim(), durationSec: prepared.durationSec, width: prepared.width, height: prepared.height })
       setCurrent(saved)
       setFile(null)
-      setPreviewUrl('')
-      setPreviewFailed(false)
+      setPrepared(null)
       setMessage({ tone: 'success', text: 'Demo video uploaded and live on the public demo page.' })
     } catch (error) {
       setMessage({ tone: 'error', text: error.message || 'The demo video could not be uploaded.' })
@@ -98,19 +89,19 @@ export default function AdminDemoVideo() {
       ? <p className="empty-note" role="status">Loading demo video…</p>
       : current
         ? <div className="demo-admin-current">
-          <video src={current.videoUrl} controls playsInline preload="metadata" className="upload-preview" aria-label="Current public demo video" />
+          <ResponsiveVideo src={current.videoUrl} aspect={aspectOf(current)} frameClassName="upload-preview" controls muted playsInline preload="metadata" aria-label="Current public demo video" />
           <p className="upload-file"><b>{current.title}</b> · {formatTime(current.durationSec)} · {formatBytes(current.size)}</p>
         </div>
         : <p className="empty-note">No demo video is set. Upload one to show it on the public demo page.</p>}
 
     <form className="upload" onSubmit={upload} noValidate>
       <div className="upload-drop">
-        {previewUrl
-          ? previewFailed
-            ? <Alert tone="info">Firefox could not preview this file. You can still upload it; playback depends on its video format and codec.</Alert>
-            : <video src={previewUrl} controls playsInline onError={() => setPreviewFailed(true)} className="upload-preview" aria-label="Preview of the selected demo video" />
-          : <label className="upload-pick"><span className="display display-sm">Choose a video</span><span>MP4, WebM or MOV from this device.</span><input type="file" accept="video/*" className="sr-only" onChange={pick} /></label>}
-        {file && <p className="upload-file"><b>{file.name}</b> · {formatBytes(file.size)} · {formatTime(durationSec)} <label className="link-accent">Change<input type="file" accept="video/*" className="sr-only" onChange={pick} /></label></p>}
+        {file
+          ? <>
+            <VideoPrep key={`${file.name}-${file.size}-${file.lastModified}`} file={file} label="the selected demo video" onReady={setPrepared} onReset={() => setPrepared(null)} />
+            <p className="upload-file"><b>{file.name}</b> · {formatBytes(file.size)} <label className="link-accent">Change<input type="file" accept="video/*" className="sr-only" onChange={pick} /></label></p>
+          </>
+          : <label className="upload-pick"><span className="display display-sm">Choose a video</span><span>MP4, WebM or MOV, in any shape: phone portrait or landscape.</span><input type="file" accept="video/*" className="sr-only" onChange={pick} /></label>}
       </div>
       <div className="upload-fields">
         <Field label="Demo title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="How to contribute" />
@@ -119,7 +110,7 @@ export default function AdminDemoVideo() {
           <p>Delete the current demo video? The public demo page will show an empty state until another is uploaded.</p>
           <div className="confirm-actions"><Button variant="danger" onClick={remove} disabled={busy}>Yes, delete</Button><Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={busy}>Keep video</Button></div>
         </div>}
-        <Button type="submit" block disabled={busy || !file || !title.trim()}>{busy ? 'Uploading…' : current ? 'Replace demo video' : 'Upload demo video'}</Button>
+        <Button type="submit" block disabled={busy || !prepared || !title.trim()}>{busy ? 'Uploading…' : current ? 'Replace demo video' : 'Upload demo video'}</Button>
       </div>
     </form>
   </section>

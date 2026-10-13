@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import AdminDemoVideo from './AdminDemoVideo'
 import Field from '../../components/Field'
+import ResponsiveVideo from '../../components/ResponsiveVideo'
+import VideoPrep from '../../components/VideoPrep'
 import { Alert, Badge, Button, SectionHeading, VideoArtwork } from '../../components/ui'
 import { useLibrary } from '../../context/LibraryContext'
 import { formatBytes, formatTime } from '../../utils/format'
-import { inspectVideoFile } from '../../utils/media'
+import { aspectOf } from '../../utils/media'
 
 const titleFromFile = (name) => name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim()
 
@@ -75,41 +77,40 @@ export default function AdminVideos() {
 function UploadPanel() {
   const { categories, addVideo } = useLibrary()
   const [file, setFile] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState('')
-  const [previewFailed, setPreviewFailed] = useState(false)
-  const [meta, setMeta] = useState({ durationSec: 0, poster: '' })
+  const [prepared, setPrepared] = useState(null) // { file, durationSec, width, height, poster } once muted/trimmed
   const [form, setForm] = useState({ title: '', categoryId: '', status: 'published' })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null)
   const change = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
 
-  const pick = async (event) => {
+  const clear = () => { setFile(null); setPrepared(null) }
+
+  const pick = (event) => {
     const chosen = event.target.files?.[0]
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    event.target.value = ''
     setMessage(null)
-    if (!chosen) { setFile(null); setPreviewUrl(''); setPreviewFailed(false); return }
+    setPrepared(null)
+    if (!chosen) { setFile(null); return }
     if (!chosen.type.startsWith('video/')) {
-      setFile(null); setPreviewUrl(''); setPreviewFailed(false)
+      setFile(null)
       setMessage({ tone: 'error', text: 'Choose a video file (MP4, WebM or MOV).' })
       return
     }
     setFile(chosen)
-    setPreviewFailed(false)
-    setPreviewUrl(URL.createObjectURL(chosen))
     setForm((current) => ({ ...current, title: current.title || titleFromFile(chosen.name) }))
-    setMeta(await inspectVideoFile(chosen))
   }
 
   const submit = async (event) => {
     event.preventDefault()
     if (!file) { setMessage({ tone: 'error', text: 'Choose a video to upload first.' }); return }
+    if (!prepared) { setMessage({ tone: 'error', text: 'Review the video and choose “Apply changes” first.' }); return }
     if (!form.title.trim()) { setMessage({ tone: 'error', text: 'Give the video a title.' }); return }
     setBusy(true)
     try {
-      await addVideo({ file, ...form, ...meta })
+      await addVideo({ ...form, file: prepared.file, durationSec: prepared.durationSec, width: prepared.width, height: prepared.height, poster: prepared.poster })
       setMessage({ tone: 'success', text: `“${form.title.trim()}” uploaded${form.status === 'published' && form.categoryId ? ' and live for contributors.' : '. Assign a category and publish it to make it visible.'}` })
-      URL.revokeObjectURL(previewUrl)
-      setFile(null); setPreviewUrl(''); setPreviewFailed(false); setForm({ title: '', categoryId: '', status: 'published' })
+      clear()
+      setForm({ title: '', categoryId: '', status: 'published' })
     } catch (error) {
       setMessage({ tone: 'error', text: error?.message || 'The upload failed. Check that your browser has storage space and try again.' })
     } finally { setBusy(false) }
@@ -119,20 +120,20 @@ function UploadPanel() {
     <SectionHeading eyebrow="Add a base video" title="Upload and review." />
     <form className="upload" onSubmit={submit} noValidate>
       <div className="upload-drop">
-        {previewUrl
-          ? previewFailed
-            ? <Alert tone="info">Firefox could not preview this file. You can still upload it; playback depends on its video format and codec.</Alert>
-            : <video src={previewUrl} controls playsInline onError={() => setPreviewFailed(true)} className="upload-preview" aria-label="Preview of the selected video" />
-          : <label className="upload-pick"><span className="display display-sm">Choose a video</span><span>MP4, WebM or MOV from this device.</span><input type="file" accept="video/*" className="sr-only" onChange={pick} /></label>}
-        {file && <p className="upload-file"><b>{file.name}</b> · {formatBytes(file.size)} · {formatTime(meta.durationSec)} <label className="link-accent">Change<input type="file" accept="video/*" className="sr-only" onChange={pick} /></label></p>}
+        {file
+          ? <>
+            <VideoPrep key={`${file.name}-${file.size}-${file.lastModified}`} file={file} label="the selected video" onReady={setPrepared} onReset={() => setPrepared(null)} />
+            <p className="upload-file"><b>{file.name}</b> · {formatBytes(file.size)} <label className="link-accent">Change<input type="file" accept="video/*" className="sr-only" onChange={pick} /></label></p>
+          </>
+          : <label className="upload-pick"><span className="display display-sm">Choose a video</span><span>MP4, WebM or MOV, in any shape: phone portrait or landscape.</span><input type="file" accept="video/*" className="sr-only" onChange={pick} /></label>}
       </div>
       <div className="upload-fields">
         <Field label="Title" name="title" value={form.title} onChange={change} placeholder="e.g. Nice to meet you" />
         <Field as="select" label="Category" name="categoryId" value={form.categoryId} onChange={change}><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Field>
         <Field as="select" label="Visibility" name="status" value={form.status} onChange={change}><option value="published">Published: contributors can see it</option><option value="draft">Draft: only admins can see it</option></Field>
         {message && <Alert tone={message.tone}>{message.text}</Alert>}
-        <Button type="submit" block disabled={busy || !file}>{busy ? 'Uploading…' : 'Upload video'}</Button>
-        {!file && <p className="field-hint">Select a file to enable the upload action.</p>}
+        <Button type="submit" block disabled={busy || !prepared}>{busy ? 'Uploading…' : 'Upload video'}</Button>
+        {!prepared && <p className="field-hint">{file ? 'Remove sound, trim if needed, then choose “Apply changes” to enable the upload.' : 'Select a file to enable the upload action.'}</p>}
       </div>
     </form>
   </section>
@@ -166,7 +167,7 @@ function VideoRow({ video, videos, categories, selected, onToggleSelect }) {
     <div className="video-row-main">
       <label className="row-select"><input type="checkbox" checked={selected} onChange={() => onToggleSelect(video.id)} aria-label={`Select ${video.title}`} /></label>
       <VideoArtwork video={video} className="video-row-thumb" />
-      <div className="video-row-info"><b className="display display-sm">{video.title}</b><small>{category?.label || 'Unassigned'} · {formatTime(video.durationSec)}</small></div>
+      <div className="video-row-info"><b className="display display-sm">{video.title}</b><small>{category?.label || 'Unassigned'} · {formatTime(video.durationSec)}{video.width && video.height ? ` · ${video.width}×${video.height}` : ''}</small></div>
       <Badge tone={video.status === 'published' ? 'success' : 'neutral'}>{video.status === 'published' ? 'Published' : 'Draft'}</Badge>
       <div className="row-actions">
         <button type="button" onClick={() => setMode(mode === 'preview' ? 'view' : 'preview')}>{mode === 'preview' ? 'Close preview' : 'Preview'}</button>
@@ -175,7 +176,7 @@ function VideoRow({ video, videos, categories, selected, onToggleSelect }) {
         <button type="button" className="is-danger" onClick={() => setMode('delete')}>Delete</button>
       </div>
     </div>
-    {mode === 'preview' && (video.videoUrl ? <video src={video.videoUrl} crossOrigin="use-credentials" controls playsInline className="video-row-preview" aria-label={`Preview of ${video.title}`} /> : <Alert tone="error">This video's file is missing from this browser.</Alert>)}
+    {mode === 'preview' && (video.videoUrl ? <ResponsiveVideo src={video.videoUrl} aspect={aspectOf(video)} frameClassName="video-row-preview" crossOrigin="use-credentials" controls muted playsInline aria-label={`Preview of ${video.title}`} /> : <Alert tone="error">This video's file is missing from this browser.</Alert>)}
     {mode === 'edit' && <div className="video-row-edit">
       <Field label="Title" name="title" value={draft.title} onChange={change} />
       <Field as="select" label="Category" name="categoryId" value={draft.categoryId} onChange={change}><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Field>

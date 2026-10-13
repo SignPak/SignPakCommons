@@ -171,7 +171,7 @@ export const api = {
 
   videos: {
     async list() { return normalizeList(await request(apiRoutes.videos.list())) },
-    async create({ file, poster, title, categoryId, status, durationSec }) {
+    async create({ file, poster, title, categoryId, status, durationSec, width, height }) {
       const body = new FormData()
       body.append('video', file)
       const posterBlob = await toBlob(poster)
@@ -180,6 +180,8 @@ export const api = {
       body.append('categoryId', categoryId || '')
       body.append('status', status)
       body.append('durationSec', String(durationSec || 0))
+      body.append('width', String(width || 0))
+      body.append('height', String(height || 0))
       return normalize(await request(apiRoutes.videos.create(), { method: 'POST', body }))
     },
     async update(id, patch) { return normalize(await request(apiRoutes.videos.update(id), json('PATCH', patch))) },
@@ -188,11 +190,13 @@ export const api = {
 
   demoVideo: {
     async get() { return normalize(await request(apiRoutes.demoVideo.get())) },
-    async upload({ file, title, durationSec }) {
+    async upload({ file, title, durationSec, width, height }) {
       const body = new FormData()
       body.append('video', file)
       body.append('title', title)
       body.append('durationSec', String(durationSec || 0))
+      body.append('width', String(width || 0))
+      body.append('height', String(height || 0))
       return normalize(await request(apiRoutes.demoVideo.upload(), { method: 'POST', body }))
     },
     async remove() { await request(apiRoutes.demoVideo.remove(), { method: 'DELETE' }) },

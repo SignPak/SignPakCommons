@@ -15,6 +15,7 @@ cd frontend
 npm install
 npm run dev       # http://localhost:5173
 npm run lint
+npm test
 npm run build
 npm run preview   # serve the production build locally
 ```
@@ -65,10 +66,21 @@ put credentials or private keys in them. Backend variables are documented in
 
 Contributor recordings stay in memory as a `Blob` while the user moves between
 the player and editor; closing the tab discards an unsubmitted take. On
-submission, the frontend uploads the video and trim/mirror metadata to the
+submission, the frontend uploads the recording and trim/mirror metadata to the
 backend. The backend validates and stores the recording and enforces the
-submission cooldown. Theme preference, device ID, and notifications are stored
-locally in the browser; notifications are not synchronized between devices.
+submission cooldown. Admins prepare reference and demo videos in the browser
+before upload: they can remove audio and trim the clip, with processing performed
+locally by ffmpeg.wasm when changes are applied. The browser also reports the
+video's displayed dimensions and duration; the backend stores these values for
+responsive playback and display. No video-processing worker is required on the
+backend.
+
+The ffmpeg.wasm core is loaded from jsDelivr on first use, so admins need network
+access to that CDN to apply audio removal or trimming. If processing is
+unavailable, the upload UI reports the failure and allows the original video to
+be uploaded unchanged. Theme preference, device ID, and notifications are
+stored locally in the browser; notifications are not synchronized between
+devices.
 
 ## Structure
 
@@ -87,6 +99,8 @@ src/
   seo/                Static route SEO metadata and helpers
   styles/             Theme tokens and feature stylesheets
   utils/              Validation, media, and browser storage helpers
+test/
+  RecorderPanel.test.jsx  Recorder workflow component tests
 docs/
   ARCHITECTURE.md     Runtime, state, data flow, and deployment overview
 ```
@@ -119,9 +133,9 @@ origin. API cookies require compatible HTTPS and cookie settings.
 
 ## Checks
 
-The frontend package currently provides `npm run lint`, `npm run build`,
-`npm run seo:generate`, and `npm run snap`. It does not define an automated
-frontend test script.
+The frontend package provides `npm run lint`, `npm test`, `npm run build`,
+`npm run seo:generate`, and `npm run snap`. `npm test` runs the Vitest suite in
+jsdom; component interaction tests use Testing Library.
 
 ## Project model
 
