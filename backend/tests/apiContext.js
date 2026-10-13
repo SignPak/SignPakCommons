@@ -1,4 +1,3 @@
-import { after, before } from 'node:test'
 import { Client } from './helpers.js'
 
 process.env.NODE_ENV = 'test'
@@ -26,9 +25,19 @@ const dependencies = Promise.all([
   import('mongoose'),
 ])
 
-export function useApiContext() {
-  let context
-  before(async () => {
+export function useApiContext({ after }) {
+  let contextPromise
+  const getContext = () => {
+    if (!contextPromise) contextPromise = createApiContext()
+    return contextPromise
+  }
+  after(async () => {
+    if (contextPromise) await (await contextPromise).close()
+  })
+  return getContext
+}
+
+async function createApiContext() {
     const [
       { default: app },
       { connectDb, disconnectDb },
@@ -100,7 +109,7 @@ export function useApiContext() {
       email: 'omar@example.com',
     })
 
-    context = {
+    return {
       app,
       base,
       admin,
@@ -125,14 +134,4 @@ export function useApiContext() {
         await memory?.stop()
       },
     }
-  })
-
-  after(async () => {
-    if (context) await context.close()
-  })
-
-  return () => {
-    if (!context) throw new Error('API test context is not initialized.')
-    return context
-  }
 }

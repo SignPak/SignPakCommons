@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict'
-import { before, describe, test } from 'node:test'
+import { after, before, describe, test } from 'node:test'
 import { Client, filesIn, jpeg, mp4, recordingForm, videoForm, webm } from './helpers.js'
 import { useApiContext } from './apiContext.js'
 
-const getContext = useApiContext()
+const getContext = useApiContext({ after })
+const contributorData = { firstName: 'Sara', surname: 'Ahmed', password: 'password1' }
 let base, admin, contributor, other, createVerifiedUser, deliveredCodes, contactDeliveries
 let ContactDailyQuota, Submission, SubmissionCooldown, storageService, authService, submissionRepo
 let daily, work, video1, video2, draft, submission, eveSession
 
-before(() => {
-  const context = getContext()
+before(async () => {
+  const context = await getContext()
   ;({ base, admin, contributor, other, createVerifiedUser, deliveredCodes, contactDeliveries, ContactDailyQuota, Submission, SubmissionCooldown, storageService, authService, submissionRepo } = context)
 })
 
