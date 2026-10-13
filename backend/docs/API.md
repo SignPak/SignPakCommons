@@ -114,6 +114,14 @@ The video and demo-video upload routes use `multipart/form-data`:
 | `categoryId` | Optional category ID | Not accepted |
 | `status` | Optional video status | Not accepted |
 | `durationSec` | Optional duration in seconds | Optional duration in seconds |
+| `width` | Optional displayed width in pixels | Optional displayed width in pixels |
+| `height` | Optional displayed height in pixels | Optional displayed height in pixels |
+
+`width` and `height` are integers from 0 through 16,384 and default to `0`
+when omitted or unknown. They are reported by the admin's browser during video
+preparation (including rotation metadata); the API stores the values but does
+not probe media files to verify them. The frontend uses the stored dimensions
+to size responsive video frames before playback metadata loads.
 
 Submission creation uses `multipart/form-data` with a required `recording` file
 and `videoId`, `trimStart`, `trimEnd`, `mirrored`, and `duration` fields. Only

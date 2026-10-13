@@ -103,6 +103,9 @@ mounted outside production.
   configured separately for archives.
 - Upload defaults are 90 MB for base/demo videos and 80 MB for contributor
   recordings. File contents are verified by signature, not browser MIME type.
+- Reference and demo-video uploads accept browser-reported `width` and `height`
+  in pixels, each from 0 to 16,384. Zero represents unknown dimensions; these
+  values are metadata for responsive playback, not server-side media probes.
 - `SUBMISSION_COOLDOWN_MS` defaults to 30 seconds per contributor/video pair.
   Atomic claiming prevents simultaneous duplicate submissions; failed processing
   releases the claim.
@@ -121,7 +124,7 @@ npm test
 The command runs Node's built-in test runner serially across every
 `tests/*.test.js` file. The API suites use MongoDB Memory Server unless
 `MONGODB_URI_TEST` is supplied. That configured database is dropped by the tests,
-so use only a disposable database. Provider delivery is stubbed. The 56 cases and
+so use only a disposable database. Provider delivery is stubbed. The 57 cases and
 their test types are documented in [docs/TEST-CASES.md](docs/TEST-CASES.md).
 
 ## Current limitation
