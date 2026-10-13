@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import { formatTime } from '../utils/format'
+import { aspectOf } from '../utils/media'
+import ResponsiveVideo from './ResponsiveVideo'
 
 const SPEEDS = [0.5, 0.75, 1]
 
 /** Base video player: play/pause, replay, seek, speed and fullscreen. The parent owns the <video> ref. */
-export default function BasePlayer({ video, videoRef }) {
+export default function BasePlayer({ video, videoRef, onAspect }) {
   const frame = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
@@ -41,27 +43,32 @@ export default function BasePlayer({ video, videoRef }) {
   return (
     <div className="base-player" ref={frame}>
       <div className="base-player-stage">
-        <video
-          ref={videoRef} 
-          src={video.videoUrl} 
-          poster={video.poster} 
-          crossOrigin="use-credentials" 
-          className="base-player-video" 
-          playsInline 
+        <ResponsiveVideo
+          videoRef={videoRef}
+          src={video.videoUrl}
+          poster={video.poster}
+          aspect={aspectOf(video)}
+          onAspect={onAspect}
+          frameClassName="base-player-frame"
+          crossOrigin="use-credentials"
+          className="base-player-video"
+          playsInline
           autoPlay
-          onClick={toggle} 
-          onPlay={() => setPlaying(true)} 
-          onPause={() => setPlaying(false)} 
+          muted
+          onClick={toggle}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
           onEnded={() => setPlaying(false)}
           onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
           onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
           onError={() => setFailed(true)}
-        />
-        {failed ? (
-          <p className="base-player-error" role="alert">This video could not be loaded. Try again later or pick another video.</p>
-        ) : (
-          !playing && <button type="button" className="base-player-big" onClick={toggle} aria-label="Play video">▶</button>
-        )}
+        >
+          {failed ? (
+            <p className="base-player-error" role="alert">This video could not be loaded. Try again later or pick another video.</p>
+          ) : (
+            !playing && <button type="button" className="base-player-big" onClick={toggle} aria-label="Play video">▶</button>
+          )}
+        </ResponsiveVideo>
       </div>
 
       <div className="base-player-controls">

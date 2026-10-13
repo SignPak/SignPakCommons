@@ -7,11 +7,15 @@ const status = z.enum(VIDEO_STATUS_LIST, { error: `Status must be one of: ${VIDE
 // An empty string (from a form's "Unassigned" option) means no category.
 const categoryId = z.preprocess((value) => (value === '' ? null : value), objectId('category').nullable())
 
+const pixels = z.coerce.number({ error: 'Size must be a number.' }).int().min(0).max(16384).default(0)
+
 export const createVideoSchema = z.object({
   title,
   status: status.default(VIDEO_STATUS.PUBLISHED),
   categoryId: categoryId.optional().default(null),
   durationSec: z.coerce.number({ error: 'Duration must be a number.' }).min(0).max(24 * 60 * 60).default(0),
+  width: pixels,
+  height: pixels,
 })
 
 export const updateVideoSchema = z.object({

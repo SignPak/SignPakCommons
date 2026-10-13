@@ -4,7 +4,7 @@ import { formatTime } from '../utils/format'
 import { Alert, Arrow, Button } from './ui'
 
 /** Camera preview, record/stop, delete and re-record for one video. */
-export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
+export default function RecorderPanel({ video, baseRef, aspect, onSaveAndEdit }) {
   const { recording, status, error, elapsed, stream, prepare, start, stop, discard } = useRecorder(video.id)
   const live = useRef(null)
   const countdownTimer = useRef(null)
@@ -61,7 +61,7 @@ export default function RecorderPanel({ video, baseRef, onSaveAndEdit }) {
       <h2 className="display display-md">Record<br /><em>yourself.</em></h2>
       <p className="recorder-copy">Watch the example, then make it yours. You can review, trim and delete your recording before you submit it.</p>
 
-      <div className="recorder-stage">
+      <div className="recorder-stage" style={aspect ? { '--video-ar': aspect } : undefined}>
         <video ref={live} className={`recorder-video ${showCameraPreview ? '' : 'is-hidden'}`} autoPlay muted playsInline aria-label="Live camera preview" />
         {!isRecording && recording && countdown === null && <video key={recording.url} src={recording.url} className="recorder-video" controls playsInline aria-label="Your recording" />}
         {!isRecording && !recording && !stream && <p className="recorder-empty">{busy ? 'Waiting for camera permission…' : 'Your camera preview will appear here.'}</p>}

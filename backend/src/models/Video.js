@@ -9,6 +9,9 @@ const videoSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
   order: { type: Number, default: 1, min: 0 },
   durationSec: { type: Number, default: 0, min: 0 },
+  // Displayed size in pixels as the browser reported it when the admin prepared the file; 0 means unknown (older uploads).
+  width: { type: Number, default: 0, min: 0 },
+  height: { type: Number, default: 0, min: 0 },
   videoFile: { type: storedFileSchema, required: true },
   posterFile: { type: storedFileSchema, default: null },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

@@ -5,6 +5,7 @@ import RecorderPanel from '../components/RecorderPanel'
 import { Alert, Button, ButtonLink, Eyebrow, PageState } from '../components/ui'
 import { useLibrary } from '../context/LibraryContext'
 import { categoryUrl, paths, watchEditUrl, watchUrl } from '../routes/appRoutes'
+import { aspectOf, orientationOf } from '../utils/media'
 import { safeRouteId } from '../utils/validators'
 
 export default function Player() {
@@ -47,6 +48,8 @@ function PlayerScreen({ videoId }) {
   const baseRef = useRef(null)
   const video = publishedVideos.find((item) => item.id === videoId)
 
+  // The page layout follows the video's shape: tall phone videos get a narrow window and more room for the recorder.
+  const [measuredAspect, setMeasuredAspect] = useState(null)
   const [justSubmitted, setJustSubmitted] = useState(Boolean(location.state?.justSubmitted))
 
   useEffect(() => {
@@ -80,6 +83,7 @@ function PlayerScreen({ videoId }) {
     )
   }
 
+  const aspect = measuredAspect ?? aspectOf(video)
   const category = categories.find((item) => item.id === video.categoryId)
   const number = videosIn(video.categoryId).findIndex((item) => item.id === video.id) + 1
   const count = submissionCount(video.id)
@@ -94,9 +98,9 @@ function PlayerScreen({ videoId }) {
         <span>Video {String(number).padStart(2, '0')}</span>
       </div>
 
-      <section className="shell player-grid">
+      <section className="shell player-grid" data-orientation={aspect ? orientationOf(aspect) : 'landscape'}>
         <div>
-          <BasePlayer video={video} videoRef={baseRef} />
+          <BasePlayer video={video} videoRef={baseRef} onAspect={setMeasuredAspect} />
           
           <div className="player-meta">
             <div>
@@ -154,6 +158,7 @@ function PlayerScreen({ videoId }) {
             <RecorderPanel 
               video={video} 
               baseRef={baseRef} 
+              aspect={aspect}
               onSaveAndEdit={() => navigate(watchEditUrl(video.id))} 
             />
           )}

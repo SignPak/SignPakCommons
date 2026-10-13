@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import ResponsiveVideo from '../components/ResponsiveVideo'
 import TrimSlider from '../components/TrimSlider'
 import { Alert, Arrow, Button, ButtonLink, Eyebrow, PageState } from '../components/ui'
 import { useLibrary } from '../context/LibraryContext'
@@ -7,6 +8,7 @@ import { useNotifications } from '../context/NotificationContext'
 import { useRecordings } from '../context/RecordingContext'
 import { paths, watchUrl } from '../routes/appRoutes'
 import { formatTime } from '../utils/format'
+import { aspectOf, orientationOf } from '../utils/media'
 import { safeRouteId } from '../utils/validators'
 
 export default function RecordingEditor() {
@@ -76,6 +78,8 @@ function Editor({ video, recording, onEdit, onSubmit }) {
   const [trimApplied, setTrimApplied] = useState(true)
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(start)
+  // Recordings made on a phone are tall, webcam ones wide: the editor window takes the recording's own shape.
+  const [aspect, setAspect] = useState(null)
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -149,35 +153,39 @@ function Editor({ video, recording, onEdit, onSubmit }) {
         <b>Edit your recording</b>
       </nav>
 
-      <section className="shell editor-grid">
+      <section className="shell editor-grid" data-orientation={aspect ? orientationOf(aspect) : 'landscape'}>
         <div>
           <Eyebrow>{video.title}</Eyebrow>
           <h1 className="display display-xl">Make it <em>yours.</em></h1>
           <p className="lede">Review your recording before you submit it.</p>
           
           <div className="editor-stage">
-            <video 
-              ref={preview} 
-              src={recording.url} 
-              className={`editor-video ${mirrored ? 'is-mirrored' : ''}`} 
-              playsInline 
+            <ResponsiveVideo
+              videoRef={preview}
+              src={recording.url}
+              aspect={aspect ?? aspectOf(video)}
+              onAspect={setAspect}
+              frameClassName="editor-frame"
+              className={`editor-video ${mirrored ? 'is-mirrored' : ''}`}
+              playsInline
               onClick={togglePlay}
-              onPlay={() => setPlaying(true)} 
-              onPause={() => setPlaying(false)} 
-              onTimeUpdate={onTimeUpdate} 
-              aria-label="Preview of your recording" 
-            />
-            <button 
-              type="button" 
-              className="editor-play" 
-              onClick={togglePlay} 
-              aria-label={playing ? 'Pause preview' : 'Play preview'}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onTimeUpdate={onTimeUpdate}
+              aria-label="Preview of your recording"
             >
-              {playing ? 'Ⅱ' : '▶'}
-            </button>
-            <span className="editor-time">
-              {formatTime(Math.max(time - trimRange.start, 0))} / {formatTime(trimRange.end - trimRange.start)}
-            </span>
+              <button
+                type="button"
+                className="editor-play"
+                onClick={togglePlay}
+                aria-label={playing ? 'Pause preview' : 'Play preview'}
+              >
+                {playing ? 'Ⅱ' : '▶'}
+              </button>
+              <span className="editor-time">
+                {formatTime(Math.max(time - trimRange.start, 0))} / {formatTime(trimRange.end - trimRange.start)}
+              </span>
+            </ResponsiveVideo>
           </div>
         </div>
 
@@ -191,6 +199,7 @@ function Editor({ video, recording, onEdit, onSubmit }) {
             end={trimRange.end} 
             src={recording.url} 
             mirrored={mirrored} 
+            aspect={aspect}
             onChange={change} 
           />
           

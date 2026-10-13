@@ -69,7 +69,7 @@ export const videoService = {
       }
       const order = input.categoryId ? (await videoRepo.maxOrder(input.categoryId)) + 1 : 1
       return await videoRepo.create({
-        title: input.title, status: input.status, durationSec: input.durationSec,
+        title: input.title, status: input.status, durationSec: input.durationSec, width: input.width, height: input.height,
         category: input.categoryId, order, videoFile, posterFile, createdBy: admin._id,
       })
     } catch (error) {

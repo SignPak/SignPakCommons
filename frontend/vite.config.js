@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  // ffmpeg.wasm starts its own module worker; pre-bundling would break the worker URL.
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:5000',

@@ -22,7 +22,7 @@ export const demoVideoService = {
 
     try {
       const current = await demoVideoRepo.find()
-      const saved = await demoVideoRepo.replace({ title: input.title, durationSec: input.durationSec, videoFile })
+      const saved = await demoVideoRepo.replace({ title: input.title, durationSec: input.durationSec, width: input.width, height: input.height, videoFile })
       await storageService.remove(current?.videoFile)
       return saved
     } catch (error) {

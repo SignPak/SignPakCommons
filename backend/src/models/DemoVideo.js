@@ -7,6 +7,8 @@ const demoVideoSchema = new mongoose.Schema({
   _id: { type: String, default: 'current' },
   title: { type: String, required: true, trim: true, maxlength: 120 },
   durationSec: { type: Number, default: 0, min: 0 },
+  width: { type: Number, default: 0, min: 0 },
+  height: { type: Number, default: 0, min: 0 },
   videoFile: { type: storedFileSchema, required: true },
 }, {
   timestamps: true,

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import ResponsiveVideo from '../components/ResponsiveVideo'
 import { Alert, Arrow, ButtonLink, Eyebrow } from '../components/ui'
 import { api } from '../services/api'
 import { paths } from '../routes/appRoutes'
+import { aspectOf } from '../utils/media'
 
 const demoSteps = [
   {
@@ -68,10 +70,13 @@ export default function Demo() {
           {videoState === 'error' && <Alert tone="error">Reference videos are temporarily unavailable.</Alert>}
           {videoState === 'empty' && <p role="status">No published reference videos are available yet.</p>}
           {demoVideo && <>
-            <video
+            <ResponsiveVideo
               src={demoVideo.videoUrl}
               poster={demoVideo.poster || undefined}
+              aspect={aspectOf(demoVideo)}
+              frameClassName="demo-frame"
               controls
+              muted
               playsInline
               preload="metadata"
               aria-label={`${demoVideo.title} reference video`}
