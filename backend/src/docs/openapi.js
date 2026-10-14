@@ -281,6 +281,7 @@ export const openapi = {
         type: 'object',
         required: ['name', 'email', 'message'],
         properties: {
+          topic: { type: 'string', enum: ['general', 'partnership', 'recording-deletion'], default: 'general', description: 'Unauthenticated visitors may use only recording-deletion.' },
           name: { type: 'string', minLength: 1, maxLength: 100 },
           email: { type: 'string', format: 'email' },
           message: { type: 'string', minLength: 1, maxLength: 2000 },
@@ -424,6 +425,14 @@ export const openapi = {
         security: userSecurity,
         requestBody: { required: true, content: { 'application/json': { schema: ref('UpdateProfileInput') } } },
         responses: { 200: jsonResponse('Updated user', ref('User')), 401: errorResponse, 422: errorResponse },
+      },
+      delete: {
+        tags: ['Users'],
+        summary: 'Delete the current contributor account',
+        description: 'Requires the current password. Removes the account and invalidates the session, but leaves submitted recordings and contribution data in the archive. Data-deletion requests can be sent through the recording/data deletion contact topic at any time, including after account deletion.',
+        security: userSecurity,
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['password'], properties: { password: { type: 'string', minLength: 1, maxLength: 128 } } } } } },
+        responses: { 204: { description: 'Account deleted; existing submissions remain' }, 401: errorResponse, 403: errorResponse, 404: errorResponse, 422: errorResponse },
       },
     },
     '/users/me/consent': {
@@ -577,9 +586,9 @@ export const openapi = {
     '/contact': {
       post: {
         tags: ['Contact'],
-        summary: 'Send a contact message from the authenticated account email',
-        description: 'Requires a signed-in account and an email matching that account.',
-        security: userSecurity,
+        summary: 'Send a contact message or recording/data deletion request',
+        description: 'General and partnership messages require a signed-in account and matching account email. The recording-deletion topic may be submitted before or after account deletion, without signing in; provide the account email so the team can identify the data request. Requests after account deletion may require additional information to verify and match the recordings. Recordings already used in a released model cannot be removed from that model.',
+        security: [...userSecurity, {}],
         requestBody: { required: true, content: { 'application/json': { schema: ref('ContactInput') } } },
         responses: { 201: jsonResponse('Message sent and saved to the admin inbox', { type: 'object' }), 403: errorResponse, 409: errorResponse, 422: errorResponse, 429: errorResponse },
       },
@@ -617,7 +626,7 @@ export const openapi = {
       },
       delete: {
         tags: ['Admin'],
-        summary: 'Delete a user and their submitted recordings',
+        summary: 'Delete a user account while retaining submitted recordings',
         security: adminSecurity,
         responses: { 204: { description: 'Deleted' }, ...adminErrors, 404: errorResponse, 409: errorResponse },
       },

@@ -3,6 +3,7 @@ import { jsonOptions } from '../utils/mongoose.js'
 
 const contactMessageSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  topic: { type: String, enum: ['general', 'partnership', 'recording-deletion'], default: 'general' },
   name: { type: String, required: true, trim: true, maxlength: 100 },
   email: { type: String, required: true, lowercase: true, trim: true, maxlength: 254 },
   message: { type: String, required: true, trim: true, maxlength: 2000 },

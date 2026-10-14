@@ -2,11 +2,13 @@ import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 import { Client, filesIn, jpeg, mp4, recordingForm, videoForm, webm } from './helpers.js'
 import { useApiContext } from './apiContext.js'
+import { User } from '../src/models/User.js'
 
 const getContext = useApiContext({ after })
 let base, admin, contributor, other, createVerifiedUser, deliveredCodes, contactDeliveries
 let ContactDailyQuota, Submission, SubmissionCooldown, storageService, authService, submissionRepo
 let daily, work, video1, video2, draft, submission, eveSession
+let uploadedVideoId
 
 before(async () => {
   const context = await getContext()
@@ -17,6 +19,7 @@ before(async () => {
   const category = (await context.admin.post('/categories', { label: 'Daily phrases', tone: 'yellow' })).body.data
   const video = await context.admin.upload('/videos', videoForm({ title: 'First sign', categoryId: category.id, durationSec: '3' }))
   assert.equal(video.status, 201, JSON.stringify(video.body))
+  uploadedVideoId = video.body.data.id
   const submission = await context.other.upload('/submissions', recordingForm({ videoId: video.body.data.id, trimStart: '0', trimEnd: '2.5', duration: '3', mirrored: 'true' }))
   assert.equal(submission.status, 201, JSON.stringify(submission.body))
 })
@@ -35,17 +38,33 @@ describe('admin user controls and access restrictions', () => {
     assert.equal((await other.get('/users/me')).status, 200)
   })
 
-  test('deleting a user removes their submissions, cooldowns, and stored recording', async () => {
+  test('contributors can delete their account without removing submitted recordings', async () => {
+    const self = await createVerifiedUser({ firstName: 'Laila', surname: 'Khan', email: 'laila@example.com' })
+    const upload = await self.upload('/submissions', recordingForm({ videoId: uploadedVideoId, trimStart: '0', trimEnd: '2.5', duration: '3', mirrored: 'false' }))
+    assert.equal(upload.status, 201, JSON.stringify(upload.body))
+    const account = (await self.get('/users/me')).body.data
+    const storedSubmission = await Submission.findById(upload.body.data.id)
+
+    assert.equal((await self.delete('/users/me', { json: { password: 'wrong-password' } })).status, 401)
+    assert.equal((await self.delete('/users/me', { json: { password: 'password1' } })).status, 204)
+    assert.equal((await self.get('/users/me')).status, 401)
+    assert.equal(await User.exists({ _id: account.id }), null)
+    assert.equal(await Submission.countDocuments({ user: account.id }), 1)
+    assert.ok(await storageService.describe(storedSubmission.recording))
+    assert.equal(await SubmissionCooldown.countDocuments({ user: account.id }), 0)
+  })
+
+  test('admin deletion removes the account and cooldowns but retains submissions and recordings', async () => {
     const otherId = (await admin.get('/admin/users')).body.data.find((user) => user.email === 'omar@example.com').id
     const recording = (await Submission.findOne({ user: otherId })).recording
     assert.ok(await SubmissionCooldown.countDocuments({ user: otherId }))
     assert.equal((await admin.delete(`/admin/users/${otherId}`)).status, 204)
-    assert.equal(await Submission.countDocuments({ user: otherId }), 0)
+    assert.equal(await Submission.countDocuments({ user: otherId }), 1)
     assert.equal(await SubmissionCooldown.countDocuments({ user: otherId }), 0)
-    await assert.rejects(() => storageService.describe(recording))
+    assert.ok(await storageService.describe(recording))
     assert.equal((await other.get('/users/me')).status, 401)
     assert.equal((await admin.get('/admin/users')).body.data.some((user) => user.id === otherId), false)
-    assert.equal((await admin.get('/submissions')).body.data.length, 0)
+    assert.equal((await admin.get('/submissions')).body.data.length, 2)
     assert.equal((await admin.delete(`/admin/users/${otherId}`)).status, 404)
   })
 

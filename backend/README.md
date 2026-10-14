@@ -75,13 +75,13 @@ All paths are under `/api/v1`.
 | --- | --- | --- |
 | `GET /health` | Public | Reports database readiness. |
 | `/auth/*` | Public | Signup, login, email verification, password reset, logout, and session. |
-| `GET/PATCH /users/me` | Authenticated user | Read profile and update supported connections. |
+| `GET/PATCH/DELETE /users/me` | Authenticated user | Read or update profile; contributors can delete their account after confirming their password. Submitted recordings remain stored. |
 | `GET /categories`; `POST/PATCH/DELETE /categories/:id` | Public read; admin write | Deleting a category unassigns its videos. |
 | `GET /videos`, `GET /videos/:id[/file/poster]` | Public or admin | Public visibility is published and categorised only; file streaming supports byte ranges. |
 | `POST /videos`; `PATCH/DELETE /videos/:id` | Admin | Manage reference videos and optional posters. |
 | `GET /demo-video[/file]`; `POST/DELETE /demo-video` | Public read; admin write | Singleton public walkthrough media. |
 | `GET/POST /submissions` | Authenticated user | Contributors list their own; admins list all. New submissions are append-only. |
-| `POST /contact` | Signed-in account | Email must match account; account and global daily quotas apply. |
+| `POST /contact` | Signed-in account or recording-deletion request | Other topics require the account email; deletion requests can be submitted without signing in at any time. |
 | `/admin/users*`, `/admin/restrictions*`, `/admin/stats`, `/admin/messages` | Admin | Account moderation, access restrictions, statistics, and inbox. |
 
 See [API.md](docs/API.md) for the complete route table, limits, visibility, and
@@ -95,6 +95,11 @@ mounted outside production.
   followed by consent acceptance before a new account is activated and signed
   in. Existing contributors must accept the current consent version before
   submitting; password reset invalidates existing sessions.
+- Account deletion removes sign-in access and the account record but deliberately
+  retains submitted recordings and contribution data. A recording/data deletion
+  request can be sent through the contact form before or after account deletion,
+  without a deadline. Recordings already used in a released model cannot be
+  removed from that model.
 - `CLIENT_ORIGIN` controls credentialed CORS and the check for browser
   state-changing requests that carry an `Origin` header.
 - The global, auth, contact, and upload rate limits can be disabled with
@@ -127,7 +132,7 @@ npm test
 The command runs Node's built-in test runner serially across every
 `tests/*.test.js` file. The API suites use MongoDB Memory Server unless
 `MONGODB_URI_TEST` is supplied. That configured database is dropped by the tests,
-so use only a disposable database. Provider delivery is stubbed. The 60 cases and
+so use only a disposable database. Provider delivery is stubbed. The 61 cases and
 their test types are documented in [docs/TEST-CASES.md](docs/TEST-CASES.md).
 
 ## Current limitation

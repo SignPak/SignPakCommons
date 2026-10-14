@@ -96,6 +96,11 @@
 
   .confirm { @apply mt-5 rounded-2xl border border-danger bg-danger-soft p-4 text-sm leading-6 text-ink; }
   .confirm-actions { @apply mt-3 flex flex-wrap gap-2; }
+  .account-delete-backdrop { @apply fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/60 p-4; }
+  .account-delete-dialog { @apply w-full max-w-xl rounded-3xl border border-danger bg-surface p-6 shadow-lift sm:p-8; }
+  .account-delete-dialog > p { @apply mt-4 text-base leading-relaxed text-muted; }
+  .account-delete-dialog .btn-danger { @apply mt-5; }
+  .account-delete-panel .btn-danger { @apply mt-5; }
 
   /* ---------- Feature blocks: always deep green, so their contents use fixed light colours ---------- */
   .feature { background-color: var(--feature); color: #fff; }

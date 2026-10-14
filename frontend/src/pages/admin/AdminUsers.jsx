@@ -45,7 +45,7 @@ export default function AdminUsers() {
   }
 
   async function deleteUser(target) {
-    if (!window.confirm(`Delete ${target.firstName} ${target.surname} and their submitted recordings? This cannot be undone.`)) return
+    if (!window.confirm(`Delete ${target.firstName} ${target.surname}'s account? This removes their sign-in access but leaves submitted recordings and contribution data stored. A separate recording/data deletion request is required to remove that data.`)) return
     setBusyId(target.id)
     setError('')
     setNotice('')

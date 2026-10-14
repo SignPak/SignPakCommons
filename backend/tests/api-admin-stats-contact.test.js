@@ -74,7 +74,17 @@ describe('admin stats and contact', () => {
     assert.equal(sent.status, 201)
     assert.equal(contactDeliveries.length, 1)
     assert.equal(contactDeliveries[0].email, 'sara@example.com')
+    assert.equal(contactDeliveries[0].topic, 'General inquiry')
     assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'sara@example.com', message: 'Again today' })).status, 409)
+
+    const deletionRequest = await new Client(base).post('/contact', {
+      topic: 'recording-deletion',
+      name: 'Former contributor',
+      email: 'former@example.com',
+      message: 'Please delete my recordings and contribution data.',
+    })
+    assert.equal(deletionRequest.status, 201)
+    assert.equal(contactDeliveries.at(-1).topic, 'Request recording/data deletion')
 
     const mismatchDevice = 'device-contact-email-mismatch'
     assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'other@example.com', message: 'Wrong email' }, { headers: { 'x-device-id': mismatchDevice } })).status, 403)
@@ -93,6 +103,7 @@ describe('admin stats and contact', () => {
     const list = await admin.get('/admin/messages')
     assert.equal(list.status, 200)
     assert.ok(list.body.data.some((m) => m.name === 'Sara Ahmed' && m.message === 'Hello!' && m.userId))
+    assert.ok(list.body.data.some((m) => m.name === 'Former contributor' && m.topic === 'recording-deletion' && m.userId === null))
     assert.equal((await contributor.get('/admin/messages')).status, 403)
   })
 

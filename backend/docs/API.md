@@ -72,6 +72,7 @@ All paths below are relative to `/api/v1`.
 | GET | `/auth/session` | Public | Return the current user or `null`. |
 | GET | `/users/me` | Authenticated user | Read the signed-in user's profile. |
 | PATCH | `/users/me` | Authenticated user | Update supported profile connections. |
+| DELETE | `/users/me` | Contributor | Delete the account after confirming the current password; submitted recordings and contribution data remain stored. |
 | POST | `/users/me/consent` | Authenticated user | Accept the current notice for an existing account. |
 | GET | `/categories` | Public | List categories. |
 | POST | `/categories` | Admin | Create a category. |
@@ -90,10 +91,10 @@ All paths below are relative to `/api/v1`.
 | DELETE | `/demo-video` | Admin | Delete the demo video. |
 | GET | `/submissions` | Authenticated user | List own submissions; admins can list all. |
 | POST | `/submissions` | Authenticated user | Create an append-only recording submission. |
-| POST | `/contact` | Signed-in account | Send a contact message using the email on the account. |
+| POST | `/contact` | Signed-in account or recording-deletion request | Other topics require the account email; deletion requests can be submitted without signing in before or after account deletion, at any time. |
 | GET | `/admin/users` | Admin | List accounts. |
 | PATCH | `/admin/users/:id` | Admin | Change an account's active/suspended status. |
-| DELETE | `/admin/users/:id` | Admin | Delete an account and its submissions, cooldowns, and archived recordings. |
+| DELETE | `/admin/users/:id` | Admin | Delete an account and its cooldown claims; submitted recordings and contribution data remain stored. |
 | GET | `/admin/restrictions` | Admin | List active device and IP restrictions. |
 | POST | `/admin/restrictions` | Admin | Create a permanent device or IP restriction. |
 | DELETE | `/admin/restrictions/:id` | Admin | Remove a restriction. |
@@ -102,7 +103,11 @@ All paths below are relative to `/api/v1`.
 
 There is intentionally no submission read, update, or delete endpoint, including
 for admins. The archive is append-only and archived media is not streamed through
-the API.
+the API. Account deletion leaves submissions intact; a separate contact request
+is required to ask the team to review stored-recording and contribution-data
+deletion. Requests may be sent before or after account deletion, without a
+deadline. Recordings already used in a released model cannot be removed from
+that model.
 
 ## Request bodies and uploads
 

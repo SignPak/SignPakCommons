@@ -140,6 +140,13 @@ frame before media metadata loads, then prefers the dimensions reported by the
 loaded video. This keeps portrait, square, and landscape videos in their native
 aspect ratio while fitting the player layout.
 
+Contributors can delete their account from the profile after confirming their
+password; submitted recordings and contribution data are retained. The public
+contact form accepts a dedicated recording/data deletion topic without sign-in
+at any time, including after account deletion. Requests sent after deletion may
+require the team to verify and manually match the former contributor. Data
+already incorporated into a released model cannot be removed from that model.
+
 ## UI and styling
 
 `src/components/` holds shared layouts, navigation, form fields, buttons,

@@ -1,7 +1,11 @@
 import { User } from '../models/User.js'
 
 export const userRepo = {
-  findById: (id) => User.findById(id),
+  findById: (id, { withPassword = false } = {}) => {
+    const query = User.findById(id)
+    if (withPassword) query.select('+passwordHash')
+    return query
+  },
   findByEmail: (email, { withPassword = false, withOtp = false } = {}) => {
     const query = User.findOne({ email: email.trim().toLowerCase() })
     if (withPassword) query.select('+passwordHash')

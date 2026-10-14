@@ -28,6 +28,7 @@ export const apiRoutes = {
 
   users: {
     me: () => `${API_BASE}/users/me`,
+    removeMe: () => `${API_BASE}/users/me`,
     consent: () => `${API_BASE}/users/me/consent`,
     list: () => `${API_BASE}/admin/users`,
     update: (id) => `${API_BASE}/admin/users/${id}`,

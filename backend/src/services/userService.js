@@ -1,8 +1,8 @@
+import bcrypt from 'bcrypt'
 import { CONSENT_VERSION, ROLES } from '../config/constants.js'
 import { submissionRepo } from '../repositories/submissionRepo.js'
 import { userRepo } from '../repositories/userRepo.js'
-import { storageService } from './storage/index.js'
-import { conflict, forbidden, notFound } from '../utils/AppError.js'
+import { conflict, forbidden, notFound, unauthorized } from '../utils/AppError.js'
 
 export const userService = {
   /** Records the date and time the contributor accepted the consent notice (kept on the first acceptance of a version). */
@@ -46,8 +46,16 @@ export const userService = {
     if (user.role === ROLES.ADMIN && user.status === 'active' && await userRepo.countActiveAdmins() <= 1) {
       throw conflict('The last active administrator cannot be deleted.')
     }
-    const recordings = await submissionRepo.removeForUser(user._id)
+    await submissionRepo.clearCooldownsForUser(user._id)
     await userRepo.remove(user._id)
-    await Promise.all(recordings.map((recording) => storageService.remove(recording)))
+  },
+
+  async removeSelf(id, password) {
+    const user = await userRepo.findById(id, { withPassword: true })
+    if (!user) throw notFound('That user does not exist.')
+    if (user.role !== ROLES.USER) throw forbidden('Administrators cannot delete their own account here.')
+    if (!await bcrypt.compare(password, user.passwordHash)) throw unauthorized('The password does not match this account.')
+    await submissionRepo.clearCooldownsForUser(user._id)
+    await userRepo.remove(user._id)
   },
 }

@@ -89,8 +89,11 @@ Submission recordings are append-only. The archive folder is based on contributo
 and per-video sequence, category slug, and video slug. MongoDB keeps the archive
 reference; the API never streams or mutates the archived file. Contributor
 responses omit archive paths, while admins can see archive metadata. Account
-deletion removes that account's archive objects and related submissions; deleting
-a base video does not remove submissions.
+deletion removes the account and its cooldown claims but retains its submissions
+and archived recording objects. The contact form accepts a separate
+recording/data deletion request before or after account deletion, at any time;
+requests made after account deletion may require the team to verify and manually
+match the former contributor. Deleting a base video does not remove submissions.
 
 Uploads first land in a temporary directory. Multer limits file size and count;
 services then inspect file signatures before moving valid assets into the selected

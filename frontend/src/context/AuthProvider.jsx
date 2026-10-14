@@ -58,6 +58,12 @@ export default function AuthProvider({ children }) {
       setSessionError('')
     }
   }, [])
+  const deleteAccount = useCallback(async (password) => {
+    await api.users.removeMe(password)
+    setUser(null)
+    setSessionChecked(true)
+    setSessionError('')
+  }, [])
   const acceptConsent = useCallback(async (version) => {
     setUser(await api.auth.acceptConsent(version))
   }, [])
@@ -66,8 +72,8 @@ export default function AuthProvider({ children }) {
   }, [user])
 
   const value = useMemo(
-    () => ({ user, loading, sessionChecked, sessionError, ensureSession, isAdmin: user?.role === 'admin', login, signup, verifyEmail, logout, saveConnections, acceptConsent, completeSignup, declineSignup }),
-    [user, loading, sessionChecked, sessionError, ensureSession, login, signup, verifyEmail, logout, saveConnections, acceptConsent, completeSignup, declineSignup],
+    () => ({ user, loading, sessionChecked, sessionError, ensureSession, isAdmin: user?.role === 'admin', login, signup, verifyEmail, logout, deleteAccount, saveConnections, acceptConsent, completeSignup, declineSignup }),
+    [user, loading, sessionChecked, sessionError, ensureSession, login, signup, verifyEmail, logout, deleteAccount, saveConnections, acceptConsent, completeSignup, declineSignup],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

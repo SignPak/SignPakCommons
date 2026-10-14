@@ -9,7 +9,7 @@ import { formatDate } from '../utils/format'
 import { normalizeGithub, normalizeLinkedin } from '../utils/validators'
 
 export default function ProfileDashboard() {
-  const { user, isAdmin, logout } = useAuth()
+  const { user, isAdmin, logout, deleteAccount } = useAuth()
   const { 
     categories, 
     videosIn, 
@@ -21,8 +21,24 @@ export default function ProfileDashboard() {
     totalSubmissionCount 
   } = useLibrary()
   const navigate = useNavigate()
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const total = orderedPublished.length
   const percent = total ? Math.round((contributedCount / total) * 100) : 0
+  const confirmDeleteAccount = async (event) => {
+    event.preventDefault()
+    setDeleteBusy(true)
+    setDeleteError('')
+    try {
+      await deleteAccount(deletePassword)
+      navigate(paths.home, { replace: true })
+    } catch (error) {
+      setDeleteError(error.message || 'Your account could not be deleted. Try again.')
+      setDeleteBusy(false)
+    }
+  }
   const recent = [...mySubmissions]
     .filter((item) => publishedVideos.some((video) => video.id === item.videoId))
     .sort((a, b) => b.submittedAt - a.submittedAt)
@@ -108,6 +124,12 @@ export default function ProfileDashboard() {
 
         <aside className="profile-side">
           <ConnectForm />
+          {!isAdmin && <section className="panel panel-outline account-delete-panel">
+            <Eyebrow>Account</Eyebrow>
+            <h2 className="display display-sm">Delete your account.</h2>
+            <p className="panel-copy">Deleting your account removes your sign-in access, but does not delete your submitted recordings or contribution data. Choose “Request recording/data deletion” on the home page contact form to ask the team to review a separate deletion request at any time, before or after account deletion.</p>
+            <Button variant="danger" onClick={() => { setDeleteError(''); setDeletePassword(''); setDeleteDialogOpen(true) }}>Delete account</Button>
+          </section>}
           {isAdmin && (
             <div className="panel panel-outline">
               <Eyebrow>Workspace</Eyebrow>
@@ -120,6 +142,36 @@ export default function ProfileDashboard() {
           )}
         </aside>
       </section>
+
+      {deleteDialogOpen && <div
+        className="account-delete-backdrop"
+        onMouseDown={(event) => { if (event.target === event.currentTarget && !deleteBusy) setDeleteDialogOpen(false) }}
+        onKeyDown={(event) => { if (event.key === 'Escape' && !deleteBusy) setDeleteDialogOpen(false) }}
+      >
+        <section className="account-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="account-delete-title" aria-describedby="account-delete-description">
+          <Eyebrow>Permanent action</Eyebrow>
+          <h2 id="account-delete-title" className="display display-md">Delete your account?</h2>
+          <p id="account-delete-description">This permanently removes your account and signs you out. Your submitted recordings and related contribution data will remain stored; deleting your account does not delete them. You may request data deletion through the home page contact form by choosing “Request recording/data deletion”, at any time before or after deleting your account. After account deletion, the team may need additional information to verify and match your former recordings. Recordings already used in a released model cannot be removed from that model.</p>
+          <form onSubmit={confirmDeleteAccount}>
+            <Field
+              label="Current password"
+              name="currentPassword"
+              type="password"
+              autoComplete="current-password"
+              autoFocus
+              required
+              value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)}
+              disabled={deleteBusy}
+            />
+            {deleteError && <Alert tone="error">{deleteError}</Alert>}
+            <div className="confirm-actions">
+              <Button type="submit" variant="danger" disabled={deleteBusy || !deletePassword}>{deleteBusy ? 'Deleting account…' : 'Permanently delete account'}</Button>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteBusy}>Keep account</Button>
+            </div>
+          </form>
+        </section>
+      </div>}
     </main>
   )
 }
