@@ -54,6 +54,7 @@ management library.
 | `AuthProvider` | Loads the current session from the API and exposes login, signup, email verification, logout, and connection updates. |
 | `LibraryProvider` | Loads categories, visible videos, and the current user's submissions; provides derived category, contribution, and cooldown state plus admin mutations. |
 | `RecordingProvider` | Holds unsubmitted recording blobs and trim/mirror edits in memory, keyed by video ID. These drafts are discarded on submit, replacement, user change, or tab close. |
+| `UploadQueueProvider` | Holds up to two submitted recordings in an in-memory queue (one uploading and one waiting). Failed uploads keep their slot for retry or discard; the queue is cleared when the signed-in user changes. |
 | `NotificationProvider` | Stores per-user notification items and read state in browser `localStorage`; notifications do not sync across devices. |
 | `ThemeProvider` | Follows the OS theme until a user selects one, then persists the selection locally. |
 
@@ -88,9 +89,24 @@ interface hint; the backend independently enforces the cooldown.
 `useRecorder` captures camera and microphone media through browser media APIs.
 The `RecordingProvider` keeps the current take available while a contributor
 moves between `/watch` and `/watch/edit`. The editor applies trim and mirror
-settings as submission metadata, then uploads the recording blob and metadata
-through the API service. The backend stores the uploaded recording and metadata;
-it does not physically trim or transcode contributor recordings.
+settings as submission metadata, then hands the recording blob and metadata to
+`UploadQueueProvider`. Uploads run one at a time through an XMLHttpRequest so
+the UI can report byte progress and abort on account changes. The editor returns
+to the player immediately; a page-level toaster reports waiting, active, failed,
+and completed uploads. Failed uploads retain their queue slot until retried or
+discarded. Queue data is memory-only, and a `beforeunload` prompt warns if the
+tab is closed or reloaded while work remains. The backend stores contributor
+recordings and metadata; it does not physically trim or transcode them.
+
+### Reference-video cache
+
+`useCachedVideo` loads reference videos into an in-memory Blob cache and falls
+back to the normal media URL if the download fails or exceeds the per-video
+100 MB cap. Entries expire five minutes after download and the cache evicts
+oldest entries to stay within a 250 MB total budget. A player holds its entry
+while it is in use so an expired or evicted object URL is not revoked during
+playback. The player also prefetches the next video in its category after the
+current video's load attempt finishes.
 
 ### Admin video preparation and responsive playback
 
@@ -164,10 +180,10 @@ frontend/
     seo/                    # SEO metadata and helpers
     styles/                 # Theme tokens and feature styles
     utils/                  # Shared browser and media utilities
-    test/
-      RecorderPanel.test.jsx # Recorder workflow component tests
     docs/
-    ARCHITECTURE.md         # This guide
+      architecture.md       # This guide
+  test/
+    RecorderPanel.test.jsx  # Recorder workflow component tests
   scripts/
     generateSeoAssets.js    # Sitemap, robots, and prerender route generation
     runReactSnap.js         # Static route prerendering

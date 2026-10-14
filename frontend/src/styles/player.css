@@ -109,3 +109,19 @@
   .submitted-check { @apply mb-6 grid h-16 w-16 place-items-center rounded-full bg-success-soft text-2xl text-success; }
   .submitted-actions { @apply mt-10 flex flex-wrap items-center gap-3; }
 }
+
+/* Background upload toaster and video loading state. */
+@layer components {
+  .base-player-loading { @apply absolute inset-0 grid place-content-center px-6 text-center font-ui text-base font-semibold text-white; }
+  .toaster { @apply fixed bottom-4 right-4 z-50 grid w-[min(24rem,calc(100vw-2rem))] gap-3; }
+  .toast { @apply relative grid gap-1.5 rounded-2xl border border-line bg-surface p-4 shadow-lift; }
+  .toast.is-error { @apply border-danger; }
+  .toast.is-success { @apply border-success; }
+  .toast-title { @apply m-0 font-ui text-sm font-bold text-heading; }
+  .toast.is-error .toast-title { @apply text-danger; }
+  .toast.is-success .toast-title { @apply pr-8 text-success; }
+  .toast-body { @apply m-0 text-sm leading-snug text-muted; }
+  .toast-progress { @apply mt-1 h-2 w-full; accent-color: var(--brand); }
+  .toast-actions { @apply mt-2 flex flex-wrap gap-2; }
+  .toast-close { @apply absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-lg text-muted hover:bg-panel hover:text-heading; }
+}

@@ -4,8 +4,8 @@ import ResponsiveVideo from '../components/ResponsiveVideo'
 import TrimSlider from '../components/TrimSlider'
 import { Alert, Arrow, Button, ButtonLink, Eyebrow, PageState } from '../components/ui'
 import { useLibrary } from '../context/LibraryContext'
-import { useNotifications } from '../context/NotificationContext'
 import { useRecordings } from '../context/RecordingContext'
+import { useUploadQueue } from '../context/UploadQueueContext'
 import { paths, watchUrl } from '../routes/appRoutes'
 import { formatTime } from '../utils/format'
 import { aspectOf, orientationOf } from '../utils/media'
@@ -19,8 +19,8 @@ export default function RecordingEditor() {
 }
 
 function EditScreen({ videoId }) {
-  const { publishedVideos, submitRecording } = useLibrary()
-  const { notify } = useNotifications()
+  const { publishedVideos } = useLibrary()
+  const uploads = useUploadQueue()
   const { recordings, removeRecording, updateEdit } = useRecordings()
   const navigate = useNavigate()
   const video = publishedVideos.find((item) => item.id === videoId)
@@ -55,22 +55,19 @@ function EditScreen({ videoId }) {
       video={video} 
       recording={recording}
       onEdit={(patch) => updateEdit(video.id, patch)}
-      onSubmit={async () => {
-        await submitRecording(video, recording)
+      queueFull={uploads.isFull}
+      onSubmit={() => {
+        // Hand the take to the background queue, then free the editor straight away.
+        const result = uploads.enqueue(video, recording)
+        if (!result.ok) throw new Error(result.reason)
         removeRecording(video.id)
-        await notify({ 
-          type: 'submission', 
-          title: 'Recording submitted', 
-          body: video.title, 
-          href: watchUrl(video.id) 
-        }).catch(() => {})
         navigate(watchUrl(video.id), { state: { justSubmitted: true } })
       }}
     />
   )
 }
 
-function Editor({ video, recording, onEdit, onSubmit }) {
+function Editor({ video, recording, queueFull, onEdit, onSubmit }) {
   const preview = useRef(null)
   const { start, end, mirrored } = recording.edit
   const total = recording.duration
@@ -134,11 +131,11 @@ function Editor({ video, recording, onEdit, onSubmit }) {
     }
   }
 
-  const submit = async () => {
+  const submit = () => {
     setBusy(true)
     setError('')
     try { 
-      await onSubmit() 
+      onSubmit()
     } catch (caught) { 
       setError(caught.message || 'Your recording could not be submitted. Try again.')
       setBusy(false) 
@@ -229,13 +226,14 @@ function Editor({ video, recording, onEdit, onSubmit }) {
           </label>
 
           {error && <Alert tone="error">{error}</Alert>}
+          {queueFull && !confirming && <Alert tone="info">Two recordings are already queued. You can submit this one as soon as an upload finishes.</Alert>}
 
           {confirming ? (
             <div className="confirm">
-              <p>Submit this recording? Once submitted it can't be watched, edited or deleted, but you can record this video again after a short cooldown.</p>
+              <p>Submit this recording? It uploads in the background, so you can keep browsing and record the next video. Once submitted it can't be watched, edited or deleted, but you can record this video again after a short cooldown.</p>
               <div className="confirm-actions">
-                <Button onClick={submit} disabled={busy || !trimApplied}>
-                  {busy ? 'Submitting…' : 'Yes, submit'}
+                <Button onClick={submit} disabled={busy || !trimApplied || queueFull}>
+                  {busy ? 'Queuing…' : 'Yes, submit'}
                 </Button>
                 <Button variant="outline" onClick={() => setConfirming(false)} disabled={busy}>
                   Keep editing
@@ -247,7 +245,7 @@ function Editor({ video, recording, onEdit, onSubmit }) {
               block 
               className="editor-submit" 
               onClick={() => setConfirming(true)} 
-              disabled={!trimApplied}
+              disabled={!trimApplied || queueFull}
             >
               Submit recording <Arrow />
             </Button>

@@ -5,6 +5,7 @@ import { api } from '../services/api'
 import { paths } from '../routes/appRoutes'
 import { useAuth } from './AuthContext'
 import { LibraryContext } from './LibraryContext'
+import { useUploadQueue } from './UploadQueueContext'
 
 const EMPTY = { ready: false, ownerId: null, categories: [], videos: [], submissions: [] }
 const SUBMISSION_COOLDOWN_MS = Number(import.meta.env.VITE_SUBMISSION_COOLDOWN_MS || 30_000)
@@ -30,6 +31,7 @@ function isLibraryRoute(pathname) {
 
 export default function LibraryProvider({ children }) {
   const { user } = useAuth()
+  const { lastSubmission } = useUploadQueue()
   const location = useLocation()
   const [data, setData] = useState(EMPTY)
   const [loadError, setLoadError] = useState(null)
@@ -44,6 +46,18 @@ export default function LibraryProvider({ children }) {
     setData({ ready: true, ownerId: user.id, categories, videos, submissions })
     setLoadError(null)
   }, [user])
+
+  // A background upload just finished: fold it into the library so counts, badges and the
+  // record-again cooldown update without a page change.
+  const seenSubmission = useRef(lastSubmission)
+  useEffect(() => {
+    if (!lastSubmission || lastSubmission === seenSubmission.current) return
+    seenSubmission.current = lastSubmission
+    setData((current) => (current.ready
+      ? { ...current, submissions: [lastSubmission, ...current.submissions.filter((item) => item.id !== lastSubmission.id)] }
+      : current))
+    void refresh().catch(() => {})
+  }, [lastSubmission, refresh])
 
   useEffect(() => {
     if (!user || !shouldLoad || (data.ready && data.ownerId === user.id)) return undefined
@@ -107,19 +121,6 @@ export default function LibraryProvider({ children }) {
       totalSubmissionCount: mySubmissions.length,
       cooldownMs: SUBMISSION_COOLDOWN_MS,
 
-      async submitRecording(video, recording) {
-        const submission = await api.submissions.create({
-          videoId: video.id, recording: recording.blob, trimStart: recording.edit.start, trimEnd: recording.edit.end,
-          mirrored: recording.edit.mirrored, duration: recording.duration, size: recording.blob.size, mimeType: recording.mimeType,
-        })
-        void refresh().catch(() => {
-          setData((current) => ({
-            ...current,
-            submissions: [submission, ...current.submissions.filter((item) => item.id !== submission.id)],
-          }))
-        })
-        return submission
-      },
       async addCategory(values) { const created = await api.categories.create(values); await refresh(); return created },
       async editCategory(id, patch) { await api.categories.update(id, patch); await refresh() },
       async deleteCategory(id) { await api.categories.remove(id); await refresh() },
