@@ -20,7 +20,11 @@ const faqs = [
   },
   {
     q: 'Can I watch, edit or delete a recording after I submit it?',
-    a: 'No. Once a recording is submitted it is locked: you cannot play it back, edit it or remove it from your account. You can always record that same video again after the cooldown, and your new take is saved separately.',
+    a: 'No. Once a recording is submitted it is locked: you cannot play it back, edit it or remove it yourself. To request deletion of the stored recording and related contribution data, use the home page contact form and choose “Request recording/data deletion”. You can send a request at any time, before or after deleting your account. Recordings already used in a released model cannot be removed from that model.',
+  },
+  {
+    q: 'What happens to my recordings if I delete my account?',
+    a: 'Deleting your account removes your account and sign-in access, but submitted recordings and related contribution data remain stored; deleting your account does not delete them. You can request deletion separately through the “Request recording/data deletion” contact topic at any time, before or after account deletion. Include the email used for your account so the team can identify your request. If you contact us after deleting your account, we may ask for additional information to verify and match your former recordings. Recordings already used in a released model cannot be removed from that released model.',
   },
   {
     q: 'What happens to my recordings?',
@@ -44,7 +48,7 @@ const faqs = [
   },
   {
     q: 'I found a bug or have a question that is not answered here.',
-    a: 'Reach out through the contact form on the home page, or email the team directly. We read every message.',
+    a: 'Reach out through the contact form on the home page, or email the team directly. We read every message. You can submit recording/data deletion requests through the dedicated contact topic even after your account has been deleted.',
   },
 ]
 

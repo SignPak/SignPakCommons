@@ -189,6 +189,7 @@ export const api = {
   },
 
   users: {
+    async removeMe(password) { await request(apiRoutes.users.removeMe(), json('DELETE', { password })) },
     async list() { return normalizeList(await request(apiRoutes.users.list())) },
     async setStatus(id, patch) { return normalize(await request(apiRoutes.users.update(id), json('PATCH', patch))) },
     async remove(id) { await request(apiRoutes.users.remove(id), { method: 'DELETE' }) },

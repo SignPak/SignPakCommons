@@ -121,7 +121,7 @@ The admin is ensured on every startup. Changing `ADMIN_PASSWORD` later does not 
 | `ARCHIVE_STORAGE_DRIVER` | `local` or `gdrive` | Append-only storage for contributor recordings. Use `gdrive` for production archives. |
 | `UPLOAD_DIR` | Local filesystem path; default `uploads` | Local storage root; temporary uploads are kept in its `tmp` subdirectory. |
 | `MAX_VIDEO_UPLOAD_MB` | Set manually; default `90` | Maximum reference-video or demo-video upload size, in MiB. |
-| `MAX_RECORDING_UPLOAD_MB` | Set manually; default `80` | Maximum contributor-recording upload size, in MiB. |
+| `MAX_RECORDING_UPLOAD_MB` | Set manually; default `100` | Maximum contributor-recording upload size, in MiB. |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | Service-account JSON from Google Cloud | Shared Google Drive credentials, available as fallback for either driver. |
 | `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth client configuration | Shared OAuth client ID; set with the corresponding secret and refresh token. |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth client configuration | Shared OAuth client secret. |

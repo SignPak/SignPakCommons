@@ -7,25 +7,39 @@ import { conflict, forbidden, tooManyRequests } from '../utils/AppError.js'
 
 const utcDay = () => new Date().toISOString().slice(0, 10)
 const dailyLimitError = () => tooManyRequests('The contact form has reached its daily message limit. Try again tomorrow.')
+const topicLabels = {
+  general: 'General inquiry',
+  partnership: 'Partnership',
+  'recording-deletion': 'Request recording/data deletion',
+}
 
 export const contactService = {
   deliver: sendContactWeb3Forms,
 
-  async send({ name, email, message }, { user, ip, deviceId }) {
+  async send({ topic, name, email, message }, { user, ip, deviceId }) {
     const normalizedEmail = email.trim().toLowerCase()
-    if (!user || normalizedEmail !== user.email) {
+    if (user && normalizedEmail !== user.email) {
       await accessRestrictionService.temporarilyRestrictRequest(
         ip,
         deviceId,
-        user ? 'Contact form email does not match the signed-in account.' : 'Anonymous contact form submission.',
+        'Contact form email does not match the signed-in account.',
         env.CONTACT_ABUSE_BLOCK_MINUTES * 60_000,
       )
-      throw forbidden(user ? 'Use the email address on your account to contact us.' : 'Log in with a verified account to contact us.')
+      throw forbidden('Use the email address on your account to contact us.')
+    }
+    if (!user && topic !== 'recording-deletion') {
+      await accessRestrictionService.temporarilyRestrictRequest(
+        ip,
+        deviceId,
+        'Anonymous contact form submission outside the recording/data deletion topic.',
+        env.CONTACT_ABUSE_BLOCK_MINUTES * 60_000,
+      )
+      throw forbidden('Sign in to send this contact topic.')
     }
 
     const day = utcDay()
-    const userClaimed = await contactQuotaRepo.claimUser(user._id, day)
-    if (!userClaimed) throw conflict('You can send one contact message per day.')
+    const userClaimed = user ? await contactQuotaRepo.claimUser(user._id, day) : false
+    if (user && !userClaimed) throw conflict('You can send one contact message per day.')
 
     let dailyClaimed = false
     let savedMessage
@@ -41,13 +55,13 @@ export const contactService = {
         throw dailyLimitError()
       }
 
-      savedMessage = await messageRepo.create({ user: user._id, name, email: normalizedEmail, message })
-      await this.deliver({ name, email: normalizedEmail, message })
+      savedMessage = await messageRepo.create({ user: user?._id ?? null, topic, name, email: normalizedEmail, message })
+      await this.deliver({ name, email: normalizedEmail, topic: topicLabels[topic], message })
       return savedMessage
     } catch (error) {
       if (savedMessage) await messageRepo.remove(savedMessage._id).catch(() => {})
       if (dailyClaimed) await contactQuotaRepo.releaseDaily(day)
-      await contactQuotaRepo.releaseUser(user._id, day)
+      if (userClaimed) await contactQuotaRepo.releaseUser(user._id, day)
       throw error
     }
   },

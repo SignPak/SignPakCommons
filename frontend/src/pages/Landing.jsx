@@ -11,8 +11,8 @@ import { paths } from '../routes/appRoutes'
 const policyItems = [
   {
     id: 1,
-    title: "Post-Training Deletion",
-    body: "Your raw video uploads are used solely to extract motion and gesture data. Once our AI model training is complete, all original video files are permanently deleted from our servers."
+    title: "Recording retention and deletion requests",
+    body: "Deleting your account does not delete recordings or related contribution data. You can ask the team to review a recording/data deletion request through the contact form at any time, before or after deleting your account. Recordings already used in a released model cannot be removed from that released model."
   },
   {
     id: 2,
@@ -212,7 +212,7 @@ export default function Landing() {
             <em>talk.</em>
           </h2>
           <p className="contact-copy">
-            Have questions about video contributions, recording specifications, or partnership opportunities? Reach out to our team.
+            Have questions about video contributions, recording specifications, or partnership opportunities? Reach out to our team. For recording/data deletion, choose the dedicated topic; you can send that request without signing in.
           </p>
           <p className="contact-copy">
             Looking for a quick answer? Visit our <Link className="link-accent" to={paths.faq}>FAQ page</Link>.
@@ -230,6 +230,7 @@ export default function Landing() {
 function ContactForm() {
   const { user } = useAuth()
   const [values, setValues] = useState(() => ({ name: user ? `${user.firstName} ${user.surname}` : '', email: user?.email || '', message: '' }))
+  const [topic, setTopic] = useState(user ? 'general' : 'recording-deletion')
   const [status, setStatus] = useState('idle') // idle | sending | sent | error
   const [errorMessage, setErrorMessage] = useState('')
   const change = (event) => setValues((current) => ({ ...current, [event.target.name]: event.target.value }))
@@ -239,21 +240,13 @@ function ContactForm() {
     setStatus('sending')
     setErrorMessage('')
     try {
-      await api.contact.send(values)
-      setValues({ name: `${user.firstName} ${user.surname}`, email: user.email, message: '' })
+      await api.contact.send({ ...values, topic })
+      setValues({ name: user ? `${user.firstName} ${user.surname}` : '', email: user?.email || '', message: '' })
       setStatus('sent')
     } catch (error) {
       setErrorMessage(error.message || 'Your message could not be sent. Try again.')
       setStatus('error')
     }
-  }
-
-  if (!user) {
-    return <div className="contact-card">
-      <h3 className="display display-md">Sign in to contact us.</h3>
-      <p>Contact messages are limited to one per account each day. Sign in with a verified email address to send yours.</p>
-      <ButtonLink to={paths.login}>Log in to continue <Arrow /></ButtonLink>
-    </div>
   }
 
   if (status === 'sent') {
@@ -271,6 +264,12 @@ function ContactForm() {
 
   return (
     <form className="contact-card" onSubmit={submit}>
+      <Field as="select" label="Contact topic" value={topic} onChange={(event) => setTopic(event.target.value)} disabled={!user}>
+        {user && <><option value="general">General inquiry</option><option value="partnership">Partnership</option></>}
+        <option value="recording-deletion">Request recording/data deletion</option>
+      </Field>
+      {topic === 'recording-deletion' && <p className="contact-copy">You can submit this request before or after deleting your account, at any time. Include the email used on your contributor account so the team can identify the data. After account deletion, the team may ask for additional information to verify and match your former recordings. Account deletion alone does not delete recordings. Recordings already used in a released model cannot be removed from that model.</p>}
+      {!user && <p className="contact-copy">Unauthenticated contact is available for recording/data deletion requests. For other topics, please sign in.</p>}
       <Field
         label="Your name"
         name="name"
@@ -285,7 +284,8 @@ function ContactForm() {
         name="email"
         type="email"
         value={values.email}
-        readOnly
+        onChange={change}
+        readOnly={Boolean(user)}
         placeholder="you@example.com"
         required
         autoComplete="email"

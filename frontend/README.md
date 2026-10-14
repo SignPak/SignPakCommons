@@ -53,6 +53,15 @@ the navigation state and offers accept or decline. Accepting creates and signs
 in the account; declining discards the pending signup. The consent version and
 acceptance timestamp are stored by the backend.
 
+Contributors can delete their account from the profile after confirming their
+current password. Account deletion removes sign-in access, but submitted
+recordings and related contribution data remain stored. A separate
+“Request recording/data deletion” topic on the home page contact form can be
+used at any time before or after account deletion; it is available without
+sign-in and asks for the account email. Requests made after account deletion
+may require the team to verify and manually match the former contributor.
+Recordings already used in a released model cannot be removed from that model.
+
 When uploading a base video, admins must either select a JPEG, PNG, or WebP
 poster image (up to 2 MB), or explicitly check the option to use a frame
 captured automatically from the video.
@@ -68,6 +77,7 @@ JSON and multipart upload requests use the same request helper.
 | Variable | Purpose |
 | --- | --- |
 | `VITE_API_ORIGIN` | Optional API origin, e.g. `https://api.example.com`. Empty by default; requests use the Vite `/api` proxy locally. |
+| `VITE_MAX_RECORDING_UPLOAD_MB` | Optional client-side recording size limit in MiB. Defaults to `100`; keep it equal to the backend's `MAX_RECORDING_UPLOAD_MB`. Recordings also stop automatically at 10 minutes, and the upload queue rejects any take exceeding either limit. |
 | `VITE_SUBMISSION_COOLDOWN_MS` | Optional client countdown duration in milliseconds. Defaults to `30000`; the backend independently enforces its cooldown. |
 
 Put local Vite variables in `frontend/.env.local` (do not commit secrets there).

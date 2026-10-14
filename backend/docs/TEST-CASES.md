@@ -1,6 +1,6 @@
 # Backend test cases
 
-The backend suite uses Node's built-in test runner. It currently contains **60 test
+The backend suite uses Node's built-in test runner. It currently contains **61 test
 cases** across thirteen test files. Each named API test suite has its own `.test.js`
 file and starts with a fresh test database and account fixtures:
 
@@ -15,7 +15,7 @@ file and starts with a fresh test database and account fixtures:
 | `tests/api-videos.test.js` | 6 | HTTP integration tests |
 | `tests/api-submissions.test.js` | 8 | HTTP integration tests |
 | `tests/api-admin-stats-contact.test.js` | 4 | HTTP integration tests |
-| `tests/api-admin-user-controls.test.js` | 4 | HTTP integration tests |
+| `tests/api-admin-user-controls.test.js` | 5 | HTTP integration tests |
 | `tests/safeName.test.js` | 3 | Unit tests |
 | `tests/localStorage.test.js` | 6 | Filesystem/storage integration tests |
 | `tests/videoService.test.js` | 9 | Unit tests |
@@ -153,7 +153,8 @@ their respective test file. Each API case below is an HTTP integration test.
 34. **contact delivery requires matching account email, enforces quotas, and
     blocks abusive devices** — Checks contact validation, delivery failure
     handling, matching account email, per-user and global daily quotas, anonymous
-    access rejection, device blocking, message listing, and admin-only access.
+    recording-deletion requests, rejection of other anonymous topics, device
+    blocking, message listing, and admin-only access.
 35. **oversized uploads are rejected with 413** — Checks payload-too-large
     responses and temporary-file cleanup.
 
@@ -162,13 +163,16 @@ their respective test file. Each API case below is an HTTP integration test.
 36. **suspending a user blocks its existing session and login; reactivation
     restores access** — Checks self-suspension protection, suspension effects on
     sessions and login, and reactivation.
-37. **deleting a user removes their submissions, cooldowns, and stored
-    recording** — Checks account deletion cleanup across database records,
-    cooldowns, archive storage, sessions, and admin listings.
-38. **device restrictions reject matching IDs, expose only a hint, and can be
+37. **contributors can delete their account without removing submitted
+    recordings** — Checks current-password confirmation, session invalidation,
+    account removal, retained submission/archive data, and cooldown cleanup.
+38. **admin deletion removes the account and cooldowns but retains submissions
+    and recordings** — Checks admin account removal, retained archive files,
+    cooldown cleanup, and updated account/submission listings.
+39. **device restrictions reject matching IDs, expose only a hint, and can be
     removed** — Checks device restriction creation, hashed-identifier privacy,
     blocking, duplicate detection, and removal.
-39. **IP restrictions block API traffic while admin routes remain available for
+40. **IP restrictions block API traffic while admin routes remain available for
     recovery** — Checks IP validation and restriction enforcement while
     preserving admin access to remove restrictions.
 
@@ -179,63 +183,63 @@ routes. The cases are separated by the behavior under test.
 
 ### `tests/safeName.test.js` — Safe names (unit tests)
 
-40. **safeName uses its fallback for nullish and blank values** — Checks fallback
+41. **safeName uses its fallback for nullish and blank values** — Checks fallback
     behavior for nullish, whitespace-only, and fully sanitized names.
-41. **safeName replaces reserved path characters and collapses whitespace** —
+42. **safeName replaces reserved path characters and collapses whitespace** —
     Checks removal of path-reserved characters, whitespace normalization, and
     string conversion of non-string values.
-42. **safeName caps its output at 100 characters** — Checks the maximum safe-name
+43. **safeName caps its output at 100 characters** — Checks the maximum safe-name
     length.
 
 ### `tests/localStorage.test.js` — Local driver and storage service (filesystem/storage integration tests)
 
-43. **local driver stores named files in folders and appends suffixes on
+44. **local driver stores named files in folders and appends suffixes on
     collisions** — Checks directory placement, readable keys, collision naming,
     and file contents.
-44. **local driver handles named files without an extension and dotfiles** —
+45. **local driver handles named files without an extension and dotfiles** —
     Checks collision naming for extensionless names and dotfiles.
-45. **local driver generates unique UUID keys when no file name is supplied** —
+46. **local driver generates unique UUID keys when no file name is supplied** —
     Checks generated key format and uniqueness.
-46. **local driver rejects paths escaping the storage root and keeps the source
+47. **local driver rejects paths escaping the storage root and keeps the source
     file** — Checks rejection of traversal through file names or folder names and
     confirms rejected saves do not consume the source file.
-47. **local driver stat reports missing files and remove is idempotent** — Checks
+48. **local driver stat reports missing files and remove is idempotent** — Checks
     missing-file errors from stat and harmless removal of an absent key.
-48. **storageService forwards named folder and file name to the local driver** —
+49. **storageService forwards named folder and file name to the local driver** —
     Checks storage-service metadata, destination key, file size, and cleanup.
 
 ### `tests/videoService.test.js` — Video service (unit tests)
 
-49. **video create names video and poster from title and category safely** —
+50. **video create names video and poster from title and category safely** —
     Checks sanitized names, category folder selection, poster naming, storage
     calls, and category ordering.
-50. **video create uses Unassigned and Untitled fallbacks when optional labels
+51. **video create uses Unassigned and Untitled fallbacks when optional labels
     are absent** — Checks fallback folder and file names, default ordering, and
     absent poster metadata.
-51. **video create selects detected video and image extensions** — Checks
+52. **video create selects detected video and image extensions** — Checks
     content-detected extensions for WebM, MOV, PNG, and WebP rather than relying
     on the original file name.
-52. **video create rejects a missing upload, unsupported content, and invalid
+53. **video create rejects a missing upload, unsupported content, and invalid
     categories before storage** — Checks validation errors and confirms storage is
     not called for invalid input.
-53. **video create rejects oversized or unsupported posters before storage** —
+54. **video create rejects oversized or unsupported posters before storage** —
     Checks poster size and real-content validation before any storage call.
-54. **video create accepts a poster exactly at the size limit** — Checks that a
+55. **video create accepts a poster exactly at the size limit** — Checks that a
     poster at the configured maximum size is accepted.
-55. **video create surfaces filesystem errors instead of reporting invalid video
+56. **video create surfaces filesystem errors instead of reporting invalid video
     content** — Checks missing-file I/O errors are preserved and storage is not
     called.
-56. **video create removes already stored files when poster storage fails** —
+57. **video create removes already stored files when poster storage fails** —
     Checks cleanup of the stored video when the subsequent poster save fails.
-57. **video create removes video and poster if the database write fails** —
+58. **video create removes video and poster if the database write fails** —
     Checks cleanup of both stored files when database record creation fails.
-58. **creates the account only after consent and records the acceptance time** —
+59. **creates the account only after consent and records the acceptance time** —
     Checks that verification alone cannot log in, current consent activates the
     account, the acceptance time and version are stored, and consent tokens
     cannot be replayed.
-59. **declining consent discards the unfinished signup** — Checks the pending
+60. **declining consent discards the unfinished signup** — Checks the pending
     account is removed and its email can be used for a new signup.
-60. **legacy accounts without consent cannot submit until they accept** — Checks
+61. **legacy accounts without consent cannot submit until they accept** — Checks
     that older accounts are blocked from submitting until they accept the current
     notice.
 

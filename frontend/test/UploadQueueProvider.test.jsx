@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import UploadQueueProvider from '../src/context/UploadQueueProvider'
 import { useUploadQueue } from '../src/context/UploadQueueContext'
+import { MAX_RECORDING_BYTES, MAX_RECORDING_SECONDS } from '../src/utils/limits'
 
 const { api, notify } = vi.hoisted(() => ({
   api: { submissions: { upload: vi.fn() } },
@@ -14,12 +16,20 @@ vi.mock('../src/context/NotificationContext', () => ({ useNotifications: () => (
 
 function QueueHarness() {
   const queue = useUploadQueue()
+  const [enqueueResult, setEnqueueResult] = useState('')
   const recording = { blob: new Blob(['video']), edit: { start: 0, end: 2, mirrored: false }, duration: 2 }
+  const queueOverLimit = (overLimitRecording) => {
+    const result = queue.enqueue({ id: 'over-limit', title: 'Over-limit video' }, overLimitRecording)
+    setEnqueueResult(result.reason || 'queued')
+  }
   return (
     <>
       <button onClick={() => queue.enqueue({ id: 'video-1', title: 'First video' }, recording)}>Queue first</button>
       <button onClick={() => queue.enqueue({ id: 'video-2', title: 'Second video' }, recording)}>Queue second</button>
       <button onClick={() => queue.enqueue({ id: 'video-3', title: 'Third video' }, recording)}>Queue third</button>
+      <button onClick={() => queueOverLimit({ ...recording, blob: { size: MAX_RECORDING_BYTES + 1 } })}>Queue oversized</button>
+      <button onClick={() => queueOverLimit({ ...recording, duration: MAX_RECORDING_SECONDS + 1 })}>Queue too long</button>
+      <output aria-label="enqueue result">{enqueueResult}</output>
       <output aria-label="queued uploads">{queue.items.map(({ title, status }) => `${title}: ${status}`).join('; ')}</output>
     </>
   )
@@ -44,6 +54,23 @@ describe('UploadQueueProvider', () => {
   afterEach(() => {
     cleanup()
     vi.useRealTimers()
+  })
+
+  it.each([
+    ['oversized recordings', 'Queue oversized', /larger than the .* upload limit/],
+    ['recordings longer than ten minutes', 'Queue too long', /at most 10 minutes/],
+  ])('refuses %s before uploading', (_, buttonName, expectedMessage) => {
+    render(
+      <UploadQueueProvider>
+        <QueueHarness />
+      </UploadQueueProvider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: buttonName }))
+
+    expect(screen.getByLabelText('enqueue result').textContent).toMatch(expectedMessage)
+    expect(api.submissions.upload).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('queued uploads').textContent).toBe('')
   })
 
   it('serializes two queued uploads and retries a failure', async () => {

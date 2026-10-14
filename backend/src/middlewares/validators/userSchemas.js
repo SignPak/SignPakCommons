@@ -29,3 +29,7 @@ export const acceptConsentSchema = z.object({
   accepted: z.literal(true, { error: 'You must accept the consent notice to continue.' }),
   version: z.string({ error: 'Missing consent version.' }).min(1).max(40),
 })
+
+export const deleteAccountSchema = z.object({
+  password: z.string({ error: 'Enter your current password.' }).min(1, 'Enter your current password.').max(128),
+})
