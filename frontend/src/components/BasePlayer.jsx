@@ -6,7 +6,7 @@ import ResponsiveVideo from './ResponsiveVideo'
 const SPEEDS = [0.5, 0.75, 1]
 
 /** Base video player: play/pause, replay, seek, speed and fullscreen. The parent owns the <video> ref. */
-export default function BasePlayer({ video, videoRef, onAspect }) {
+export default function BasePlayer({ video, videoRef, onAspect, src, loading, progress }) {
   const frame = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
@@ -45,7 +45,7 @@ export default function BasePlayer({ video, videoRef, onAspect }) {
       <div className="base-player-stage">
         <ResponsiveVideo
           videoRef={videoRef}
-          src={video.videoUrl}
+          src={src}
           poster={video.poster}
           aspect={aspectOf(video)}
           onAspect={onAspect}
@@ -63,7 +63,9 @@ export default function BasePlayer({ video, videoRef, onAspect }) {
           onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
           onError={() => setFailed(true)}
         >
-          {failed ? (
+          {loading && !failed ? (
+            <p className="base-player-loading" role="status">Loading video{Number.isFinite(progress) && progress > 0 ? ` ${Math.round(progress * 100)}%` : '…'}</p>
+          ) : failed ? (
             <p className="base-player-error" role="alert">This video could not be loaded. Try again later or pick another video.</p>
           ) : (
             !playing && <button type="button" className="base-player-big" onClick={toggle} aria-label="Play video">▶</button>

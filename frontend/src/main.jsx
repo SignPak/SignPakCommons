@@ -8,6 +8,7 @@ import LibraryProvider from './context/LibraryProvider.jsx'
 import NotificationProvider from './context/NotificationProvider.jsx'
 import RecordingProvider from './context/RecordingProvider.jsx'
 import ThemeProvider from './context/ThemeProvider.jsx'
+import UploadQueueProvider from './context/UploadQueueProvider.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -15,11 +16,13 @@ createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <AuthProvider>
           <NotificationProvider>
-            <LibraryProvider>
-              <RecordingProvider>
-                <App />
-              </RecordingProvider>
-            </LibraryProvider>
+            <UploadQueueProvider>
+              <LibraryProvider>
+                <RecordingProvider>
+                  <App />
+                </RecordingProvider>
+              </LibraryProvider>
+            </UploadQueueProvider>
           </NotificationProvider>
         </AuthProvider>
       </BrowserRouter>

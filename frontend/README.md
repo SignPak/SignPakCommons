@@ -68,8 +68,19 @@ Contributor recordings stay in memory as a `Blob` while the user moves between
 the player and editor; closing the tab discards an unsubmitted take. On
 submission, the frontend uploads the recording and trim/mirror metadata to the
 backend. The backend validates and stores the recording and enforces the
-submission cooldown. Admins prepare reference and demo videos in the browser
-before upload: they can remove audio and trim the clip, with processing performed
+submission cooldown. After submission, the recording uploads in the background:
+one upload can run while one waits, and the contributor can continue browsing.
+Failed uploads remain in the queue until retried or discarded. The queue is
+memory-only, so the browser warns before a pending upload is lost; switching
+accounts clears that account's queue.
+
+Reference videos are downloaded into an in-memory cache for five minutes after
+download completes, and the next video in the category is prefetched. Individual
+videos larger than 100 MB bypass the cache, and cached entries are limited to
+250 MB total; videos still playing are not revoked mid-playback.
+
+Admins prepare reference and demo videos in the browser before upload: they can
+remove audio and trim the clip, with processing performed
 locally by ffmpeg.wasm when changes are applied. The browser also reports the
 video's displayed dimensions and duration; the backend stores these values for
 responsive playback and display. No video-processing worker is required on the
@@ -90,7 +101,7 @@ src/
   main.jsx            Browser entry point and provider setup
   components/         Shared layouts, controls, navigation, and route guards
   config/             UI configuration
-  context/            Auth, library, recording, notification, and theme state
+  context/            Auth, library, recording, upload queue, notification, and theme state
   hooks/              Reusable hooks, including camera/MediaRecorder handling
   pages/              Public and contributor pages
   pages/admin/        Admin workspace pages

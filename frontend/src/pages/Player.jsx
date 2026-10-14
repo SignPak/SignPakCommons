@@ -3,9 +3,12 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import BasePlayer from '../components/BasePlayer'
 import RecorderPanel from '../components/RecorderPanel'
 import { Alert, Button, ButtonLink, Eyebrow, PageState } from '../components/ui'
+import { useCachedVideo } from '../hooks/useCachedVideo'
 import { useLibrary } from '../context/LibraryContext'
+import { useUploadQueue } from '../context/UploadQueueContext'
 import { categoryUrl, paths, watchEditUrl, watchUrl } from '../routes/appRoutes'
 import { aspectOf, orientationOf } from '../utils/media'
+import { prefetchVideo } from '../utils/videoCache'
 import { safeRouteId } from '../utils/validators'
 
 export default function Player() {
@@ -43,10 +46,18 @@ function PlayerScreen({ videoId }) {
     refresh 
   } = useLibrary()
 
+  const uploads = useUploadQueue()
   const navigate = useNavigate()
   const location = useLocation()
   const baseRef = useRef(null)
   const video = publishedVideos.find((item) => item.id === videoId)
+  // The video downloads once and stays in the browser for 5 minutes; the next one is fetched while this one plays.
+  const cached = useCachedVideo(video)
+  const upNext = video ? nextVideo(video) : null
+  const cachedStatus = cached.status
+  useEffect(() => {
+    if (cachedStatus !== 'loading' && upNext) prefetchVideo(upNext)
+  }, [cachedStatus, upNext])
 
   // The page layout follows the video's shape: tall phone videos get a narrow window and more room for the recorder.
   const [measuredAspect, setMeasuredAspect] = useState(null)
@@ -100,7 +111,7 @@ function PlayerScreen({ videoId }) {
 
       <section className="shell player-grid" data-orientation={aspect ? orientationOf(aspect) : 'landscape'}>
         <div>
-          <BasePlayer video={video} videoRef={baseRef} onAspect={setMeasuredAspect} />
+          <BasePlayer video={video} videoRef={baseRef} onAspect={setMeasuredAspect} src={cached.src} loading={cached.status === 'loading'} progress={cached.progress} />
           
           <div className="player-meta">
             <div>
@@ -114,13 +125,26 @@ function PlayerScreen({ videoId }) {
 
           {justSubmitted && (
             <Alert tone="success">
-              Recording received — thank you for contributing.
+              Recording queued — it uploads in the background, so you can pick your next video now.
             </Alert>
           )}
         </div>
 
         <aside className="player-side">
-          {remaining > 0 ? (
+          {uploads.itemFor(video.id) ? (
+            <div className="cooldown">
+              <p className="recorder-status is-live"><span aria-hidden="true">●</span> {uploads.itemFor(video.id).status === 'failed' ? 'Upload failed' : uploads.itemFor(video.id).status === 'uploading' ? `Uploading ${Math.round(uploads.itemFor(video.id).progress * 100)}%` : 'Waiting to upload'}</p>
+              <h2 className="display display-md">
+                Your recording<br /><em>is on its way.</em>
+              </h2>
+              <p className="recorder-copy">
+                You don't have to wait. Watch and record other videos while this one uploads; details are in the corner of the screen.
+              </p>
+              <Button block onClick={goNext}>
+                {next ? 'Next video' : 'Back to videos'} →
+              </Button>
+            </div>
+          ) : remaining > 0 ? (
             <div className="cooldown">
               <p className="recorder-status">
                 <span aria-hidden="true">✓</span> {count > 1 ? `Recorded ${count} times` : 'Recorded'}

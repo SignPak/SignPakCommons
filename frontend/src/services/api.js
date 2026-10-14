@@ -64,6 +64,40 @@ async function request(path, options = {}) {
   return payload.data
 }
 
+/**
+ * POST a FormData body with real upload progress (fetch cannot report it).
+ * Rejects with the same Error shape as request(); an aborted upload rejects with name 'AbortError'.
+ */
+function uploadWithProgress(path, body, { onProgress, signal } = {}) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    const abort = () => xhr.abort()
+    xhr.open('POST', path)
+    xhr.withCredentials = true
+    const deviceId = getDeviceId()
+    if (deviceId) xhr.setRequestHeader('X-Device-ID', deviceId)
+    xhr.upload.onprogress = (event) => { if (event.lengthComputable) onProgress?.(event.loaded / event.total) }
+    xhr.onload = () => {
+      let payload = {}
+      try { payload = JSON.parse(xhr.responseText) } catch { /* non-JSON error page */ }
+      if (xhr.status >= 200 && xhr.status < 300) { resolve(payload.data); return }
+      const error = new Error(payload.error?.message || `Request failed (${xhr.status})`)
+      error.fields = payload.error?.fields || {}
+      error.status = xhr.status
+      reject(error)
+    }
+    xhr.onerror = () => reject(new Error('The connection was lost while uploading. Check your internet and try again.'))
+    xhr.onabort = () => reject(Object.assign(new Error('Upload cancelled.'), { name: 'AbortError' }))
+    if (signal?.aborted) {
+      reject(Object.assign(new Error('Upload cancelled.'), { name: 'AbortError' }))
+      return
+    }
+    signal?.addEventListener('abort', abort, { once: true })
+    xhr.onloadend = () => signal?.removeEventListener('abort', abort)
+    xhr.send(body)
+  })
+}
+
 const json = (method, body) => ({ method, body: JSON.stringify(body) })
 const normalizeList = (items) => (items || []).map(normalize)
 const PUBLIC_STATS_CACHE_KEY = `${PREFIX}public-stats`
@@ -202,8 +236,56 @@ export const api = {
     async remove() { await request(apiRoutes.demoVideo.remove(), { method: 'DELETE' }) },
   },
 
+  media: {
+    /**
+     * Downloads a whole video into a Blob, reporting progress as a 0-1 fraction (or null when the
+     * size is unknown). Throws an Error with code 'TOO_LARGE' before downloading when it exceeds maxBytes.
+     */
+    async fetchVideo(url, { onProgress, signal, maxBytes } = {}) {
+      const headers = new Headers()
+      const deviceId = getDeviceId()
+      if (deviceId) headers.set('X-Device-ID', deviceId)
+      const response = await fetch(url, { credentials: 'include', headers, signal })
+      if (!response.ok) throw new Error(`The video could not be loaded (${response.status}).`)
+      const total = Number(response.headers.get('Content-Length')) || 0
+      if (maxBytes && total > maxBytes) throw Object.assign(new Error('The video is too large to keep in the browser.'), { code: 'TOO_LARGE' })
+      const type = response.headers.get('Content-Type') || 'video/mp4'
+      if (!response.body) {
+        const blob = await response.blob()
+        if (maxBytes && blob.size > maxBytes) throw Object.assign(new Error('The video is too large to keep in the browser.'), { code: 'TOO_LARGE' })
+        return blob
+      }
+      const reader = response.body.getReader()
+      const chunks = []
+      let loaded = 0
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        loaded += value.length
+        if (maxBytes && loaded > maxBytes) {
+          await reader.cancel().catch(() => {})
+          throw Object.assign(new Error('The video is too large to keep in the browser.'), { code: 'TOO_LARGE' })
+        }
+        onProgress?.(total ? Math.min(loaded / total, 1) : null)
+      }
+      return new Blob(chunks, { type })
+    },
+  },
+
   submissions: {
     async list() { return normalizeList(await request(apiRoutes.submissions.list())) },
+    /** Same as create(), but reports upload progress (0-1) and can be aborted with `signal`. */
+    async upload({ recording, videoId, trimStart, trimEnd, mirrored, duration, onProgress, signal }) {
+      const body = new FormData()
+      body.append('recording', recording, 'recording.webm')
+      body.append('videoId', videoId)
+      body.append('trimStart', String(trimStart))
+      body.append('trimEnd', String(trimEnd))
+      body.append('mirrored', String(Boolean(mirrored)))
+      body.append('duration', String(duration))
+      return normalize(await uploadWithProgress(apiRoutes.submissions.create(), body, { onProgress, signal }))
+    },
     async create({ recording, videoId, trimStart, trimEnd, mirrored, duration }) {
       const body = new FormData()
       body.append('recording', recording, 'recording.webm')
