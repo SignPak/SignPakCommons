@@ -40,8 +40,8 @@ export const submissionService = {
     const category = await categoryRepo.findById(video.category)
     if (!category) throw notFound('That video category is not available.')
 
-    const claimed = await submissionRepo.claimCooldown(user._id, video._id, env.SUBMISSION_COOLDOWN_MS)
-    if (!claimed) throw cooling(await submissionRepo.cooldownRemaining(user._id, video._id))
+    const cooldownStartedAt = await submissionRepo.claimCooldown(user._id, video._id, env.SUBMISSION_COOLDOWN_MS)
+    if (!cooldownStartedAt) throw cooling(await submissionRepo.cooldownRemaining(user._id, video._id))
 
     let recording
     try {
@@ -55,7 +55,7 @@ export const submissionService = {
       })
       return await submissionRepo.create({
         user: user._id, video: video._id, trimStart: input.trimStart, trimEnd: input.trimEnd,
-        mirrored: input.mirrored, duration: input.duration, recording,
+        mirrored: input.mirrored, duration: input.duration, recording, cooldownStartedAt,
       })
     } catch (error) {
       await storageService.remove(recording)

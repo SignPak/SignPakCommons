@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import UploadQueueProvider from '../src/context/UploadQueueProvider'
 import { useUploadQueue } from '../src/context/UploadQueueContext'
@@ -42,6 +42,7 @@ describe('UploadQueueProvider', () => {
   })
 
   afterEach(() => {
+    cleanup()
     vi.useRealTimers()
   })
 
@@ -81,5 +82,22 @@ describe('UploadQueueProvider', () => {
     secondUpload.resolve({ id: 'submission-2' })
     await waitFor(() => expect(screen.getByLabelText('queued uploads').textContent).toBe(''))
     expect(notify).toHaveBeenCalledTimes(3)
+  })
+
+  it('shows the remaining cooldown time from a rejected upload in the toast', async () => {
+    api.submissions.upload.mockRejectedValueOnce(
+      Object.assign(new Error('Wait 17s before recording this video again.'), { status: 409 }),
+    )
+
+    render(
+      <UploadQueueProvider>
+        <QueueHarness />
+      </UploadQueueProvider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Queue first' }))
+
+    expect(await screen.findByText(/Wait 17s before recording this video again\./)).toBeTruthy()
+    expect(screen.getByText('Upload failed')).toBeTruthy()
   })
 })

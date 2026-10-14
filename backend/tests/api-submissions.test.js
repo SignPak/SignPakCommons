@@ -77,6 +77,7 @@ describe('submissions and the cooldown rule', () => {
     assert.equal(submission.videoId, video1.id)
     assert.equal(submission.mirrored, true)
     assert.equal(submission.trimEnd, 2.5)
+    assert.ok(Date.parse(submission.cooldownStartedAt) <= Date.parse(submission.submittedAt))
     assert.equal(submission.recording, undefined)
     assert.equal(filesIn('commons').length, 1)
     const mine = await contributor.get('/submissions')

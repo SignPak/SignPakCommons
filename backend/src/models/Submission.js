@@ -10,12 +10,14 @@ const submissionSchema = new mongoose.Schema({
   mirrored: { type: Boolean, default: false },
   duration: { type: Number, required: true, min: 0 },
   recording: { type: storedFileSchema, required: true },
+  cooldownStartedAt: { type: Date },
 }, {
   timestamps: true,
   toJSON: jsonOptions((doc, ret) => {
     ret.userId = String(ret.user)
     ret.videoId = String(ret.video)
     ret.submittedAt = ret.createdAt
+    ret.cooldownStartedAt = ret.cooldownStartedAt || ret.createdAt
     ret.size = ret.recording?.size ?? 0
     ret.mimeType = ret.recording?.mimeType
     ret.archivePath = ret.recording?.archivePath ?? null

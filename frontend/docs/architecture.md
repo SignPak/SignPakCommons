@@ -105,7 +105,9 @@ to the player immediately; a page-level toaster reports waiting, active, failed,
 and completed uploads. Failed uploads retain their queue slot until retried or
 discarded. Queue data is memory-only, and a `beforeunload` prompt warns if the
 tab is closed or reloaded while work remains. The backend stores contributor
-recordings and metadata; it does not physically trim or transcode them.
+recordings and metadata; it does not physically trim or transcode them. The
+per-video cooldown starts when the server accepts an upload for processing, and
+the API's `cooldownStartedAt` timestamp drives the matching client countdown.
 
 ### Reference-video cache
 

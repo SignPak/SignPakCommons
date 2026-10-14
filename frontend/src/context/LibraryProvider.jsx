@@ -105,8 +105,14 @@ export default function LibraryProvider({ children }) {
     const hasSubmission = (videoId) => contributedIds.has(videoId)
     const submissionsFor = (videoId) => mySubmissions.filter((item) => item.videoId === videoId).sort((a, b) => b.submittedAt - a.submittedAt)
     const submissionCount = (videoId) => submissionsFor(videoId).length
-    /** Timestamp of this user's most recent submission for a video, or null. Drives the record-again cooldown. */
-    const lastSubmissionAt = (videoId) => submissionsFor(videoId)[0]?.submittedAt ?? null
+    /** Server timestamp for the active record-again cooldown, or null for an older submission. */
+    const lastSubmissionAt = (videoId) => {
+      const latestStart = submissionsFor(videoId).reduce((latest, item) => {
+        const startedAt = item.cooldownStartedAt ?? item.submittedAt
+        return startedAt > latest ? startedAt : latest
+      }, 0)
+      return latestStart || null
+    }
 
     const nextVideo = (video) => {
       const list = videosIn(video.categoryId)

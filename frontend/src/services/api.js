@@ -31,7 +31,7 @@ const apiOrigin = (import.meta.env.VITE_API_ORIGIN || '').replace(/\/$/, '')
 const normalize = (value) => {
   if (!value || typeof value !== 'object') return value
   const result = { ...value }
-  for (const key of ['createdAt', 'updatedAt', 'submittedAt', 'readAt']) {
+  for (const key of ['createdAt', 'updatedAt', 'submittedAt', 'cooldownStartedAt', 'readAt']) {
     if (result[key]) result[key] = asTimestamp(result[key])
   }
   for (const key of ['videoUrl', 'poster']) {

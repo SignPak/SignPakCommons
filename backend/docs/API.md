@@ -170,8 +170,10 @@ administrator can recover by removing a restriction.
 - Deleting a category unassigns videos rather than deleting them. Deleting a
   reference video keeps submissions associated with that video on record.
 - A contributor may submit the same video again after the
-  `SUBMISSION_COOLDOWN_MS` cooldown (default 30 seconds). Concurrent submissions
-  for the same account/video pair are atomically limited.
+  `SUBMISSION_COOLDOWN_MS` cooldown (default 30 seconds), measured from when the
+  server starts processing the upload request. The submission response includes
+  `cooldownStartedAt` so the client countdown uses the same timestamp. Concurrent
+  submissions for the same account/video pair are atomically limited.
 
 For the detailed OpenAPI schemas and examples, use the raw OpenAPI document or
 the development Swagger UI.

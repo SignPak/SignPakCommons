@@ -108,9 +108,10 @@ mounted outside production.
 - Reference and demo-video uploads accept browser-reported `width` and `height`
   in pixels, each from 0 to 16,384. Zero represents unknown dimensions; these
   values are metadata for responsive playback, not server-side media probes.
-- `SUBMISSION_COOLDOWN_MS` defaults to 30 seconds per contributor/video pair.
-  Atomic claiming prevents simultaneous duplicate submissions; failed processing
-  releases the claim.
+- `SUBMISSION_COOLDOWN_MS` defaults to 30 seconds per contributor/video pair,
+  starting when the server accepts an upload for processing. Atomic claiming
+  prevents simultaneous duplicate submissions; failed processing releases the
+  claim.
 - Contact delivery uses Web3Forms. A signed-in account can send from its own
   email; quotas are one per account per UTC day and 25 per UTC day globally by
   default. Abusive attempts can temporarily restrict a device or IP.

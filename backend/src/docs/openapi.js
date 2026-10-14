@@ -259,6 +259,7 @@ export const openapi = {
           mirrored: { type: 'boolean' },
           duration: { type: 'number' },
           submittedAt: { type: 'string', format: 'date-time' },
+          cooldownStartedAt: { type: 'string', format: 'date-time', description: 'When the server accepted the upload for processing and claimed the per-video cooldown.' },
           size: { type: 'integer' },
           mimeType: { type: 'string', enum: ['video/mp4', 'video/webm', 'video/quicktime'] },
           archivePath: { type: 'string', nullable: true, description: 'Included for admins only.' },
