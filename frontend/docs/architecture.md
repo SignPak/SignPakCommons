@@ -131,9 +131,11 @@ that CDN to apply changes. If processing fails, the UI reports the error and
 allows an unchanged original upload.
 
 `inspectVideoFile` reads the browser-reported duration and displayed dimensions
-(including rotation metadata) and captures a poster frame locally. The upload
-stores `durationSec`, `width`, and `height` with the video; unknown dimensions
-are represented as zero. `ResponsiveVideo` uses stored dimensions to size the
+(including rotation metadata) and captures a poster frame locally. For each
+reference video, admins must either select a JPEG, PNG, or WebP poster image
+(up to 2 MB), or check the option to use that captured frame. The upload stores
+`durationSec`, `width`, and `height` with the video; unknown dimensions are
+represented as zero. `ResponsiveVideo` uses stored dimensions to size the
 frame before media metadata loads, then prefers the dimensions reported by the
 loaded video. This keeps portrait, square, and landscape videos in their native
 aspect ratio while fitting the player layout.

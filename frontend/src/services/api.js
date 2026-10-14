@@ -213,7 +213,7 @@ export const api = {
       const body = new FormData()
       body.append('video', file)
       const posterBlob = await toBlob(poster)
-      if (posterBlob) body.append('poster', posterBlob, 'poster.jpg')
+      if (posterBlob) body.append('poster', posterBlob, poster?.name || 'poster.jpg')
       body.append('title', title)
       body.append('categoryId', categoryId || '')
       body.append('status', status)

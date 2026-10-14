@@ -53,6 +53,10 @@ the navigation state and offers accept or decline. Accepting creates and signs
 in the account; declining discards the pending signup. The consent version and
 acceptance timestamp are stored by the backend.
 
+When uploading a base video, admins must either select a JPEG, PNG, or WebP
+poster image (up to 2 MB), or explicitly check the option to use a frame
+captured automatically from the video.
+
 ## Backend connection
 
 All HTTP requests go through `src/services/api.js`; endpoint paths are composed

@@ -9,6 +9,7 @@ import { formatBytes, formatTime } from '../../utils/format'
 import { aspectOf } from '../../utils/media'
 
 const titleFromFile = (name) => name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim()
+const POSTER_MAX_BYTES = 2 * 1024 * 1024
 
 export default function AdminVideos() {
   const { videos, categories, editVideo } = useLibrary()
@@ -78,18 +79,22 @@ function UploadPanel() {
   const { categories, addVideo } = useLibrary()
   const [file, setFile] = useState(null)
   const [prepared, setPrepared] = useState(null) // { file, durationSec, width, height, poster } once muted/trimmed
+  const [posterFile, setPosterFile] = useState(null)
+  const [useAutoFrame, setUseAutoFrame] = useState(false)
   const [form, setForm] = useState({ title: '', categoryId: '', status: 'published' })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null)
   const change = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
 
-  const clear = () => { setFile(null); setPrepared(null) }
+  const clear = () => { setFile(null); setPrepared(null); setPosterFile(null); setUseAutoFrame(false) }
 
   const pick = (event) => {
     const chosen = event.target.files?.[0]
     event.target.value = ''
     setMessage(null)
     setPrepared(null)
+    setPosterFile(null)
+    setUseAutoFrame(false)
     if (!chosen) { setFile(null); return }
     if (!chosen.type.startsWith('video/')) {
       setFile(null)
@@ -100,14 +105,42 @@ function UploadPanel() {
     setForm((current) => ({ ...current, title: current.title || titleFromFile(chosen.name) }))
   }
 
+  const pickPoster = (event) => {
+    const chosen = event.target.files?.[0]
+    event.target.value = ''
+    setMessage(null)
+    if (!chosen) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(chosen.type)) {
+      setPosterFile(null)
+      setMessage({ tone: 'error', text: 'Choose a JPEG, PNG or WebP poster image.' })
+      return
+    }
+    if (chosen.size > POSTER_MAX_BYTES) {
+      setPosterFile(null)
+      setMessage({ tone: 'error', text: 'Poster images must be no larger than 2 MB.' })
+      return
+    }
+    setPosterFile(chosen)
+    setUseAutoFrame(false)
+  }
+
+  const toggleAutoFrame = (event) => {
+    const checked = event.target.checked
+    setUseAutoFrame(checked)
+    if (checked) setPosterFile(null)
+    setMessage(null)
+  }
+
   const submit = async (event) => {
     event.preventDefault()
     if (!file) { setMessage({ tone: 'error', text: 'Choose a video to upload first.' }); return }
     if (!prepared) { setMessage({ tone: 'error', text: 'Review the video and choose “Apply changes” first.' }); return }
+    if (!posterFile && !useAutoFrame) { setMessage({ tone: 'error', text: 'Choose a poster image or select “Use an auto-generated frame”.' }); return }
+    if (useAutoFrame && !prepared.poster) { setMessage({ tone: 'error', text: 'A frame could not be generated. Choose a poster image instead.' }); return }
     if (!form.title.trim()) { setMessage({ tone: 'error', text: 'Give the video a title.' }); return }
     setBusy(true)
     try {
-      await addVideo({ ...form, file: prepared.file, durationSec: prepared.durationSec, width: prepared.width, height: prepared.height, poster: prepared.poster })
+      await addVideo({ ...form, file: prepared.file, durationSec: prepared.durationSec, width: prepared.width, height: prepared.height, poster: posterFile || prepared.poster })
       setMessage({ tone: 'success', text: `“${form.title.trim()}” uploaded${form.status === 'published' && form.categoryId ? ' and live for contributors.' : '. Assign a category and publish it to make it visible.'}` })
       clear()
       setForm({ title: '', categoryId: '', status: 'published' })
@@ -131,8 +164,23 @@ function UploadPanel() {
         <Field label="Title" name="title" value={form.title} onChange={change} placeholder="e.g. Nice to meet you" />
         <Field as="select" label="Category" name="categoryId" value={form.categoryId} onChange={change}><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Field>
         <Field as="select" label="Visibility" name="status" value={form.status} onChange={change}><option value="published">Published: contributors can see it</option><option value="draft">Draft: only admins can see it</option></Field>
+        <Field
+          className="field-wide"
+          label="Poster image (JPEG, PNG or WebP; up to 2 MB)"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={pickPoster}
+          disabled={busy || useAutoFrame}
+        />
+        {posterFile && <p className="field-hint field-wide">Selected poster: {posterFile.name}</p>}
+        <label className="toggle field-wide">
+          <span>Use an auto-generated frame from this video as its poster</span>
+          <input type="checkbox" checked={useAutoFrame} onChange={toggleAutoFrame} disabled={busy || !prepared?.poster} />
+        </label>
+        <p className="field-hint field-wide">Choose a poster image above or check this box before uploading.</p>
+        {prepared && !prepared.poster && <p className="field-hint field-wide">A frame could not be generated from this video; choose a poster image instead.</p>}
         {message && <Alert tone={message.tone}>{message.text}</Alert>}
-        <Button type="submit" block disabled={busy || !prepared}>{busy ? 'Uploading…' : 'Upload video'}</Button>
+        <Button type="submit" block disabled={busy || !prepared || (!posterFile && !useAutoFrame)}>{busy ? 'Uploading…' : 'Upload video'}</Button>
         {!prepared && <p className="field-hint">{file ? 'Remove sound, trim if needed, then choose “Apply changes” to enable the upload.' : 'Select a file to enable the upload action.'}</p>}
       </div>
     </form>
