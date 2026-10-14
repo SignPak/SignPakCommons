@@ -1,12 +1,12 @@
 import bcrypt from 'bcrypt'
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto'
-import { ROLES } from '../config/constants.js'
+import { CONSENT_VERSION, ROLES } from '../config/constants.js'
 import { env } from '../config/env.js'
 import { userRepo } from '../repositories/userRepo.js'
 import { badRequest, conflict, unauthorized } from '../utils/AppError.js'
 import { logger } from '../utils/logger.js'
 import { isDuplicateKeyError } from '../utils/mongoose.js'
-import { signToken } from '../utils/tokens.js'
+import { signConsentToken, signToken, verifyConsentToken } from '../utils/tokens.js'
 import { sendOTPEmailBrevo } from './external/sendOTPBrevo.js'
 
 // Compared against when the email is unknown, so "no such user" takes as long as "wrong password".
@@ -79,10 +79,34 @@ export const authService = {
       await userRepo.save(user)
       throw invalidCode()
     }
-    user.emailVerified = true
+    // A correct code only proves the email address. The account is not created (verified, able to log in
+    // or contribute) until the contributor accepts the consent notice: see completeSignup.
     clearOtp(user, 'email-verification')
     await userRepo.save(user)
+    return { consentToken: signConsentToken(user.id) }
+  },
+
+  async pendingSignup(consentToken) {
+    const userId = verifyConsentToken(consentToken)
+    const user = userId ? await userRepo.findById(userId) : null
+    if (!user || user.emailVerified || user.role !== ROLES.USER) throw badRequest('This sign-up step has expired. Verify your email again to continue.')
+    return user
+  },
+
+  /** Finishes sign-up: records the consent (date, time, version), activates the account and starts a session. */
+  async completeSignup({ consentToken, version }) {
+    if (version !== CONSENT_VERSION) throw conflict('The consent notice was updated. Reload the page and read the current version.')
+    const user = await this.pendingSignup(consentToken)
+    user.emailVerified = true
+    user.consent = { acceptedAt: new Date(), version: CONSENT_VERSION }
+    await userRepo.save(user)
     return { user, token: signToken(user.id, user.authVersion || 0) }
+  },
+
+  /** Declining consent means no account: the unfinished sign-up is removed. */
+  async declineSignup({ consentToken }) {
+    const user = await this.pendingSignup(consentToken)
+    await userRepo.remove(user._id)
   },
 
   /**

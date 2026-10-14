@@ -230,7 +230,7 @@ function Editor({ video, recording, queueFull, onEdit, onSubmit }) {
 
           {confirming ? (
             <div className="confirm">
-              <p>Submit this recording? It uploads in the background, so you can keep browsing and record the next video. Once submitted it can't be watched, edited or deleted, but you can record this video again after a short cooldown.</p>
+              <p>Submit this recording? It uploads in the background, so you can keep browsing and record the next video. Once submitted it can't be watched, edited or deleted, but you can record this video again after a 30-second cooldown once the upload is accepted.</p>
               <div className="confirm-actions">
                 <Button onClick={submit} disabled={busy || !trimApplied || queueFull}>
                   {busy ? 'Queuing…' : 'Yes, submit'}

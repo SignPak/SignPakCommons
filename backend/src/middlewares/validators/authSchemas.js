@@ -30,3 +30,13 @@ export const resetPasswordSchema = z.object({
   password: z.string({ error: 'Create a password.' }).min(8, 'Use at least 8 characters.').max(72, 'Use 72 characters or fewer.'),
   confirmPassword: z.string(),
 }).refine((data) => data.confirmPassword === data.password, { path: ['confirmPassword'], message: 'Passwords do not match.' })
+
+export const consentSchema = z.object({
+  consentToken: z.string({ error: 'This sign-up step has expired. Verify your email again.' }).min(10).max(2000),
+  accepted: z.literal(true, { error: 'You must accept the consent notice to create your account.' }),
+  version: z.string({ error: 'Missing consent version.' }).min(1).max(40),
+})
+
+export const declineConsentSchema = z.object({
+  consentToken: z.string({ error: 'This sign-up step has expired.' }).min(10).max(2000),
+})

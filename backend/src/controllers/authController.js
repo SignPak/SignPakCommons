@@ -15,11 +15,21 @@ export const authController = {
     ok(res, user)
   }),
 
+  // A valid code does not log anyone in: it returns a short-lived consent token for the next step.
   verifyEmail: asyncHandler(async (req, res) => {
-    const { user, token } = await authService.verifyEmail(req.body)
+    ok(res, await authService.verifyEmail(req.body))
+  }),
+
+  acceptConsent: asyncHandler(async (req, res) => {
+    const { user, token } = await authService.completeSignup(req.body)
     await authService.recordDevice(user, req.get('X-Device-ID'))
     setAuthCookie(res, token)
     ok(res, user)
+  }),
+
+  declineConsent: asyncHandler(async (req, res) => {
+    await authService.declineSignup(req.body)
+    noContent(res)
   }),
 
   resendVerification: asyncHandler(async (req, res) => {

@@ -21,6 +21,11 @@ const userSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
   statusReason: { type: String, trim: true, maxlength: 500, default: '' },
   lastDeviceId: { type: String, select: false, default: null },
+  // OR-19: the contributor accepts the data-use notice right after verifying their email.
+  consent: {
+    acceptedAt: { type: Date, default: null },
+    version: { type: String, default: null },
+  },
   connections: {
     github: { type: String, default: null },
     linkedin: { type: String, default: null },

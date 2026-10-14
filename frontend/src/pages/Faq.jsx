@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: 'Can I record the same video more than once?',
-    a: 'Yes, and it helps: more varied recordings of the same sign make the resulting dataset stronger. After you submit a recording there is a short 30-second pause before you can submit another one for that same video, mainly to make sure each take is a genuine, separate recording rather than a rapid re-upload of the same clip.',
+    a: 'Yes, and it helps: more varied recordings of the same sign make the resulting dataset stronger. Once an upload is accepted, there is a 30-second pause before you can submit another recording for that same video, mainly to make sure each take is a genuine, separate recording rather than a rapid re-upload of the same clip.',
   },
   {
     q: 'Can I watch, edit or delete a recording after I submit it?',

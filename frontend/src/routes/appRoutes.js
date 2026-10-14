@@ -18,6 +18,8 @@ export const paths = {
   login: '/login',
   signup: '/signup',
   verifyEmail: '/verify-email',
+  consent: '/consent',
+  signupConsent: '/signup/consent',
   forgotPassword: '/forgot-password',
   library: '/home',
   profile: '/profile',

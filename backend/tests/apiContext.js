@@ -1,4 +1,5 @@
 import { Client } from './helpers.js'
+import { CONSENT_VERSION } from '../src/config/constants.js'
 
 process.env.NODE_ENV = 'test'
 process.env.MONGODB_URI = process.env.MONGODB_URI_TEST || 'mongodb://placeholder/unused'
@@ -85,7 +86,7 @@ async function createApiContext() {
     })
     if (login.status !== 200) throw new Error(`Test admin login failed: ${login.status}`)
 
-    const createVerifiedUser = async ({ firstName, surname, email, password = 'password1' }) => {
+    const createVerifiedUser = async ({ firstName, surname, email, password = 'password1', consent = true }) => {
       const user = new Client(base)
       const signup = await user.post('/auth/signup', { firstName, surname, email, password })
       if (signup.status !== 201) throw new Error(`Test user signup failed: ${signup.status}`)
@@ -95,6 +96,18 @@ async function createApiContext() {
         code: deliveredCodes.get(`${normalizedEmail}:email-verification`),
       })
       if (verified.status !== 200) throw new Error(`Test user verification failed: ${verified.status}`)
+      const accepted = await user.post('/auth/consent', {
+        consentToken: verified.body.data.consentToken,
+        accepted: true,
+        version: CONSENT_VERSION,
+      })
+      if (accepted.status !== 200) throw new Error(`Test consent failed: ${accepted.status}`)
+      if (!consent) {
+        await mongoose.models.User.updateOne(
+          { email: normalizedEmail },
+          { $set: { 'consent.acceptedAt': null, 'consent.version': null } },
+        )
+      }
       return user
     }
 

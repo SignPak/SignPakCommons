@@ -1,10 +1,18 @@
-import { ROLES } from '../config/constants.js'
+import { CONSENT_VERSION, ROLES } from '../config/constants.js'
 import { submissionRepo } from '../repositories/submissionRepo.js'
 import { userRepo } from '../repositories/userRepo.js'
 import { storageService } from './storage/index.js'
 import { conflict, forbidden, notFound } from '../utils/AppError.js'
 
 export const userService = {
+  /** Records the date and time the contributor accepted the consent notice (kept on the first acceptance of a version). */
+  async acceptConsent(user, version) {
+    if (version !== CONSENT_VERSION) throw conflict('The consent notice was updated. Reload the page and read the current version.')
+    if (user.consent?.acceptedAt && user.consent.version === CONSENT_VERSION) return user
+    user.consent = { acceptedAt: new Date(), version: CONSENT_VERSION }
+    return userRepo.save(user)
+  },
+
   async updateConnections(user, connections) {
     // Only keys that were sent change; null disconnects.
     for (const key of ['github', 'linkedin']) {

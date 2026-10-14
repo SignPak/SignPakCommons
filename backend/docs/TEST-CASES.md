@@ -1,7 +1,7 @@
 # Backend test cases
 
-The backend suite uses Node's built-in test runner. It currently contains **57 test
-cases** across twelve test files. Each named API test suite has its own `.test.js`
+The backend suite uses Node's built-in test runner. It currently contains **60 test
+cases** across thirteen test files. Each named API test suite has its own `.test.js`
 file and starts with a fresh test database and account fixtures:
 
 | Test file | Cases | Main test type |
@@ -9,6 +9,7 @@ file and starts with a fresh test database and account fixtures:
 | `tests/api-basics.test.js` | 5 | HTTP integration tests |
 | `tests/api-demo-video.test.js` | 1 | HTTP integration tests |
 | `tests/api-auth.test.js` | 8 | HTTP integration tests |
+| `tests/api-consent.test.js` | 3 | HTTP integration tests |
 | `tests/api-profile-connections.test.js` | 1 | HTTP integration tests |
 | `tests/api-categories.test.js` | 2 | HTTP integration tests |
 | `tests/api-videos.test.js` | 6 | HTTP integration tests |
@@ -62,10 +63,10 @@ their respective test file. Each API case below is an HTTP integration test.
 
 7. **signup validates every field** — Checks required signup fields, password
    confirmation, and minimum password length.
-8. **signup sets an httpOnly cookie and never leaks the hash or accepts a role** —
-   Checks that signup does not create a session before verification, ignores a
-   submitted admin role, verifies email, sets secure cookie attributes, and does
-   not expose the password hash.
+8. **signup only creates an account after consent and never leaks the hash or
+   accepts a role** — Checks that signup and email verification do not create a
+   session, ignores a submitted admin role, activates the account after consent,
+   sets secure cookie attributes, and does not expose the password hash.
 9. **password reset codes are one-time and replace the old password** — Checks the
    generic reset-request response, invalid-code handling, password replacement,
    code reuse rejection, and invalidation of the old session.
@@ -228,6 +229,15 @@ routes. The cases are separated by the behavior under test.
     Checks cleanup of the stored video when the subsequent poster save fails.
 57. **video create removes video and poster if the database write fails** —
     Checks cleanup of both stored files when database record creation fails.
+58. **creates the account only after consent and records the acceptance time** —
+    Checks that verification alone cannot log in, current consent activates the
+    account, the acceptance time and version are stored, and consent tokens
+    cannot be replayed.
+59. **declining consent discards the unfinished signup** — Checks the pending
+    account is removed and its email can be used for a new signup.
+60. **legacy accounts without consent cannot submit until they accept** — Checks
+    that older accounts are blocked from submitting until they accept the current
+    notice.
 
 ## Running the suite
 

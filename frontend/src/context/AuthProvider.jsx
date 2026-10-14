@@ -41,13 +41,16 @@ export default function AuthProvider({ children }) {
     return nextUser
   }, [])
   const signup = useCallback((values) => api.auth.register(values), [])
-  const verifyEmail = useCallback(async (email, code) => {
-    const nextUser = await api.auth.verifyEmail(email, code)
+  // A valid code only returns a consent token; the account is created (and logged in) by completeSignup.
+  const verifyEmail = useCallback((email, code) => api.auth.verifyEmail(email, code), [])
+  const completeSignup = useCallback(async (consentToken, version) => {
+    const nextUser = await api.auth.completeSignup(consentToken, version)
     setUser(nextUser)
     setSessionChecked(true)
     setSessionError('')
     return nextUser
   }, [])
+  const declineSignup = useCallback((consentToken) => api.auth.declineSignup(consentToken), [])
   const logout = useCallback(async () => {
     try { await api.auth.logout() } finally {
       setUser(null)
@@ -55,13 +58,16 @@ export default function AuthProvider({ children }) {
       setSessionError('')
     }
   }, [])
+  const acceptConsent = useCallback(async (version) => {
+    setUser(await api.auth.acceptConsent(version))
+  }, [])
   const saveConnections = useCallback(async (connections) => {
     if (user) setUser(await api.auth.saveConnections(user.id, connections))
   }, [user])
 
   const value = useMemo(
-    () => ({ user, loading, sessionChecked, sessionError, ensureSession, isAdmin: user?.role === 'admin', login, signup, verifyEmail, logout, saveConnections }),
-    [user, loading, sessionChecked, sessionError, ensureSession, login, signup, verifyEmail, logout, saveConnections],
+    () => ({ user, loading, sessionChecked, sessionError, ensureSession, isAdmin: user?.role === 'admin', login, signup, verifyEmail, logout, saveConnections, acceptConsent, completeSignup, declineSignup }),
+    [user, loading, sessionChecked, sessionError, ensureSession, login, signup, verifyEmail, logout, saveConnections, acceptConsent, completeSignup, declineSignup],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

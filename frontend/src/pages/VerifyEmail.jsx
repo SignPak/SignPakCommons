@@ -25,8 +25,8 @@ export default function VerifyEmail() {
     setError('')
     setBusy(true)
     try {
-      await verifyEmail(email, code)
-      navigate(paths.library, { replace: true })
+      const { consentToken } = await verifyEmail(email, code)
+      navigate(paths.signupConsent, { replace: true, state: { consentToken } })
     } catch (cause) {
       setError(cause.message || 'We could not verify that code.')
       setBusy(false)

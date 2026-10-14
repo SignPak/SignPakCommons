@@ -1,9 +1,9 @@
-import { MAX_RECORDING_SECONDS, ROLES, TRIM_TOLERANCE_SECONDS, VIDEO_STATUS } from '../config/constants.js'
+import { CONSENT_VERSION, MAX_RECORDING_SECONDS, ROLES, TRIM_TOLERANCE_SECONDS, VIDEO_STATUS } from '../config/constants.js'
 import { env } from '../config/env.js'
 import { submissionRepo } from '../repositories/submissionRepo.js'
 import { categoryRepo } from '../repositories/categoryRepo.js'
 import { videoRepo } from '../repositories/videoRepo.js'
-import { conflict, notFound, validationError } from '../utils/AppError.js'
+import { AppError, conflict, notFound, validationError } from '../utils/AppError.js'
 import { sniffVideo } from '../utils/files.js'
 import { storageService } from './storage/index.js'
 
@@ -27,6 +27,9 @@ export const submissionService = {
    * once in, stays exactly as submitted.
    */
   async create(user, input, upload) {
+    if (user.role === ROLES.USER && user.consent?.version !== CONSENT_VERSION) {
+      throw new AppError(403, 'CONSENT_REQUIRED', 'Accept the consent notice before submitting a recording.')
+    }
     if (!upload) throw validationError({ recording: 'Attach your recording.' })
     const kind = await sniffVideo(upload.path)
     if (!kind) throw validationError({ recording: 'That does not look like an MP4, WebM or MOV video.' })
@@ -37,8 +40,8 @@ export const submissionService = {
     const category = await categoryRepo.findById(video.category)
     if (!category) throw notFound('That video category is not available.')
 
-    const claimed = await submissionRepo.claimCooldown(user._id, video._id, env.SUBMISSION_COOLDOWN_MS)
-    if (!claimed) throw cooling(await submissionRepo.cooldownRemaining(user._id, video._id))
+    const cooldownStartedAt = await submissionRepo.claimCooldown(user._id, video._id, env.SUBMISSION_COOLDOWN_MS)
+    if (!cooldownStartedAt) throw cooling(await submissionRepo.cooldownRemaining(user._id, video._id))
 
     let recording
     try {
@@ -52,7 +55,7 @@ export const submissionService = {
       })
       return await submissionRepo.create({
         user: user._id, video: video._id, trimStart: input.trimStart, trimEnd: input.trimEnd,
-        mirrored: input.mirrored, duration: input.duration, recording,
+        mirrored: input.mirrored, duration: input.duration, recording, cooldownStartedAt,
       })
     } catch (error) {
       await storageService.remove(recording)

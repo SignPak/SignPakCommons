@@ -40,9 +40,9 @@ export const submissionRepo = {
         { $set: { lockedUntil: new Date(now.getTime() + cooldownMs) } },
         { upsert: true },
       )
-      return true
+      return now
     } catch (error) {
-      if (isDuplicateKeyError(error)) return false
+      if (isDuplicateKeyError(error)) return null
       throw error
     }
   },

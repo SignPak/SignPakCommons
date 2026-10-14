@@ -92,7 +92,9 @@ mounted outside production.
 ## Operational rules
 
 - Authentication uses an HTTP-only `signpak_token` cookie. Email verification is
-  required before login; password reset invalidates existing sessions.
+  followed by consent acceptance before a new account is activated and signed
+  in. Existing contributors must accept the current consent version before
+  submitting; password reset invalidates existing sessions.
 - `CLIENT_ORIGIN` controls credentialed CORS and the check for browser
   state-changing requests that carry an `Origin` header.
 - The global, auth, contact, and upload rate limits can be disabled with
@@ -106,9 +108,10 @@ mounted outside production.
 - Reference and demo-video uploads accept browser-reported `width` and `height`
   in pixels, each from 0 to 16,384. Zero represents unknown dimensions; these
   values are metadata for responsive playback, not server-side media probes.
-- `SUBMISSION_COOLDOWN_MS` defaults to 30 seconds per contributor/video pair.
-  Atomic claiming prevents simultaneous duplicate submissions; failed processing
-  releases the claim.
+- `SUBMISSION_COOLDOWN_MS` defaults to 30 seconds per contributor/video pair,
+  starting when the server accepts an upload for processing. Atomic claiming
+  prevents simultaneous duplicate submissions; failed processing releases the
+  claim.
 - Contact delivery uses Web3Forms. A signed-in account can send from its own
   email; quotas are one per account per UTC day and 25 per UTC day globally by
   default. Abusive attempts can temporarily restrict a device or IP.
@@ -124,7 +127,7 @@ npm test
 The command runs Node's built-in test runner serially across every
 `tests/*.test.js` file. The API suites use MongoDB Memory Server unless
 `MONGODB_URI_TEST` is supplied. That configured database is dropped by the tests,
-so use only a disposable database. Provider delivery is stubbed. The 57 cases and
+so use only a disposable database. Provider delivery is stubbed. The 60 cases and
 their test types are documented in [docs/TEST-CASES.md](docs/TEST-CASES.md).
 
 ## Current limitation
