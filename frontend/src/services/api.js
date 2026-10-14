@@ -176,11 +176,15 @@ export const api = {
     async session() { return normalize(await request(apiRoutes.auth.session())) },
     async register(values) { return normalize(await request(apiRoutes.auth.signup(), json('POST', values))) },
     async login(email, password) { return normalize(await request(apiRoutes.auth.login(), json('POST', { email, password }))) },
-    async verifyEmail(email, code) { return normalize(await request(apiRoutes.auth.verifyEmail(), json('POST', { email, code }))) },
+    // A valid code returns { consentToken }; the account is only created by completeSignup.
+    async verifyEmail(email, code) { return request(apiRoutes.auth.verifyEmail(), json('POST', { email, code })) },
+    async completeSignup(consentToken, version) { return normalize(await request(apiRoutes.auth.consent(), json('POST', { consentToken, accepted: true, version }))) },
+    async declineSignup(consentToken) { await request(apiRoutes.auth.declineConsent(), json('POST', { consentToken })) },
     async resendVerification(email) { return request(apiRoutes.auth.resendVerification(), json('POST', { email })) },
     async forgotPassword(email) { return request(apiRoutes.auth.forgotPassword(), json('POST', { email })) },
     async resetPassword(values) { return request(apiRoutes.auth.resetPassword(), json('POST', values)) },
     async logout() { await request(apiRoutes.auth.logout(), { method: 'POST' }) },
+    async acceptConsent(version) { return normalize(await request(apiRoutes.users.consent(), json('POST', { accepted: true, version }))) },
     async saveConnections(_userId, connections) { return normalize(await request(apiRoutes.users.me(), json('PATCH', { connections }))) },
   },
 

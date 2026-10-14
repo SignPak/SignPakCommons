@@ -141,6 +141,11 @@ export const openapi = {
           role: { type: 'string', enum: ['user', 'admin'] },
           status: { type: 'string', enum: ['active', 'suspended'] },
           statusReason: { type: 'string' },
+          consent: {
+            type: 'object',
+            description: 'When the contributor accepted the consent notice (null until they do).',
+            properties: { acceptedAt: { type: 'string', format: 'date-time', nullable: true }, version: { type: 'string', nullable: true } },
+          },
           connections: {
             type: 'object',
             properties: {
@@ -347,9 +352,27 @@ export const openapi = {
     '/auth/verify-email': {
       post: {
         tags: ['Auth'],
-        summary: 'Verify an email code and establish a session',
+        summary: 'Verify an email code',
+        description: 'A valid code does not create the account or log anyone in. It returns a short-lived consentToken to use with POST /auth/consent.',
         requestBody: { required: true, content: { 'application/json': { schema: ref('VerifyEmailInput') } } },
-        responses: { 200: jsonResponse('Verified and logged in', ref('User')), ...authErrors },
+        responses: { 200: jsonResponse('Code accepted', { type: 'object', properties: { consentToken: { type: 'string' } } }), ...authErrors },
+      },
+    },
+    '/auth/consent': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Accept the consent notice, create the account and log in',
+        description: 'Activates the account, stores the acceptance date, time and notice version, and sets the session cookie.',
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['consentToken', 'accepted', 'version'], properties: { consentToken: { type: 'string' }, accepted: { type: 'boolean', enum: [true] }, version: { type: 'string' } } } } } },
+        responses: { 200: jsonResponse('Account created and logged in', ref('User')), ...authErrors, 409: errorResponse },
+      },
+    },
+    '/auth/decline-consent': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Decline the consent notice and discard the unfinished sign-up',
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['consentToken'], properties: { consentToken: { type: 'string' } } } } } },
+        responses: { 204: { description: 'Sign-up discarded' }, ...authErrors },
       },
     },
     '/auth/resend-verification': {
@@ -400,6 +423,16 @@ export const openapi = {
         security: userSecurity,
         requestBody: { required: true, content: { 'application/json': { schema: ref('UpdateProfileInput') } } },
         responses: { 200: jsonResponse('Updated user', ref('User')), 401: errorResponse, 422: errorResponse },
+      },
+    },
+    '/users/me/consent': {
+      post: {
+        tags: ['Users'],
+        summary: 'Accept the consent notice',
+        description: 'Records the acceptance date and time and the notice version. Submissions are refused with CONSENT_REQUIRED until this is done.',
+        security: userSecurity,
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['accepted', 'version'], properties: { accepted: { type: 'boolean', enum: [true] }, version: { type: 'string' } } } } } },
+        responses: { 200: jsonResponse('Updated user', ref('User')), 401: errorResponse, 409: errorResponse, 422: errorResponse },
       },
     },
     '/categories': {

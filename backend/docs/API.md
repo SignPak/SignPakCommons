@@ -8,9 +8,14 @@ and `/api-docs.json` in all environments. Swagger UI is disabled in production.
 
 ## Authentication and cookies
 
-Successful login and email verification set an HTTP-only `signpak_token` cookie.
-Signup creates an unverified account and sends a six-digit verification code; the
-account must be verified before login. Browser clients must send requests with
+Successful login and consent acceptance set an HTTP-only `signpak_token` cookie.
+Signup creates a pending, unverified record and sends a six-digit verification
+code. A valid code returns a short-lived consent token but does not establish a
+session or activate the account. `POST /auth/consent` accepts the current notice,
+activates the account, stores the consent version and timestamp, and starts the
+session. `POST /auth/decline-consent` discards the pending signup. Existing
+contributors without current consent are redirected to the notice and cannot
+submit recordings until they accept. Browser clients must send requests with
 credentials.
 
 `GET /auth/session` returns the current user or `null` for a visitor. `POST
@@ -57,7 +62,9 @@ All paths below are relative to `/api/v1`.
 | GET | `/health` | Public | Report API uptime and database connectivity; returns `503` while the database is unavailable. |
 | POST | `/auth/signup` | Public | Create an unverified contributor and send an email code. |
 | POST | `/auth/login` | Public | Authenticate and set the session cookie. |
-| POST | `/auth/verify-email` | Public | Verify an email code and establish a session. |
+| POST | `/auth/verify-email` | Public | Verify an email code and return a short-lived consent token. |
+| POST | `/auth/consent` | Public | Accept the current consent notice, activate a pending signup, and start a session. |
+| POST | `/auth/decline-consent` | Public | Discard a pending signup after consent is declined. |
 | POST | `/auth/resend-verification` | Public | Request another verification code. |
 | POST | `/auth/forgot-password` | Public | Request a password-reset code. |
 | POST | `/auth/reset-password` | Public | Reset a password and invalidate older sessions. |
@@ -65,6 +72,7 @@ All paths below are relative to `/api/v1`.
 | GET | `/auth/session` | Public | Return the current user or `null`. |
 | GET | `/users/me` | Authenticated user | Read the signed-in user's profile. |
 | PATCH | `/users/me` | Authenticated user | Update supported profile connections. |
+| POST | `/users/me/consent` | Authenticated user | Accept the current notice for an existing account. |
 | GET | `/categories` | Public | List categories. |
 | POST | `/categories` | Admin | Create a category. |
 | PATCH | `/categories/:id` | Admin | Update a category. |

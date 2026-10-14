@@ -36,13 +36,16 @@ page; they are not separate page screens.
 
 - `GuestOnly` allows signed-out visitors through auth pages and sends signed-in
   users to their original destination or `/home`.
-- `RequireAuth` waits for the session check and redirects visitors to `/login`.
+- `RequireAuth` waits for the session check, redirects visitors to `/login`, and
+  requires non-admin contributors to accept the current consent notice before
+  accessing protected library and recording routes.
 - `RequireAdmin` allows the admin role and otherwise redirects to `/home`.
 
 The route tree includes public landing, demo, and FAQ pages; signed-out login,
-signup, email verification, and password recovery pages; signed-in home, library,
-watch, editor, and profile pages; and admin dashboard, user, video, and category
-pages.
+signup, email verification, consent-before-account-creation, and password
+recovery pages; a signed-in consent page for existing accounts; signed-in home,
+library, watch, editor, and profile pages; and admin dashboard, user, video, and
+category pages.
 
 ## State and ownership
 
@@ -51,7 +54,7 @@ management library.
 
 | Provider | Responsibility and persistence |
 | --- | --- |
-| `AuthProvider` | Loads the current session from the API and exposes login, signup, email verification, logout, and connection updates. |
+| `AuthProvider` | Loads the current session from the API and exposes login, signup, email verification, consent completion/decline, logout, and connection updates. |
 | `LibraryProvider` | Loads categories, visible videos, and the current user's submissions; provides derived category, contribution, and cooldown state plus admin mutations. |
 | `RecordingProvider` | Holds unsubmitted recording blobs and trim/mirror edits in memory, keyed by video ID. These drafts are discarded on submit, replacement, user change, or tab close. |
 | `UploadQueueProvider` | Holds up to two submitted recordings in an in-memory queue (one uploading and one waiting). Failed uploads keep their slot for retry or discard; the queue is cleared when the signed-in user changes. |
@@ -77,6 +80,12 @@ The client:
   server message, status, and field-level validation messages.
 - Converts API-relative media URLs to absolute URLs when `VITE_API_ORIGIN` is
   configured.
+
+Email verification returns a short-lived consent token rather than a session.
+The signup consent screen submits that token and the current notice version;
+only successful acceptance activates and signs in the new account. Declining
+discards the pending signup. Existing contributors without the current consent
+version are routed to `/consent` before using protected contributor pages.
 
 Vite proxies `/api` to `http://localhost:5000` for local development. The
 optional `VITE_API_ORIGIN` variable selects a separately hosted API; leave it

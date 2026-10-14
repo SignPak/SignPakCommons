@@ -24,3 +24,8 @@ const linkedin = z.string().trim().nullable().transform((value, ctx) => {
 export const updateMeSchema = z.object({
   connections: z.object({ github: github.optional(), linkedin: linkedin.optional() }),
 })
+
+export const acceptConsentSchema = z.object({
+  accepted: z.literal(true, { error: 'You must accept the consent notice to continue.' }),
+  version: z.string({ error: 'Missing consent version.' }).min(1).max(40),
+})

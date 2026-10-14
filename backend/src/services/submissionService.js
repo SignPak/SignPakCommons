@@ -1,9 +1,9 @@
-import { MAX_RECORDING_SECONDS, ROLES, TRIM_TOLERANCE_SECONDS, VIDEO_STATUS } from '../config/constants.js'
+import { CONSENT_VERSION, MAX_RECORDING_SECONDS, ROLES, TRIM_TOLERANCE_SECONDS, VIDEO_STATUS } from '../config/constants.js'
 import { env } from '../config/env.js'
 import { submissionRepo } from '../repositories/submissionRepo.js'
 import { categoryRepo } from '../repositories/categoryRepo.js'
 import { videoRepo } from '../repositories/videoRepo.js'
-import { conflict, notFound, validationError } from '../utils/AppError.js'
+import { AppError, conflict, notFound, validationError } from '../utils/AppError.js'
 import { sniffVideo } from '../utils/files.js'
 import { storageService } from './storage/index.js'
 
@@ -27,6 +27,9 @@ export const submissionService = {
    * once in, stays exactly as submitted.
    */
   async create(user, input, upload) {
+    if (user.role === ROLES.USER && user.consent?.version !== CONSENT_VERSION) {
+      throw new AppError(403, 'CONSENT_REQUIRED', 'Accept the consent notice before submitting a recording.')
+    }
     if (!upload) throw validationError({ recording: 'Attach your recording.' })
     const kind = await sniffVideo(upload.path)
     if (!kind) throw validationError({ recording: 'That does not look like an MP4, WebM or MOV video.' })

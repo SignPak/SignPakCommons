@@ -92,7 +92,9 @@ mounted outside production.
 ## Operational rules
 
 - Authentication uses an HTTP-only `signpak_token` cookie. Email verification is
-  required before login; password reset invalidates existing sessions.
+  followed by consent acceptance before a new account is activated and signed
+  in. Existing contributors must accept the current consent version before
+  submitting; password reset invalidates existing sessions.
 - `CLIENT_ORIGIN` controls credentialed CORS and the check for browser
   state-changing requests that carry an `Origin` header.
 - The global, auth, contact, and upload rate limits can be disabled with
@@ -124,7 +126,7 @@ npm test
 The command runs Node's built-in test runner serially across every
 `tests/*.test.js` file. The API suites use MongoDB Memory Server unless
 `MONGODB_URI_TEST` is supplied. That configured database is dropped by the tests,
-so use only a disposable database. Provider delivery is stubbed. The 57 cases and
+so use only a disposable database. Provider delivery is stubbed. The 60 cases and
 their test types are documented in [docs/TEST-CASES.md](docs/TEST-CASES.md).
 
 ## Current limitation

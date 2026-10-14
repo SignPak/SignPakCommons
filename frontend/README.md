@@ -31,8 +31,9 @@ backend separately, or set `VITE_API_ORIGIN` to another API origin.
 | `/demo` | Public | Walkthrough video. |
 | `/faq` | Public | Frequently asked questions. |
 | `/login`, `/signup` | Signed out | Sign in or register; redirects signed-in users. |
-| `/verify-email`, `/forgot-password` | Signed out | Email verification and password recovery. |
-| `/home` | Signed in | Category overview. |
+| `/verify-email`, `/signup/consent`, `/forgot-password` | Signed out | Email verification, consent before account creation, and password recovery. |
+| `/consent` | Signed in | Accept the current contributor notice; required for older accounts without current consent. |
+| `/home` | Signed in with current consent | Category overview. |
 | `/library/:categoryId` | Signed in | Videos in a category. |
 | `/watch?v=:videoId` | Signed in | Watch a reference video and record a take. |
 | `/watch/edit?v=:videoId` | Signed in | Review, trim, and submit the current take. |
@@ -44,7 +45,13 @@ backend separately, or set `VITE_API_ORIGIN` to another API origin.
 
 Route declarations live in `src/App.jsx`; shared path names and URL builders live
 in `src/routes/appRoutes.js`. Auth guards in `src/components/RouteGuards.jsx`
-redirect visitors who do not meet the route's access requirement.
+redirect visitors who do not meet the route's access requirement and route
+contributors without the current consent version through `/consent`.
+
+After email verification, the frontend holds the short-lived consent token in
+the navigation state and offers accept or decline. Accepting creates and signs
+in the account; declining discards the pending signup. The consent version and
+acceptance timestamp are stored by the backend.
 
 ## Backend connection
 

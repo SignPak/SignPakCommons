@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
+import { CONSENT_VERSION } from '../src/config/constants.js'
 import { Client, filesIn, jpeg, mp4, recordingForm, videoForm, webm } from './helpers.js'
 import { useApiContext } from './apiContext.js'
 
@@ -26,7 +27,7 @@ describe('auth', () => {
     assert.equal(short.body.error.fields.password, 'Use at least 8 characters.')
   })
 
-  test('signup sets an httpOnly cookie and never leaks the hash or accepts a role', async () => {
+  test('signup only creates an account after consent and never leaks the hash or accepts a role', async () => {
     const c = new Client(base)
     eveSession = c
     const res = await c.post('/auth/signup', { firstName: 'Eve', surname: 'Hacker', email: 'eve@example.com', password: 'password1', role: 'admin' })
@@ -38,11 +39,17 @@ describe('auth', () => {
     assert.equal((await c.post('/auth/verify-email', { email: 'eve@example.com', code: '000000' })).status, 400)
     const verified = await c.post('/auth/verify-email', { email: 'eve@example.com', code: deliveredCodes.get('eve@example.com:email-verification') })
     assert.equal(verified.status, 200)
-    assert.equal(verified.body.data.role, 'user')
-    assert.equal(verified.body.data.emailVerified, true)
+    assert.equal(verified.setCookie.length, 0)
+    assert.ok(verified.body.data.consentToken)
+    assert.equal((await c.post('/auth/login', { email: 'eve@example.com', password: 'password1' })).status, 401)
+    assert.equal((await c.post('/auth/consent', { consentToken: 'garbage-garbage', accepted: true, version: CONSENT_VERSION })).status, 400)
+    const accepted = await c.post('/auth/consent', { consentToken: verified.body.data.consentToken, accepted: true, version: CONSENT_VERSION })
+    assert.equal(accepted.status, 200)
+    assert.equal(accepted.body.data.role, 'user')
+    assert.equal(accepted.body.data.emailVerified, true)
     assert.equal(res.body.data.passwordHash, undefined)
-    assert.match(verified.setCookie[0], /HttpOnly/i)
-    assert.match(verified.setCookie[0], /SameSite=Lax/i)
+    assert.match(accepted.setCookie[0], /HttpOnly/i)
+    assert.match(accepted.setCookie[0], /SameSite=Lax/i)
     assert.equal((await c.get('/admin/stats')).status, 403)
   })
 

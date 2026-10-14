@@ -19,6 +19,8 @@ export const apiRoutes = {
     logout: () => `${API_BASE}/auth/logout`,
     session: () => `${API_BASE}/auth/session`,
     verifyEmail: () => `${API_BASE}/auth/verify-email`,
+    consent: () => `${API_BASE}/auth/consent`,
+    declineConsent: () => `${API_BASE}/auth/decline-consent`,
     resendVerification: () => `${API_BASE}/auth/resend-verification`,
     forgotPassword: () => `${API_BASE}/auth/forgot-password`,
     resetPassword: () => `${API_BASE}/auth/reset-password`,
@@ -26,6 +28,7 @@ export const apiRoutes = {
 
   users: {
     me: () => `${API_BASE}/users/me`,
+    consent: () => `${API_BASE}/users/me/consent`,
     list: () => `${API_BASE}/admin/users`,
     update: (id) => `${API_BASE}/admin/users/${id}`,
     remove: (id) => `${API_BASE}/admin/users/${id}`,

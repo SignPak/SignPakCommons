@@ -18,6 +18,7 @@ import Login from './pages/Login'
 import Player from './pages/Player'
 import ProfileDashboard from './pages/ProfileDashboard'
 import RecordingEditor from './pages/RecordingEditor'
+import Consent from './pages/Consent'
 import Signup from './pages/Signup'
 import VerifyEmail from './pages/VerifyEmail'
 
@@ -31,12 +32,14 @@ export default function App() {
       <Route element={<GuestOnly />}>
         <Route path="login" element={<Login />} />
         <Route path="signup" element={<Signup />} />
+        <Route path="signup/consent" element={<Consent mode="signup" />} />
         <Route path="verify-email" element={<VerifyEmail />} />
         <Route path="forgot-password" element={<ForgotPassword />} />
       </Route>
 
       {/* Logged-in contributors */}
       <Route element={<RequireAuth />}>
+        <Route path="consent" element={<Consent />} />
         <Route path="home" element={<Home />} />
         <Route path="library/:categoryId" element={<CategoryBrowser />} />
         <Route path="watch" element={<Player />} />

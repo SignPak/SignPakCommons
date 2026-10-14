@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Button, PageState } from './ui'
 import { useAuth } from '../context/AuthContext'
+import { consentGiven } from '../utils/consent'
 
 export function RequireAuth() {
   const { user, loading, sessionChecked, sessionError, ensureSession } = useAuth()
@@ -17,6 +18,8 @@ export function RequireAuth() {
   >{sessionError}</PageState>
   if (!sessionChecked || loading) return <div className="boot" role="status">Checking your session…</div>
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />
+  // Contributors must accept the consent notice before using the library or recording.
+  if (user.role !== 'admin' && !consentGiven(user) && location.pathname !== '/consent') return <Navigate to="/consent" replace />
   return <Outlet />
 }
 
