@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import UploadToaster from '../components/UploadToaster'
 import { api } from '../services/api'
 import { watchUrl } from '../routes/appRoutes'
+import { recordingLimitProblem } from '../utils/limits'
 import { useAuth } from './AuthContext'
 import { useNotifications } from './NotificationContext'
 import { UploadQueueContext } from './UploadQueueContext'
@@ -95,6 +96,8 @@ export default function UploadQueueProvider({ children }) {
 
   const enqueue = useCallback((video, recording) => {
     if (!userId) return { ok: false, reason: 'Log in to submit recordings.' }
+    const limitProblem = recordingLimitProblem(recording)
+    if (limitProblem) return { ok: false, reason: limitProblem }
     if (items.some((item) => item.videoId === video.id)) return { ok: false, reason: 'This video is already in the upload queue.' }
     if (items.length >= MAX_QUEUED) return { ok: false, reason: 'Two recordings are already queued. Submit this one when an upload finishes.' }
     setItems((current) => [...current, { id: newId('upload'), videoId: video.id, title: video.title, status: 'waiting', progress: 0, error: '', recording }])

@@ -76,7 +76,7 @@ const schema = z.object({
   GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   GOOGLE_ARCHIVE_DRIVE_FOLDER_ID: z.string().optional(),
   MAX_VIDEO_UPLOAD_MB: z.coerce.number().positive().default(90),
-  MAX_RECORDING_UPLOAD_MB: z.coerce.number().positive().default(80),
+  MAX_RECORDING_UPLOAD_MB: z.coerce.number().positive().default(100),
 
   RATE_LIMIT_ENABLED: bool.default(true),
   SUBMISSION_COOLDOWN_MS: z.coerce.number().int().positive().default(30_000),

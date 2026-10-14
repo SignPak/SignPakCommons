@@ -77,6 +77,7 @@ JSON and multipart upload requests use the same request helper.
 | Variable | Purpose |
 | --- | --- |
 | `VITE_API_ORIGIN` | Optional API origin, e.g. `https://api.example.com`. Empty by default; requests use the Vite `/api` proxy locally. |
+| `VITE_MAX_RECORDING_UPLOAD_MB` | Optional client-side recording size limit in MiB. Defaults to `100`; keep it equal to the backend's `MAX_RECORDING_UPLOAD_MB`. Recordings also stop automatically at 10 minutes, and the upload queue rejects any take exceeding either limit. |
 | `VITE_SUBMISSION_COOLDOWN_MS` | Optional client countdown duration in milliseconds. Defaults to `30000`; the backend independently enforces its cooldown. |
 
 Put local Vite variables in `frontend/.env.local` (do not commit secrets there).

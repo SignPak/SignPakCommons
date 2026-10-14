@@ -11,6 +11,7 @@ const defaultRecorder = {
   recording: null,
   status: 'idle',
   error: '',
+  notice: '',
   elapsed: 0,
   stream: null,
   prepare: vi.fn(),
@@ -91,10 +92,17 @@ describe('RecorderPanel', () => {
   it('shows a live recording status and lets the user stop recording', () => {
     renderPanel({ status: 'recording', elapsed: 12 })
 
-    expect(screen.getByText('Recording 00:12')).toBeTruthy()
+    expect(screen.getByText(/Recording 00:12/)).toBeTruthy()
+    expect(screen.getByText(/10:00 max/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /stop recording/i }))
     expect(defaultRecorder.stop).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: /save and edit video/i }).disabled).toBe(true)
+  })
+
+  it('shows a notice when the recorder automatically stops at a limit', () => {
+    renderPanel({ notice: 'Recording stopped at the 10-minute limit.' })
+
+    expect(screen.getByText('Recording stopped at the 10-minute limit.')).toBeTruthy()
   })
 
   it('lets the user review, delete, or save a finished take', () => {

@@ -108,7 +108,7 @@ mounted outside production.
   `ARCHIVE_STORAGE_DRIVER` independently selects append-only contributor archive
   storage. Both default to local; Google Drive credentials can be shared or
   configured separately for archives.
-- Upload defaults are 90 MB for base/demo videos and 80 MB for contributor
+- Upload defaults are 90 MB for base/demo videos and 100 MB for contributor
   recordings. File contents are verified by signature, not browser MIME type.
 - Reference and demo-video uploads accept browser-reported `width` and `height`
   in pixels, each from 0 to 16,384. Zero represents unknown dimensions; these

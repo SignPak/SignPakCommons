@@ -140,10 +140,11 @@ Submission creation uses `multipart/form-data` with a required `recording` file
 and `videoId`, `trimStart`, `trimEnd`, `mirrored`, and `duration` fields. Only
 published videos assigned to a category can receive a submission. Durations and
 trim metadata are currently client-reported; the backend does not transcode or
-physically trim the uploaded file.
+physically trim the uploaded file. Submission duration must not exceed 600
+seconds (10 minutes).
 
 Uploads are bounded by `MAX_VIDEO_UPLOAD_MB` and
-`MAX_RECORDING_UPLOAD_MB` (defaults: 90 MB and 80 MB). Video signatures are
+`MAX_RECORDING_UPLOAD_MB` (defaults: 90 MB and 100 MB). Video signatures are
 checked as MP4, WebM, or MOV. Poster signatures are checked as JPEG, PNG, or WebP;
 posters must not exceed 2 MB. The browser-provided MIME type is not treated as
 proof of file content.

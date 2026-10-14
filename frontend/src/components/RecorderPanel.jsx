@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRecorder } from '../hooks/useRecorder'
 import { formatTime } from '../utils/format'
+import { MAX_RECORDING_SECONDS } from '../utils/limits'
 import { Alert, Arrow, Button } from './ui'
 
 /** Camera preview, record/stop, delete and re-record for one video. */
 export default function RecorderPanel({ video, baseRef, aspect, onSaveAndEdit }) {
-  const { recording, status, error, elapsed, stream, prepare, start, stop, discard } = useRecorder(video.id)
+  const { recording, status, error, notice, elapsed, stream, prepare, start, stop, discard } = useRecorder(video.id)
   const live = useRef(null)
   const countdownTimer = useRef(null)
   const starting = useRef(false)
@@ -56,6 +57,7 @@ export default function RecorderPanel({ video, baseRef, aspect, onSaveAndEdit })
       <p className={`recorder-status ${isRecording ? 'is-live' : ''}`}>
         <span aria-hidden="true">●</span> 
         {isRecording ? `Recording ${formatTime(elapsed)}` : countdown !== null ? `Starting in ${countdown}…` : recording ? 'Recording ready' : 'Your turn'}
+        {isRecording && <span className="recorder-limit"> / {formatTime(MAX_RECORDING_SECONDS)} max</span>}
       </p>
       
       <h2 className="display display-md">Record<br /><em>yourself.</em></h2>
@@ -84,6 +86,7 @@ export default function RecorderPanel({ video, baseRef, aspect, onSaveAndEdit })
       )}
 
       {error && <Alert tone="error">{error}</Alert>}
+      {notice && !isRecording && <Alert tone="info">{notice}</Alert>}
       {recording && !isRecording && <button type="button" className="recorder-delete" onClick={discard}>Delete recording</button>}
       
       <Button block className="recorder-save" disabled={!recording || isRecording} onClick={onSaveAndEdit}>
