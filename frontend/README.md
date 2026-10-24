@@ -136,7 +136,10 @@ src/
 test/
   RecorderPanel.test.jsx  Recorder workflow component tests
 docs/
+  README.md           Documentation index
   ARCHITECTURE.md     Runtime, state, data flow, and deployment overview
+  MODULE-REFERENCE.md Change-oriented map of frontend modules
+  design-docs/        Architecture decisions and trade-offs
 ```
 
 ## Styling and themes

@@ -82,7 +82,7 @@ All paths below are relative to `/api/v1`.
 | GET | `/videos/:id` | Public or admin | Read a visible video. |
 | GET | `/videos/:id/file` | Public or admin | Stream a visible video, including byte-range requests. |
 | GET | `/videos/:id/poster` | Public or admin | Stream a visible video's poster, if present. |
-| POST | `/videos` | Admin | Upload a reference video and optional poster. |
+| POST | `/videos` | Admin | Upload a reference video or register a direct HTTPS video URL; URL sources require a poster. |
 | PATCH | `/videos/:id` | Admin | Update a video, including status or category. |
 | DELETE | `/videos/:id` | Admin | Delete a reference video and its base files; submissions remain. |
 | GET | `/demo-video` | Public | Read the current public demo-video metadata or `null`. |
@@ -117,12 +117,13 @@ Authentication and profile request schemas are defined in
 client-supplied roles are ignored. Profile updates accept supported `connections`
 fields for GitHub and LinkedIn; `null` disconnects a connection.
 
-The video and demo-video upload routes use `multipart/form-data`:
+The video and demo-video creation routes use `multipart/form-data`:
 
 | Field | Video | Demo video |
 | --- | --- | --- |
-| `video` | Required video file | Required video file |
-| `poster` | Optional image file | Not accepted |
+| `video` | Optional video file; provide this or `videoUrl`, but not both | Required video file |
+| `videoUrl` | Optional direct HTTPS MP4/WebM URL; provide this or `video`, but not both | Not accepted |
+| `poster` | Optional for uploaded files; required with `videoUrl` | Not accepted |
 | `title` | Required title | Required title |
 | `categoryId` | Optional category ID | Not accepted |
 | `status` | Optional video status | Not accepted |
@@ -147,7 +148,15 @@ Uploads are bounded by `MAX_VIDEO_UPLOAD_MB` and
 `MAX_RECORDING_UPLOAD_MB` (defaults: 90 MB and 100 MB). Video signatures are
 checked as MP4, WebM, or MOV. Poster signatures are checked as JPEG, PNG, or WebP;
 posters must not exceed 2 MB. The browser-provided MIME type is not treated as
-proof of file content.
+proof of file content. External URLs must point directly to media playable in a
+native HTML `<video>` element; YouTube and other watch-page URLs are not
+supported. The URL is stored in MongoDB. Its poster image is stored through the
+configured `STORAGE_DRIVER` and streamed from the API.
+
+Poster responses use a private five-minute browser cache. When Upstash Redis is
+configured, the backend also caches poster file metadata for five minutes; it
+does not cache poster image bytes. Redis errors are logged and fall back to
+reading metadata from the configured storage driver.
 
 ## Contact, rate limits, and access restrictions
 
