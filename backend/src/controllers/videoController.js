@@ -20,5 +20,5 @@ export const videoController = {
   update: asyncHandler(async (req, res) => ok(res, await videoService.update(req.params.id, req.body))),
   remove: asyncHandler(async (req, res) => { await videoService.remove(req.params.id); noContent(res) }),
   file: asyncHandler(async (req, res) => sendFile(req, res, await videoService.getFile(req.params.id, req.user))),
-  poster: asyncHandler(async (req, res) => sendFile(req, res, await videoService.getPoster(req.params.id, req.user))),
+  poster: asyncHandler(async (req, res) => sendFile(req, res, await videoService.getPoster(req.params.id, req.user), { cache: 'private, max-age=300' })),
 }

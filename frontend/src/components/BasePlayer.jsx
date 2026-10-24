@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatTime } from '../utils/format'
 import { aspectOf } from '../utils/media'
 import ResponsiveVideo from './ResponsiveVideo'
@@ -13,6 +13,23 @@ export default function BasePlayer({ video, videoRef, onAspect, src, loading, pr
   const [duration, setDuration] = useState(0)
   const [speed, setSpeed] = useState(1)
   const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    const element = videoRef.current
+    if (element) {
+      element.pause()
+      element.currentTime = 0
+      element.playbackRate = 1
+      element.load()
+    }
+    // Reset player controls when reusing the same video element for another source.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPlaying(false)
+    setTime(0)
+    setDuration(0)
+    setSpeed(1)
+    setFailed(false)
+  }, [video.id, videoRef])
 
   const toggle = () => {
     const element = videoRef.current
@@ -48,9 +65,10 @@ export default function BasePlayer({ video, videoRef, onAspect, src, loading, pr
           src={src}
           poster={video.poster}
           aspect={aspectOf(video)}
+          mediaKey={video.id}
           onAspect={onAspect}
           frameClassName="base-player-frame"
-          crossOrigin="use-credentials"
+          crossOrigin={video.videoSource === 'external' ? undefined : 'use-credentials'}
           className="base-player-video"
           playsInline
           autoPlay

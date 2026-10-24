@@ -11,12 +11,13 @@ process.env.JWT_SECRET = 'test-secret-that-is-longer-than-thirty-two-characters'
 process.env.ADMIN_EMAIL = 'admin@example.com'
 process.env.ADMIN_PASSWORD = 'test-password-123'
 
-export const [{ videoService }, { categoryRepo }, { videoRepo }, { storageService }] =
+export const [{ videoService }, { categoryRepo }, { videoRepo }, { storageService }, { upstashRedis }] =
   await Promise.all([
     import('../src/services/videoService.js'),
     import('../src/repositories/categoryRepo.js'),
     import('../src/repositories/videoRepo.js'),
     import('../src/services/storage/index.js'),
+    import('../src/services/cache/upstashRedis.js'),
   ])
 
 export async function temporaryDirectory(t) {

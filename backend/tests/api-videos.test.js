@@ -61,11 +61,56 @@ describe('videos', () => {
     assert.deepEqual(filesIn('tmp'), [])
   })
 
+  test('admin can register a direct HTTPS video URL with a stored poster', async () => {
+    const response = await admin.upload('/videos', videoForm({
+      title: 'External base video',
+      categoryId: daily.id,
+      videoUrl: 'https://media.example.test/sign.webm',
+    }, { video: null, poster: jpeg() }))
+
+    assert.equal(response.status, 201, JSON.stringify(response.body))
+    const external = response.body.data
+    assert.equal(external.videoUrl, 'https://media.example.test/sign.webm')
+    assert.equal(external.videoSource, 'external')
+    assert.equal(external.size, 0)
+    assert.equal(external.poster, `/api/v1/videos/${external.id}/poster`)
+    assert.equal(external.videoFile, undefined)
+    assert.equal((await new Client(base).get(`/videos/${external.id}/file`)).status, 404)
+
+    const poster = await new Client(base).get(`/videos/${external.id}/poster`, { raw: true })
+    assert.equal(poster.status, 200)
+    assert.equal(poster.headers.get('cache-control'), 'private, max-age=300')
+    assert.equal(poster.headers.get('content-type'), 'image/jpeg')
+  })
+
+  test('external video URLs require HTTPS and a poster, and cannot be combined with an upload', async () => {
+    const noPoster = await admin.upload('/videos', videoForm({
+      title: 'No poster',
+      videoUrl: 'https://media.example.test/sign.mp4',
+    }, { video: null }))
+    assert.equal(noPoster.status, 422)
+    assert.ok(noPoster.body.error.fields.poster)
+
+    const insecure = await admin.upload('/videos', videoForm({
+      title: 'Insecure source',
+      videoUrl: 'http://media.example.test/sign.mp4',
+    }, { video: null, poster: jpeg() }))
+    assert.equal(insecure.status, 422)
+    assert.ok(insecure.body.error.fields.videoUrl)
+
+    const bothSources = await admin.upload('/videos', videoForm({
+      title: 'Two sources',
+      videoUrl: 'https://media.example.test/sign.mp4',
+    }, { poster: jpeg() }))
+    assert.equal(bothSources.status, 422)
+    assert.ok(bothSources.body.error.fields.video)
+  })
+
   test('visibility: contributors and visitors only see published, categorised videos', async () => {
     const titles = (res) => res.body.data.map((v) => v.title).sort()
-    assert.deepEqual(titles(await admin.get('/videos')), ['A warm introduction', 'Nice to meet you', 'Secret draft', 'Unassigned'])
-    assert.deepEqual(titles(await contributor.get('/videos')), ['A warm introduction', 'Nice to meet you'])
-    assert.deepEqual(titles(await new Client(base).get('/videos')), ['A warm introduction', 'Nice to meet you'])
+    assert.deepEqual(titles(await admin.get('/videos')), ['A warm introduction', 'External base video', 'Nice to meet you', 'Secret draft', 'Unassigned'])
+    assert.deepEqual(titles(await contributor.get('/videos')), ['A warm introduction', 'External base video', 'Nice to meet you'])
+    assert.deepEqual(titles(await new Client(base).get('/videos')), ['A warm introduction', 'External base video', 'Nice to meet you'])
     assert.equal((await contributor.get(`/videos/${draft.id}`)).status, 404)
     assert.equal((await admin.get(`/videos/${draft.id}`)).status, 200)
   })

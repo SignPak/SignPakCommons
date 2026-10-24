@@ -1,34 +1,30 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import AuthShell from '../components/AuthShell'
 import Field from '../components/Field'
 import { Alert, Arrow, Button } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { paths } from '../routes/appRoutes'
-import { validateLogin } from '../utils/validators'
+import { loginFormSchema } from '../utils/authSchemas'
+import { applyAuthFieldErrors } from '../utils/authFormErrors'
 
 export default function Login() {
   const { login } = useAuth()
   const location = useLocation()
-  const [values, setValues] = useState({ email: '', password: '' })
-  const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
-  const [busy, setBusy] = useState(false)
-  
-  const change = (event) => setValues((current) => ({ ...current, [event.target.name]: event.target.value }))
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: { email: '', password: '' },
+  })
 
-  const submit = async (event) => {
-    event.preventDefault()
-    const found = validateLogin(values)
-    setErrors(found)
-    if (Object.keys(found).length) return
-    setBusy(true)
+  const submit = async (values) => {
     setFormError('')
     try { 
       await login(values.email, values.password) 
     } catch (error) { 
-      setFormError(error.message)
-      setBusy(false) 
+      if (!applyAuthFieldErrors(error, setError)) setFormError(error.message)
     }
   }
 
@@ -43,24 +39,20 @@ export default function Login() {
         </>
       }
     >
-      <form onSubmit={submit} noValidate>
+      <form onSubmit={handleSubmit(submit)} noValidate>
         <Field 
           label="Email address" 
-          name="email" 
           type="email" 
-          value={values.email} 
-          onChange={change} 
-          error={errors.email} 
+          {...register('email')}
+          error={errors.email?.message}
           placeholder="you@example.com" 
           autoComplete="email" 
         />
         <Field 
           label="Password" 
-          name="password" 
           type="password" 
-          value={values.password} 
-          onChange={change} 
-          error={errors.password} 
+          {...register('password')}
+          error={errors.password?.message}
           placeholder="••••••••" 
           autoComplete="current-password" 
         />
@@ -69,8 +61,8 @@ export default function Login() {
         </p>
         {location.state?.notice && <Alert tone="success">{location.state.notice}</Alert>}
         {formError && <Alert tone="error">{formError}</Alert>}
-        <Button type="submit" block className="auth-submit" disabled={busy}>
-          {busy ? 'Logging in…' : 'Log in'} <Arrow />
+        <Button type="submit" block className="auth-submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Logging in…' : 'Log in'} <Arrow />
         </Button>
       </form>
     </AuthShell>

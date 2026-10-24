@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { categoryRepo, replace, storageService, temporaryDirectory, videoRepo, videoService, writeImage, writeVideo } from './videoServiceTestHelpers.js'
+import { categoryRepo, replace, storageService, temporaryDirectory, upstashRedis, videoRepo, videoService, writeImage, writeVideo } from './videoServiceTestHelpers.js'
 test('video create names video and poster from title and category safely', async (t) => {
   const directory = await temporaryDirectory(t)
   const upload = await writeVideo(directory)
@@ -102,7 +102,7 @@ test('video create rejects a missing upload, unsupported content, and invalid ca
 
   await assert.rejects(
     videoService.create({}, {}, {}),
-    (error) => error.code === 'VALIDATION_ERROR' && error.fields.video === 'Choose a video to upload.',
+    (error) => error.code === 'VALIDATION_ERROR' && error.fields.video === 'Choose a video to upload or provide a direct video URL.',
   )
   await assert.rejects(
     videoService.create({}, {}, { video: [{ path: unsupported }] }),
@@ -117,6 +117,35 @@ test('video create rejects a missing upload, unsupported content, and invalid ca
     (error) => error.code === 'VALIDATION_ERROR' && error.fields.categoryId === 'That category does not exist.',
   )
   assert.equal(saveCount, 0)
+})
+
+test('poster metadata is cached in Redis for five minutes', async (t) => {
+  const enabledDescriptor = Object.getOwnPropertyDescriptor(upstashRedis, 'enabled')
+  Object.defineProperty(upstashRedis, 'enabled', { configurable: true, value: true })
+  t.after(() => Object.defineProperty(upstashRedis, 'enabled', enabledDescriptor))
+
+  const posterFile = { driver: 'gdrive', key: 'poster-id', mimeType: 'image/jpeg', size: 123 }
+  const video = { id: 'video-id', status: 'published', category: 'category-id', posterFile }
+  const writes = []
+  const described = []
+  replace(t, videoRepo, 'findById', async () => video)
+  replace(t, upstashRedis, 'get', async () => null)
+  replace(t, upstashRedis, 'set', async (...args) => writes.push(args))
+  replace(t, storageService, 'describe', async (_ref, metadata) => {
+    described.push(metadata)
+    return { size: 123, mimeType: 'image/jpeg', createReadStream: () => null }
+  })
+
+  await videoService.getPoster(video.id)
+
+  assert.deepEqual(described, [undefined])
+  assert.equal(writes[0][0], `signpak:video-poster:v1:${video.id}`)
+  assert.deepEqual(writes[0][1], { driver: 'gdrive', key: 'poster-id', size: 123, mimeType: 'image/jpeg' })
+  assert.equal(writes[0][2], 300)
+
+  replace(t, upstashRedis, 'get', async () => JSON.stringify(writes[0][1]))
+  await videoService.getPoster(video.id)
+  assert.deepEqual(described[1], writes[0][1])
 })
 
 test('video create rejects oversized or unsupported posters before storage', async (t) => {

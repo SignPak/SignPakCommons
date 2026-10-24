@@ -1,4 +1,15 @@
 import { apiRoutes } from './apiRoutes'
+import {
+  acceptConsentRequestSchema,
+  consentRequestSchema,
+  declineConsentRequestSchema,
+  emailOnlySchema,
+  loginFormSchema,
+  resetPasswordSchema,
+  signupRequestSchema,
+  verifyEmailSchema,
+} from '../utils/authSchemas'
+import { validateApiInput } from '../utils/validateApiInput'
 
 const PREFIX = 'signpak:v1:'
 
@@ -174,17 +185,44 @@ export const api = {
 
   auth: {
     async session() { return normalize(await request(apiRoutes.auth.session())) },
-    async register(values) { return normalize(await request(apiRoutes.auth.signup(), json('POST', values))) },
-    async login(email, password) { return normalize(await request(apiRoutes.auth.login(), json('POST', { email, password }))) },
+    async register(values) {
+      const input = validateApiInput(signupRequestSchema, values)
+      return normalize(await request(apiRoutes.auth.signup(), json('POST', input)))
+    },
+    async login(email, password) {
+      const input = validateApiInput(loginFormSchema, { email, password })
+      return normalize(await request(apiRoutes.auth.login(), json('POST', input)))
+    },
     // A valid code returns { consentToken }; the account is only created by completeSignup.
-    async verifyEmail(email, code) { return request(apiRoutes.auth.verifyEmail(), json('POST', { email, code })) },
-    async completeSignup(consentToken, version) { return normalize(await request(apiRoutes.auth.consent(), json('POST', { consentToken, accepted: true, version }))) },
-    async declineSignup(consentToken) { await request(apiRoutes.auth.declineConsent(), json('POST', { consentToken })) },
-    async resendVerification(email) { return request(apiRoutes.auth.resendVerification(), json('POST', { email })) },
-    async forgotPassword(email) { return request(apiRoutes.auth.forgotPassword(), json('POST', { email })) },
-    async resetPassword(values) { return request(apiRoutes.auth.resetPassword(), json('POST', values)) },
+    async verifyEmail(email, code) {
+      const input = validateApiInput(verifyEmailSchema, { email, code })
+      return request(apiRoutes.auth.verifyEmail(), json('POST', input))
+    },
+    async completeSignup(consentToken, version) {
+      const input = validateApiInput(consentRequestSchema, { consentToken, accepted: true, version })
+      return normalize(await request(apiRoutes.auth.consent(), json('POST', input)))
+    },
+    async declineSignup(consentToken) {
+      const input = validateApiInput(declineConsentRequestSchema, { consentToken })
+      await request(apiRoutes.auth.declineConsent(), json('POST', input))
+    },
+    async resendVerification(email) {
+      const input = validateApiInput(emailOnlySchema, { email })
+      return request(apiRoutes.auth.resendVerification(), json('POST', input))
+    },
+    async forgotPassword(email) {
+      const input = validateApiInput(emailOnlySchema, { email })
+      return request(apiRoutes.auth.forgotPassword(), json('POST', input))
+    },
+    async resetPassword(values) {
+      const input = validateApiInput(resetPasswordSchema, values)
+      return request(apiRoutes.auth.resetPassword(), json('POST', input))
+    },
     async logout() { await request(apiRoutes.auth.logout(), { method: 'POST' }) },
-    async acceptConsent(version) { return normalize(await request(apiRoutes.users.consent(), json('POST', { accepted: true, version }))) },
+    async acceptConsent(version) {
+      const input = validateApiInput(acceptConsentRequestSchema, { accepted: true, version })
+      return normalize(await request(apiRoutes.users.consent(), json('POST', input)))
+    },
     async saveConnections(_userId, connections) { return normalize(await request(apiRoutes.users.me(), json('PATCH', { connections }))) },
   },
 
@@ -210,9 +248,10 @@ export const api = {
 
   videos: {
     async list() { return normalizeList(await request(apiRoutes.videos.list())) },
-    async create({ file, poster, title, categoryId, status, durationSec, width, height }) {
+    async create({ file, videoUrl, poster, title, categoryId, status, durationSec, width, height }) {
       const body = new FormData()
-      body.append('video', file)
+      if (file) body.append('video', file)
+      if (videoUrl) body.append('videoUrl', videoUrl)
       const posterBlob = await toBlob(poster)
       if (posterBlob) body.append('poster', posterBlob, poster?.name || 'poster.jpg')
       body.append('title', title)
@@ -249,8 +288,10 @@ export const api = {
     async fetchVideo(url, { onProgress, signal, maxBytes } = {}) {
       const headers = new Headers()
       const deviceId = getDeviceId()
-      if (deviceId) headers.set('X-Device-ID', deviceId)
-      const response = await fetch(url, { credentials: 'include', headers, signal })
+      let sameOrigin = true
+      try { sameOrigin = new URL(url, window.location.href).origin === window.location.origin } catch { /* the request below reports invalid URLs */ }
+      if (sameOrigin && deviceId) headers.set('X-Device-ID', deviceId)
+      const response = await fetch(url, { credentials: sameOrigin ? 'include' : 'omit', headers, signal })
       if (!response.ok) throw new Error(`The video could not be loaded (${response.status}).`)
       const total = Number(response.headers.get('Content-Length')) || 0
       if (maxBytes && total > maxBytes) throw Object.assign(new Error('The video is too large to keep in the browser.'), { code: 'TOO_LARGE' })

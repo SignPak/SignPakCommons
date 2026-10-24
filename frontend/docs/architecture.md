@@ -80,6 +80,9 @@ The client:
   server message, status, and field-level validation messages.
 - Converts API-relative media URLs to absolute URLs when `VITE_API_ORIGIN` is
   configured.
+- Uses shared Zod schemas to validate authentication form input and validates
+  authentication request payloads again at the API-client boundary. Backend
+  Zod validation remains authoritative.
 
 Email verification returns a short-lived consent token rather than a session.
 The signup consent screen submits that token and the current notice version;
@@ -117,7 +120,11 @@ back to the normal media URL if the download fails or exceeds the per-video
 oldest entries to stay within a 250 MB total budget. A player holds its entry
 while it is in use so an expired or evicted object URL is not revoked during
 playback. The player also prefetches the next video in its category after the
-current video's load attempt finishes.
+current video's load attempt finishes. The player keeps one `<video>` element
+mounted when switching videos, resetting playback state before it loads the
+next source. External direct HTTPS video URLs use this same cache when the
+source allows browser CORS; otherwise playback falls back to the source URL.
+External watch pages (such as YouTube pages) are not supported.
 
 ### Admin video preparation and responsive playback
 
@@ -139,6 +146,14 @@ represented as zero. `ResponsiveVideo` uses stored dimensions to size the
 frame before media metadata loads, then prefers the dimensions reported by the
 loaded video. This keeps portrait, square, and landscape videos in their native
 aspect ratio while fitting the player layout.
+
+Admins can also register a direct HTTPS video URL rather than uploading the
+video bytes. The URL is stored with the video record in MongoDB; its poster
+image is uploaded through the configured storage driver (Google Drive when
+`STORAGE_DRIVER=gdrive`). Upstash Redis caches poster file metadata for five
+minutes, while the poster endpoint streams image bytes from storage and sends a
+matching five-minute browser cache header. Redis stores metadata, not image
+bytes.
 
 Contributors can delete their account from the profile after confirming their
 password; submitted recordings and contribution data are retained. The public

@@ -9,15 +9,16 @@ import { join } from './ui/join'
  * taller than the viewport. Overlays (play buttons, timers) go in `children` and sit inside the frame.
  */
 export default function ResponsiveVideo({
-  aspect, maxHeight, videoRef, className, frameClassName, children, onAspect, onLoadedMetadata, ...props
+  aspect, maxHeight, mediaKey, videoRef, className, frameClassName, children, onAspect, onLoadedMetadata, ...props
 }) {
-  const [measured, setMeasured] = useState(null)
+  const [measurement, setMeasurement] = useState({ key: mediaKey, aspect: null })
+  const measured = measurement.key === mediaKey ? measurement.aspect : null
   const ratio = measured ?? aspect ?? DEFAULT_ASPECT
 
   const handleMetadata = (event) => {
     const { videoWidth, videoHeight } = event.currentTarget
     if (videoWidth && videoHeight) {
-      setMeasured(videoWidth / videoHeight)
+      setMeasurement({ key: mediaKey, aspect: videoWidth / videoHeight })
       onAspect?.(videoWidth / videoHeight)
     }
     onLoadedMetadata?.(event)

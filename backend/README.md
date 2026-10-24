@@ -47,9 +47,10 @@ business rules.
 `src/services/initialization.js` initializes MongoDB, storage, and the configured
 admin idempotently; `server.js` is the standalone and Vercel entry point.
 
-Read the full references: [API](docs/API.md),
-[architecture](docs/ARCHITECTURE.md), [setup](docs/SETUP.md), and
-[test-case inventory](docs/TEST-CASES.md).
+Read the [documentation index](docs/README.md), [API](docs/API.md),
+[architecture](docs/ARCHITECTURE.md), [module reference](docs/MODULE-REFERENCE.md),
+[setup](docs/SETUP.md), [design decisions](docs/design-docs/ARCHITECTURE-DECISIONS.md),
+and [test-case inventory](docs/TEST-CASES.md).
 
 ## Responses
 

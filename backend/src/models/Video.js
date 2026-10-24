@@ -12,7 +12,8 @@ const videoSchema = new mongoose.Schema({
   // Displayed size in pixels as the browser reported it when the admin prepared the file; 0 means unknown (older uploads).
   width: { type: Number, default: 0, min: 0 },
   height: { type: Number, default: 0, min: 0 },
-  videoFile: { type: storedFileSchema, required: true },
+  videoFile: { type: storedFileSchema, default: null },
+  externalVideoUrl: { type: String, trim: true, default: null },
   posterFile: { type: storedFileSchema, default: null },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, {
@@ -21,12 +22,20 @@ const videoSchema = new mongoose.Schema({
   toJSON: jsonOptions((doc, ret) => {
     const base = `${API_PREFIX}/videos/${ret.id}`
     ret.categoryId = ret.category ? String(ret.category) : null
-    ret.videoUrl = `${base}/file`
+    ret.videoUrl = ret.externalVideoUrl || `${base}/file`
+    ret.videoSource = ret.externalVideoUrl ? 'external' : 'stored'
     ret.poster = ret.posterFile ? `${base}/poster` : null
     ret.size = ret.videoFile?.size ?? 0
-    for (const key of ['category', 'videoFile', 'posterFile', 'createdBy', 'updatedAt']) delete ret[key]
+    for (const key of ['externalVideoUrl', 'category', 'videoFile', 'posterFile', 'createdBy', 'updatedAt']) delete ret[key]
     return ret
   }),
+})
+
+videoSchema.pre('validate', function validateVideoSource(next) {
+  if (Boolean(this.videoFile) === Boolean(this.externalVideoUrl)) {
+    this.invalidate('videoFile', 'Provide either an uploaded video file or an external video URL.')
+  }
+  next()
 })
 
 videoSchema.index({ status: 1, category: 1, order: 1 })
