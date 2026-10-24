@@ -15,23 +15,20 @@ export default function Player() {
   const [params] = useSearchParams()
   const videoId = safeRouteId(params.get('v'))
   
-  // Keyed so switching videos (Next video, another category) resets the player and the camera.
-  return <PlayerScreen key={videoId} videoId={videoId} />
+  return <PlayerScreen videoId={videoId} />
 }
 
 /** Live "you can record again in Ns" countdown from a fixed past timestamp. Returns 0 once it has elapsed. */
 function useCooldown(lastAt, cooldownMs) {
-  const compute = () => (lastAt ? Math.max(0, cooldownMs - (Date.now() - lastAt)) : 0)
-  const [remaining, setRemaining] = useState(compute)
+  const [now, setNow] = useState(null)
 
   useEffect(() => {
     if (!lastAt) return undefined
-    const id = setInterval(() => setRemaining(compute()), 250)
+    const id = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `compute` is intentionally re-created each render; only lastAt/cooldownMs should restart the interval
   }, [lastAt, cooldownMs])
 
-  return remaining
+  return lastAt ? Math.max(0, cooldownMs - ((now ?? lastAt) - lastAt)) : 0
 }
 
 function PlayerScreen({ videoId }) {
@@ -60,27 +57,33 @@ function PlayerScreen({ videoId }) {
   }, [cachedStatus, upNext])
 
   // The page layout follows the video's shape: tall phone videos get a narrow window and more room for the recorder.
-  const [measuredAspect, setMeasuredAspect] = useState(null)
-  const [justSubmitted, setJustSubmitted] = useState(Boolean(location.state?.justSubmitted))
+  const [aspectMeasurement, setAspectMeasurement] = useState({ videoId, aspect: null })
+  const measuredAspect = aspectMeasurement.videoId === videoId ? aspectMeasurement.aspect : null
+  const [submissionNotice, setSubmissionNotice] = useState(() => ({ videoId, active: Boolean(location.state?.justSubmitted) }))
+  const justSubmitted = submissionNotice.videoId === videoId && submissionNotice.active
 
   useEffect(() => {
     if (!justSubmitted) return undefined
-    const timer = setTimeout(() => setJustSubmitted(false), 5000)
+    const timer = setTimeout(() => setSubmissionNotice({ videoId, active: false }), 5000)
     return () => clearTimeout(timer)
-  }, [justSubmitted])
+  }, [justSubmitted, videoId])
 
   const remaining = useCooldown(video ? lastSubmissionAt(video.id) : null, cooldownMs)
   // The countdown only ever counts down, so a fresh 0 -> refresh library data to reflect the new submission in badges/counts.
-  const wasCoolingDown = useRef(false)
+  const wasCoolingDown = useRef({ videoId, active: false })
 
   useEffect(() => {
+    if (wasCoolingDown.current.videoId !== videoId) {
+      wasCoolingDown.current = { videoId, active: false }
+      return
+    }
     if (remaining > 0) {
-      wasCoolingDown.current = true
-    } else if (wasCoolingDown.current) { 
-      wasCoolingDown.current = false
+      wasCoolingDown.current.active = true
+    } else if (wasCoolingDown.current.active) {
+      wasCoolingDown.current.active = false
       refresh() 
     }
-  }, [remaining, refresh])
+  }, [remaining, refresh, videoId])
 
   if (!video) {
     return (
@@ -111,7 +114,7 @@ function PlayerScreen({ videoId }) {
 
       <section className="shell player-grid" data-orientation={aspect ? orientationOf(aspect) : 'landscape'}>
         <div>
-          <BasePlayer video={video} videoRef={baseRef} onAspect={setMeasuredAspect} src={cached.src} loading={cached.status === 'loading'} progress={cached.progress} />
+          <BasePlayer video={video} videoRef={baseRef} onAspect={(aspect) => setAspectMeasurement({ videoId, aspect })} src={cached.src} loading={cached.status === 'loading'} progress={cached.progress} />
           
           <div className="player-meta">
             <div>
@@ -180,6 +183,7 @@ function PlayerScreen({ videoId }) {
             </div>
           ) : (
             <RecorderPanel 
+              key={video.id}
               video={video} 
               baseRef={baseRef} 
               aspect={aspect}

@@ -76,4 +76,28 @@ describe('AdminVideos poster selection', () => {
     await waitFor(() => expect(addVideo).toHaveBeenCalledOnce())
     expect(addVideo.mock.calls[0][0].poster).toBe(poster)
   })
+
+  it('adds a direct HTTPS video URL with a required poster instead of uploading video bytes', async () => {
+    renderAdminVideos()
+    fireEvent.change(screen.getByLabelText('Video source'), { target: { value: 'url' } })
+    fireEvent.change(screen.getByLabelText('Direct HTTPS video URL'), {
+      target: { value: 'https://media.example.test/sign.mp4' },
+    })
+    fireEvent.change(screen.getByLabelText(/Poster image/), {
+      target: { files: [new File(['poster image'], 'poster.png', { type: 'image/png' })] },
+    })
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'External sign' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add video URL' }))
+
+    await waitFor(() => expect(addVideo).toHaveBeenCalledOnce())
+    expect(addVideo.mock.calls[0][0]).toMatchObject({
+      title: 'External sign',
+      videoUrl: 'https://media.example.test/sign.mp4',
+      file: null,
+      durationSec: 0,
+      width: 0,
+      height: 0,
+    })
+    expect(addVideo.mock.calls[0][0].poster).toBeInstanceOf(File)
+  })
 })

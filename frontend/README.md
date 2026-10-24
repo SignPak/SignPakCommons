@@ -62,8 +62,10 @@ sign-in and asks for the account email. Requests made after account deletion
 may require the team to verify and manually match the former contributor.
 Recordings already used in a released model cannot be removed from that model.
 
-When uploading a base video, admins must either select a JPEG, PNG, or WebP
-poster image (up to 2 MB), or explicitly check the option to use a frame
+When adding a base video, admins can upload a video file or provide a direct
+HTTPS MP4/WebM file URL (watch-page links such as YouTube are not supported).
+External videos require a JPEG, PNG, or WebP poster image (up to 2 MB). For
+uploaded videos, admins can select a poster image or explicitly use a frame
 captured automatically from the video.
 
 ## Backend connection

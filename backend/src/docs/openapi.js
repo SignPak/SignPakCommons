@@ -116,6 +116,7 @@ export const openapi = {
           width: { type: 'integer', description: 'Displayed width in pixels; 0 when unknown.' },
           height: { type: 'integer', description: 'Displayed height in pixels; 0 when unknown.' },
           videoUrl: { type: 'string' },
+          videoSource: { type: 'string', enum: ['stored', 'external'] },
           poster: { type: 'string', nullable: true },
           size: { type: 'integer' },
         },
@@ -212,10 +213,12 @@ export const openapi = {
       },
       VideoUploadInput: {
         type: 'object',
-        required: ['video', 'title'],
+        required: ['title'],
+        description: 'Provide exactly one of video or videoUrl. External video URLs must point to a direct HTTPS video file and require a poster image.',
         properties: {
           video: { type: 'string', format: 'binary', description: 'MP4, WebM, or MOV video.' },
-          poster: { type: 'string', format: 'binary', description: 'Optional JPEG, PNG, or WebP image (up to 2 MiB).' },
+          videoUrl: { type: 'string', format: 'uri', description: 'Direct HTTPS MP4/WebM URL; watch-page URLs are not supported.' },
+          poster: { type: 'string', format: 'binary', description: 'JPEG, PNG, or WebP image (up to 2 MiB); required when videoUrl is used.' },
           title: { type: 'string', minLength: 1, maxLength: 120 },
           categoryId: { type: 'string', nullable: true, pattern: '^[a-f\\d]{24}$' },
           status: { type: 'string', enum: ['draft', 'published'], default: 'published' },
@@ -484,7 +487,7 @@ export const openapi = {
       },
       post: {
         tags: ['Videos'],
-        summary: 'Upload a base video',
+        summary: 'Add a base video from an upload or direct URL',
         security: adminSecurity,
         requestBody: { required: true, content: { 'multipart/form-data': { schema: ref('VideoUploadInput') } } },
         responses: { 201: jsonResponse('Created', ref('Video')), ...adminErrors, 413: errorResponse },

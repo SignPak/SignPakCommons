@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { Alert, Button } from '../components/ui'
@@ -15,9 +15,22 @@ export default function Consent({ mode = 'existing' }) {
   const location = useLocation()
   const navigate = useNavigate()
   const consentToken = location.state?.consentToken
+  const dialogRef = useRef(null)
   const [agreed, setAgreed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (mode !== 'signup') return
+
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (!dialog.open) dialog.showModal()
+
+    return () => {
+      if (dialog.open) dialog.close()
+    }
+  }, [mode])
 
   if (mode === 'signup' && !consentToken) return <Navigate to={paths.verifyEmail} replace />
   if (mode === 'existing' && (consentGiven(user) || user?.role === 'admin')) return <Navigate to={paths.library} replace />
@@ -53,11 +66,7 @@ export default function Consent({ mode = 'existing' }) {
     }
   }
 
-  return <AuthShell
-    eyebrow="Consent notice"
-    title="Before you contribute."
-    subtitle={mode === 'signup' ? 'Your account is created once you accept how your recordings are used.' : 'Please read how your recordings are used and accept to continue.'}
-  >
+  const consentForm = <>
     <form onSubmit={submit} noValidate>
       <div className="consent-notice" tabIndex={0} role="region" aria-label="Consent notice">
         {consentPoints.map((point) => <section key={point.title}>
@@ -73,5 +82,34 @@ export default function Consent({ mode = 'existing' }) {
       <Button type="submit" block disabled={busy || !agreed}>{busy ? 'Saving…' : mode === 'signup' ? 'Accept and create my account' : 'Accept and continue'}</Button>
     </form>
     <Button variant="outline" block onClick={decline} disabled={busy}>{mode === 'signup' ? 'Decline and cancel sign-up' : 'Decline and log out'}</Button>
+  </>
+
+  if (mode === 'signup') {
+    return (
+      <main className="consent-modal-page">
+        <dialog
+          ref={dialogRef}
+          className="consent-dialog"
+          aria-labelledby="consent-title"
+          aria-describedby="consent-description"
+          onCancel={(event) => event.preventDefault()}
+        >
+          <p className="eyebrow">Consent notice</p>
+          <h1 id="consent-title" className="display display-md">Before you contribute.</h1>
+          <p id="consent-description" className="auth-sub">
+            Your account is created once you accept how your recordings are used.
+          </p>
+          {consentForm}
+        </dialog>
+      </main>
+    )
+  }
+
+  return <AuthShell
+    eyebrow="Consent notice"
+    title="Before you contribute."
+    subtitle="Please read how your recordings are used and accept to continue."
+  >
+    {consentForm}
   </AuthShell>
 }

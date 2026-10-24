@@ -9,6 +9,7 @@
   .auth-art-copy { @apply relative pb-2 md:pb-10; }
   .auth-panel { @apply grid min-w-0 place-items-center bg-page px-4 py-6 sm:px-6 sm:py-10 md:px-8 md:py-16; }
   .auth-card { @apply w-full max-w-110 rounded-2xl border border-line bg-surface p-5 shadow-soft sm:rounded-3xl sm:p-8 md:p-10; }
+  .auth-card > form + .btn { @apply mt-4; }
   .auth-back { @apply mb-6 inline-block rounded-full text-sm font-semibold text-muted hover:text-accent-ink sm:mb-8; }
   .auth-sub { @apply mt-4 text-base text-muted; }
   .auth-submit { @apply mt-8; }
@@ -19,6 +20,18 @@
   .consent-notice p { @apply mt-1; }
   .consent-check { @apply my-5 flex cursor-pointer items-start gap-3 text-sm text-ink; }
   .consent-check input { @apply mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]; }
+  .consent-modal-page { min-height: calc(100svh - 72px); }
+  .consent-dialog {
+    @apply max-w-2xl rounded-3xl border border-line bg-surface p-6 text-ink shadow-lift sm:p-8;
+    width: min(42rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+  }
+  .consent-dialog::backdrop { background: rgb(0 0 0 / 0.64); }
+  .consent-dialog > .btn { @apply mt-4; }
+  .consent-dialog .consent-notice { max-height: min(36dvh, 18rem); }
+  .consent-dialog .display { @apply mt-2; }
+  .consent-dialog .auth-sub { @apply mb-2; }
   .auth-dev { @apply mt-8 rounded-xl border border-dashed border-line-strong p-3 text-sm text-faint; }
 
   @media (max-width: 767px) {

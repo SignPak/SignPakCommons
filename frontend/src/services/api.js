@@ -210,9 +210,10 @@ export const api = {
 
   videos: {
     async list() { return normalizeList(await request(apiRoutes.videos.list())) },
-    async create({ file, poster, title, categoryId, status, durationSec, width, height }) {
+    async create({ file, videoUrl, poster, title, categoryId, status, durationSec, width, height }) {
       const body = new FormData()
-      body.append('video', file)
+      if (file) body.append('video', file)
+      if (videoUrl) body.append('videoUrl', videoUrl)
       const posterBlob = await toBlob(poster)
       if (posterBlob) body.append('poster', posterBlob, poster?.name || 'poster.jpg')
       body.append('title', title)
@@ -249,8 +250,10 @@ export const api = {
     async fetchVideo(url, { onProgress, signal, maxBytes } = {}) {
       const headers = new Headers()
       const deviceId = getDeviceId()
-      if (deviceId) headers.set('X-Device-ID', deviceId)
-      const response = await fetch(url, { credentials: 'include', headers, signal })
+      let sameOrigin = true
+      try { sameOrigin = new URL(url, window.location.href).origin === window.location.origin } catch { /* the request below reports invalid URLs */ }
+      if (sameOrigin && deviceId) headers.set('X-Device-ID', deviceId)
+      const response = await fetch(url, { credentials: sameOrigin ? 'include' : 'omit', headers, signal })
       if (!response.ok) throw new Error(`The video could not be loaded (${response.status}).`)
       const total = Number(response.headers.get('Content-Length')) || 0
       if (maxBytes && total > maxBytes) throw Object.assign(new Error('The video is too large to keep in the browser.'), { code: 'TOO_LARGE' })

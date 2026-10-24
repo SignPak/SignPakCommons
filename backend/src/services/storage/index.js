@@ -139,13 +139,13 @@ export const storageService = {
   },
 
   /** Returns readable file stream descriptor by looking up stored driver name. */
-  async describe(ref) {
+  async describe(ref, cachedMetadata) {
     const driver = driverFor(ref.driver)
     try {
-      const { size } = await driver.stat(ref.key)
+      const { size } = cachedMetadata ?? await driver.stat(ref.key)
       return {
         size,
-        mimeType: ref.mimeType,
+        mimeType: cachedMetadata?.mimeType ?? ref.mimeType,
         createReadStream: (range) => driver.createReadStream(ref.key, range),
       }
     } catch (err) {
