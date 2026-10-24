@@ -19,11 +19,14 @@
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@hookform/resolvers": "^5.9.2",
     "@tailwindcss/vite": "^4.3.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-hook-form": "^7.91.0",
     "react-router-dom": "^7.9.0",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

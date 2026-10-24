@@ -1,78 +1,63 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import AuthShell from '../components/AuthShell'
 import Field from '../components/Field'
 import { Alert, Button } from '../components/ui'
 import { paths } from '../routes/appRoutes'
 import { api } from '../services/api'
-import { isEmail } from '../utils/validators'
+import { emailOnlySchema, resetPasswordSchema } from '../utils/authSchemas'
+import { applyAuthFieldErrors } from '../utils/authFormErrors'
 
 export default function ForgotPassword() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const [email, setEmail] = useState(params.get('email') || '')
-  const [code, setCode] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [resending, setResending] = useState(false)
   const resetting = params.get('step') === 'reset'
+  const requestForm = useForm({
+    resolver: zodResolver(emailOnlySchema),
+    defaultValues: { email: params.get('email') || '' },
+  })
+  const resetForm = useForm({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { email: params.get('email') || '', code: '', password: '', confirmPassword: '' },
+  })
 
-  const requestCode = async (event) => {
-    event.preventDefault()
+  const requestCode = async ({ email }) => {
     setError('')
-    if (!isEmail(email)) { 
-      setError('Enter a valid email address.') 
-      return 
-    }
-    setBusy(true)
     try {
       const result = await api.auth.forgotPassword(email)
       setNotice(result.message)
+      resetForm.setValue('email', email)
       setParams({ email, step: 'reset' }, { replace: true })
     } catch (cause) {
-      setError(cause.message || 'A reset code could not be requested.')
-    } finally {
-      setBusy(false)
+      if (!applyAuthFieldErrors(cause, requestForm.setError)) setError(cause.message || 'A reset code could not be requested.')
     }
   }
 
-  const reset = async (event) => {
-    event.preventDefault()
+  const reset = async (values) => {
     setError('')
-    if (code.length !== 6) { 
-      setError('Enter the six-digit code from your email.') 
-      return 
-    }
-    if (password.length < 8) { 
-      setError('Use at least 8 characters for your password.') 
-      return 
-    }
-    if (password !== confirmPassword) { 
-      setError('Passwords do not match.') 
-      return 
-    }
-    setBusy(true)
     try {
-      await api.auth.resetPassword({ email, code, password, confirmPassword })
+      await api.auth.resetPassword(values)
       navigate(paths.login, { replace: true, state: { notice: 'Password reset. Log in with your new password.' } })
     } catch (cause) {
-      setError(cause.message || 'Your password could not be reset.')
-      setBusy(false)
+      if (!applyAuthFieldErrors(cause, resetForm.setError)) setError(cause.message || 'Your password could not be reset.')
     }
   }
 
   const resend = async () => {
     setError('')
-    setBusy(true)
+    setResending(true)
     try {
-      const result = await api.auth.forgotPassword(email)
+      const result = await api.auth.forgotPassword(resetForm.getValues('email'))
       setNotice(result.message)
     } catch (cause) {
-      setError(cause.message || 'A reset code could not be requested.')
+      if (!applyAuthFieldErrors(cause, resetForm.setError)) setError(cause.message || 'A reset code could not be requested.')
     } finally {
-      setBusy(false)
+      setResending(false)
     }
   }
 
@@ -84,62 +69,57 @@ export default function ForgotPassword() {
       footer={<>Remembered it? <Link to={paths.login}>Log in</Link></>}
     >
       {!resetting ? (
-        <form onSubmit={requestCode} noValidate>
+        <form onSubmit={requestForm.handleSubmit(requestCode)} noValidate>
           <Field 
             label="Email address" 
-            name="email" 
             type="email" 
-            value={email} 
-            onChange={(event) => setEmail(event.target.value)} 
+            {...requestForm.register('email')}
+            error={requestForm.formState.errors.email?.message}
             autoComplete="email" 
           />
           {error && <Alert tone="error">{error}</Alert>}
-          <Button type="submit" block disabled={busy || !email}>
-            {busy ? 'Requesting code…' : 'Send reset code'}
+          <Button type="submit" block disabled={requestForm.formState.isSubmitting}>
+            {requestForm.formState.isSubmitting ? 'Requesting code…' : 'Send reset code'}
           </Button>
         </form>
       ) : (
-        <form onSubmit={reset} noValidate>
+        <form onSubmit={resetForm.handleSubmit(reset)} noValidate>
           <Field 
             label="Email address" 
-            name="email" 
             type="email" 
-            value={email} 
-            onChange={(event) => setEmail(event.target.value)} 
+            {...resetForm.register('email')}
+            error={resetForm.formState.errors.email?.message}
             autoComplete="email" 
           />
           <Field 
             label="Six-digit code" 
-            name="code" 
             inputMode="numeric" 
             autoComplete="one-time-code" 
-            value={code} 
-            onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} 
+            {...resetForm.register('code', { setValueAs: (value) => value.replace(/\D/g, '').slice(0, 6) })}
+            error={resetForm.formState.errors.code?.message}
           />
           <Field 
             label="New password" 
-            name="password" 
             type="password" 
             autoComplete="new-password" 
-            value={password} 
-            onChange={(event) => setPassword(event.target.value)} 
+            {...resetForm.register('password')}
+            error={resetForm.formState.errors.password?.message}
             hint="Use at least 8 characters." 
           />
           <Field 
             label="Confirm new password" 
-            name="confirmPassword" 
             type="password" 
             autoComplete="new-password" 
-            value={confirmPassword} 
-            onChange={(event) => setConfirmPassword(event.target.value)} 
+            {...resetForm.register('confirmPassword')}
+            error={resetForm.formState.errors.confirmPassword?.message}
           />
           {notice && <Alert tone="info">{notice}</Alert>}
           {error && <Alert tone="error">{error}</Alert>}
-          <Button type="submit" block disabled={busy}>
-            {busy ? 'Saving password…' : 'Reset password'}
+          <Button type="submit" block disabled={resetForm.formState.isSubmitting}>
+            {resetForm.formState.isSubmitting ? 'Saving password…' : 'Reset password'}
           </Button>
-          <Button variant="outline" block onClick={resend} disabled={busy}>
-            Send another code
+          <Button variant="outline" block onClick={resend} disabled={resetForm.formState.isSubmitting || resending}>
+            {resending ? 'Sending…' : 'Send another code'}
           </Button>
         </form>
       )}

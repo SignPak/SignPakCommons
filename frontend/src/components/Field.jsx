@@ -1,7 +1,7 @@
-import { useId, useState } from 'react'
+import { forwardRef, useId, useState } from 'react'
 
 /** Label + control + inline error. `as` can be "input" (default), "textarea" or "select". */
-export default function Field({ label, error, hint, id, type, as: Control = 'input', children, className = '', ...props }) {
+const Field = forwardRef(function Field({ label, error, hint, id, type, as: Control = 'input', children, className = '', ...props }, ref) {
   const autoId = useId()
   const fieldId = id || autoId
   const errorId = `${fieldId}-error`
@@ -19,6 +19,7 @@ export default function Field({ label, error, hint, id, type, as: Control = 'inp
             id={fieldId}
             type={passwordVisible ? 'text' : 'password'}
             className={`field-control field-${Control} field-password-input`}
+            ref={ref}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : hint ? hintId : undefined}
             {...props}
@@ -69,6 +70,7 @@ export default function Field({ label, error, hint, id, type, as: Control = 'inp
           id={fieldId}
           type={type}
           className={`field-control field-${Control}`}
+          ref={ref}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : hint ? hintId : undefined}
           {...props}
@@ -84,4 +86,6 @@ export default function Field({ label, error, hint, id, type, as: Control = 'inp
       ) : null}
     </div>
   )
-}
+})
+
+export default Field

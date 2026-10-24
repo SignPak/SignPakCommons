@@ -80,6 +80,9 @@ The client:
   server message, status, and field-level validation messages.
 - Converts API-relative media URLs to absolute URLs when `VITE_API_ORIGIN` is
   configured.
+- Uses shared Zod schemas to validate authentication form input and validates
+  authentication request payloads again at the API-client boundary. Backend
+  Zod validation remains authoritative.
 
 Email verification returns a short-lived consent token rather than a session.
 The signup consent screen submits that token and the current notice version;

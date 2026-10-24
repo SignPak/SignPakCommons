@@ -48,6 +48,10 @@ in `src/routes/appRoutes.js`. Auth guards in `src/components/RouteGuards.jsx`
 redirect visitors who do not meet the route's access requirement and route
 contributors without the current consent version through `/consent`.
 
+Auth-shell forms use React Hook Form with Zod resolvers. Authentication
+payloads are validated again in the API client, with backend Zod schemas as the
+final validation boundary.
+
 After email verification, the frontend holds the short-lived consent token in
 the navigation state and offers accept or decline. Accepting creates and signs
 in the account; declining discards the pending signup. The consent version and

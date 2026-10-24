@@ -28,6 +28,9 @@ proxies `/api` to `http://localhost:5000`; start the backend separately.
 - Keep API calls in `src/services/api.js` and URL construction in
   `src/services/apiRoutes.js`; surface backend error messages instead of
   silently replacing failures with success-shaped defaults.
+- Auth-shell forms use React Hook Form with Zod resolvers. Validate auth request
+  payloads with the matching Zod schemas at the API-client boundary as well;
+  backend Zod validators remain the final authority.
 - Keep camera capture, unsubmitted recordings, and queued uploads in their
   established providers. Unsubmitted recordings and the upload queue are
   intentionally memory-only.

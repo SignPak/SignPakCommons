@@ -1,4 +1,15 @@
 import { apiRoutes } from './apiRoutes'
+import {
+  acceptConsentRequestSchema,
+  consentRequestSchema,
+  declineConsentRequestSchema,
+  emailOnlySchema,
+  loginFormSchema,
+  resetPasswordSchema,
+  signupRequestSchema,
+  verifyEmailSchema,
+} from '../utils/authSchemas'
+import { validateApiInput } from '../utils/validateApiInput'
 
 const PREFIX = 'signpak:v1:'
 
@@ -174,17 +185,44 @@ export const api = {
 
   auth: {
     async session() { return normalize(await request(apiRoutes.auth.session())) },
-    async register(values) { return normalize(await request(apiRoutes.auth.signup(), json('POST', values))) },
-    async login(email, password) { return normalize(await request(apiRoutes.auth.login(), json('POST', { email, password }))) },
+    async register(values) {
+      const input = validateApiInput(signupRequestSchema, values)
+      return normalize(await request(apiRoutes.auth.signup(), json('POST', input)))
+    },
+    async login(email, password) {
+      const input = validateApiInput(loginFormSchema, { email, password })
+      return normalize(await request(apiRoutes.auth.login(), json('POST', input)))
+    },
     // A valid code returns { consentToken }; the account is only created by completeSignup.
-    async verifyEmail(email, code) { return request(apiRoutes.auth.verifyEmail(), json('POST', { email, code })) },
-    async completeSignup(consentToken, version) { return normalize(await request(apiRoutes.auth.consent(), json('POST', { consentToken, accepted: true, version }))) },
-    async declineSignup(consentToken) { await request(apiRoutes.auth.declineConsent(), json('POST', { consentToken })) },
-    async resendVerification(email) { return request(apiRoutes.auth.resendVerification(), json('POST', { email })) },
-    async forgotPassword(email) { return request(apiRoutes.auth.forgotPassword(), json('POST', { email })) },
-    async resetPassword(values) { return request(apiRoutes.auth.resetPassword(), json('POST', values)) },
+    async verifyEmail(email, code) {
+      const input = validateApiInput(verifyEmailSchema, { email, code })
+      return request(apiRoutes.auth.verifyEmail(), json('POST', input))
+    },
+    async completeSignup(consentToken, version) {
+      const input = validateApiInput(consentRequestSchema, { consentToken, accepted: true, version })
+      return normalize(await request(apiRoutes.auth.consent(), json('POST', input)))
+    },
+    async declineSignup(consentToken) {
+      const input = validateApiInput(declineConsentRequestSchema, { consentToken })
+      await request(apiRoutes.auth.declineConsent(), json('POST', input))
+    },
+    async resendVerification(email) {
+      const input = validateApiInput(emailOnlySchema, { email })
+      return request(apiRoutes.auth.resendVerification(), json('POST', input))
+    },
+    async forgotPassword(email) {
+      const input = validateApiInput(emailOnlySchema, { email })
+      return request(apiRoutes.auth.forgotPassword(), json('POST', input))
+    },
+    async resetPassword(values) {
+      const input = validateApiInput(resetPasswordSchema, values)
+      return request(apiRoutes.auth.resetPassword(), json('POST', input))
+    },
     async logout() { await request(apiRoutes.auth.logout(), { method: 'POST' }) },
-    async acceptConsent(version) { return normalize(await request(apiRoutes.users.consent(), json('POST', { accepted: true, version }))) },
+    async acceptConsent(version) {
+      const input = validateApiInput(acceptConsentRequestSchema, { accepted: true, version })
+      return normalize(await request(apiRoutes.users.consent(), json('POST', input)))
+    },
     async saveConnections(_userId, connections) { return normalize(await request(apiRoutes.users.me(), json('PATCH', { connections }))) },
   },
 
