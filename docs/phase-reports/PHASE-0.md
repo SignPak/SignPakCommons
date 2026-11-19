@@ -6,7 +6,7 @@
 | --- | --- |
 | Phase | 0 – Baseline and test infrastructure (`docs/FIX-PLAN.md`) |
 | Branch | `fix/phase-0-test-infrastructure` (from `main` @ `b10d90b`) |
-| Last commit | `c654adf` (`c654adfce49bdc935563e363d5dee40f1e5f06b5`) |
+| Last commit | `30f1d2a` (`30f1d2ad0bc52d74e2d3ba06956b89c0029f5ac9`) — three commits: the phase, the lockfile fix, this report update |
 | Pull request | [#30](https://github.com/SignPak/SignPakCommons/pull/30) |
 | Versions | backend `1.0.5 → 1.0.6`, frontend `1.0.8 → 1.0.9` |
 
