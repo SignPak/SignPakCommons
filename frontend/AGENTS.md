@@ -14,12 +14,21 @@ Run from `frontend/`:
 ```sh
 npm run dev
 npm run lint
-npm test
+npm test                 # unit + integration (Vitest)
+npm run test:unit
+npm run test:integration
+npm run test:coverage    # thresholds live in vite.config.js
 npm run build
 ```
 
+Unit tests live in `test/unit/` and mock `src/services/api` directly. Page-level
+integration tests live in `test/integration/`, render the real providers and API
+client, and mock only the network with MSW through `test/support/mswServer.js`.
+
 Use the smallest relevant test file when practical. The Vite development server
-proxies `/api` to `http://localhost:5000`; start the backend separately.
+proxies `/api` to `http://localhost:5000`; start the backend separately. `vite
+preview` proxies `/api` to the end-to-end API on port 5099 instead, which is how
+the Playwright suite in `e2e/` runs the production build.
 
 ## Guardrails
 

@@ -1,6 +1,6 @@
 # Backend documentation
 
-- [Setup](SETUP.md): local configuration, environment variables, and
+- [Setup](setup.md): local configuration, environment variables, and
   deployment.
 - [API](API.md): endpoint access, request/response behavior, and limits.
 - [Architecture](ARCHITECTURE.md): startup, request flow, persistence, storage,

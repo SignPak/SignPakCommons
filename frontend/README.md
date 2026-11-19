@@ -15,7 +15,7 @@ cd frontend
 npm install
 npm run dev       # http://localhost:5173
 npm run lint
-npm test
+npm test          # unit + integration (Vitest)
 npm run build
 npm run preview   # serve the production build locally
 ```
@@ -174,9 +174,16 @@ origin. API cookies require compatible HTTPS and cookie settings.
 
 ## Checks
 
-The frontend package provides `npm run lint`, `npm test`, `npm run build`,
-`npm run seo:generate`, and `npm run snap`. `npm test` runs the Vitest suite in
-jsdom; component interaction tests use Testing Library.
+The frontend package provides `npm run lint`, `npm test`, `npm run test:unit`,
+`npm run test:integration`, `npm run test:coverage`, `npm run build`,
+`npm run seo:generate`, and `npm run snap`.
+
+`npm test` runs the Vitest suite in jsdom. `test/unit/` holds component, hook and
+utility tests that mock `src/services/api` directly; `test/integration/` renders
+whole pages with the real providers and API client and mocks only the network,
+with MSW. `npm run test:coverage` enforces the thresholds in `vite.config.js`,
+which may only be raised. Browser-level flows are covered by the Playwright suite
+in `e2e/` at the repository root.
 
 ## Project model
 

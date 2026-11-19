@@ -11,7 +11,7 @@ cd backend
 npm install
 cp .env.example .env      # set local MongoDB URI, JWT secret, and admin password
 npm run dev               # http://localhost:5000
-npm test                  # all API, unit, and storage suites
+npm test                  # unit, integration, and security suites
 ```
 
 Use Node.js 22+ and a MongoDB instance (local or Atlas). Environment values are
@@ -41,7 +41,8 @@ business rules.
 | `src/models/` | Mongoose schemas, indexes, and JSON serialization. |
 | `src/config/` | Validated environment, database connection, and shared constants. |
 | `src/docs/openapi.js` | OpenAPI schema for the JSON spec and development Swagger UI. |
-| `tests/` | One `.test.js` per API suite and focused unit/storage suites. |
+| `tests/` | `unit/`, `integration/` and `security/` suites, with shared fixtures in `support/`. |
+| `scripts/` | `e2e-server.js` (the API the Playwright suite uses) and `check-coverage.js` (the coverage gate). |
 
 `src/app.js` composes the Express app without binding a port;
 `src/services/initialization.js` initializes MongoDB, storage, and the configured
@@ -49,7 +50,7 @@ admin idempotently; `server.js` is the standalone and Vercel entry point.
 
 Read the [documentation index](docs/README.md), [API](docs/API.md),
 [architecture](docs/ARCHITECTURE.md), [module reference](docs/MODULE-REFERENCE.md),
-[setup](docs/SETUP.md), [design decisions](docs/design-docs/ARCHITECTURE-DECISIONS.md),
+[setup](docs/setup.md), [design decisions](docs/design-docs/ARCHITECTURE-DECISIONS.md),
 and [test-case inventory](docs/TEST-CASES.md).
 
 ## Responses
@@ -127,14 +128,22 @@ mounted outside production.
 Run from `backend/`:
 
 ```bash
-npm test
+npm run test:unit          # tests/unit
+npm run test:integration   # tests/integration
+npm run test:security      # tests/security
+npm test                   # all three, serially
+npm run test:coverage      # c8, then the floors in coverage-thresholds.json
 ```
 
-The command runs Node's built-in test runner serially across every
-`tests/*.test.js` file. The API suites use MongoDB Memory Server unless
-`MONGODB_URI_TEST` is supplied. That configured database is dropped by the tests,
-so use only a disposable database. Provider delivery is stubbed. The 61 cases and
-their test types are documented in [docs/TEST-CASES.md](docs/TEST-CASES.md).
+The commands run Node's built-in test runner serially. Integration and security
+suites use MongoDB Memory Server unless `MONGODB_URI_TEST` is supplied. That
+configured database is dropped by the tests, so use only a disposable database.
+Email and contact delivery are captured in memory rather than sent. Every case,
+with the requirement and review-checklist item it covers, is listed in
+[docs/TEST-CASES.md](docs/TEST-CASES.md).
+
+End-to-end tests live in `e2e/` at the repository root (`npm run e2e` there);
+`npm run e2e:server` here starts the API they drive.
 
 ## Current limitation
 

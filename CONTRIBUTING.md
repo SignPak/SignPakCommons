@@ -61,7 +61,19 @@ For local backend work, create the environment configuration required by the app
 - Write readable, maintainable code.
 - Prefer small, clear functions and simple logic.
 - Follow the repo's existing style and naming conventions.
-- Add or update tests when the change affects behavior.
+- Add or update tests when the change affects behavior, at every level the change
+  touches:
+
+```sh
+cd backend  && npm test && npm run test:coverage   # unit, integration, security
+cd frontend && npm run lint && npm test && npm run build
+cd e2e      && npm run e2e                          # Playwright, all browsers
+```
+
+  `.github/workflows/ci.yml` runs the same gate on every push and pull request.
+  New API routes also need an entry in
+  `backend/tests/security/access-matrix.test.js`, which fails if a registered
+  route has no access decision.
 
 ## Community Expectations
 

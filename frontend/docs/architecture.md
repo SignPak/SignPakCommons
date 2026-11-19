@@ -8,9 +8,19 @@ contributor workflows, and an admin workspace. The backend API is the source of
 truth for accounts, categories, reference videos, and submitted recordings.
 
 The frontend requires Node.js 20.19 or newer, as declared by
-`package.json`. Its package scripts are `dev`, `lint`, `test`, `build`,
-`preview`, `seo:generate`, and `snap`. `npm test` runs Vitest in jsdom, with
-React component tests written using Testing Library.
+`package.json`. Its package scripts are `dev`, `lint`, `test`, `test:unit`,
+`test:integration`, `test:coverage`, `build`, `preview`, `seo:generate`, and
+`snap`. `npm test` runs Vitest in jsdom, with React component tests written using
+Testing Library.
+
+Tests are split by level. `test/unit/` covers utilities, hooks, providers and
+single components, mocking `src/services/api`. `test/integration/` renders whole
+pages with the real router, providers and API client, and mocks only HTTP with
+MSW (`test/support/mswServer.js`). `npm run test:coverage` enforces the coverage
+thresholds declared in `vite.config.js`. Full browser flows live in the
+Playwright suite in `e2e/` at the repository root, which runs against the
+production build served by `vite preview`; that preview proxies `/api` to the
+end-to-end API, so the site and API share one origin.
 
 ## Bootstrap and providers
 

@@ -1,254 +1,211 @@
-# Backend test cases
+# Test-case inventory and traceability
 
-The backend suite uses Node's built-in test runner. It currently contains **61 test
-cases** across thirteen test files. Each named API test suite has its own `.test.js`
-file and starts with a fresh test database and account fixtures:
+Every automated test in the project, mapped to the requirement it covers and the review
+checklist item it guards. This table is the source for Section 9 of the SRS/final report.
 
-| Test file | Cases | Main test type |
-| --- | ---: | --- |
-| `tests/api-basics.test.js` | 5 | HTTP integration tests |
-| `tests/api-demo-video.test.js` | 1 | HTTP integration tests |
-| `tests/api-auth.test.js` | 8 | HTTP integration tests |
-| `tests/api-consent.test.js` | 3 | HTTP integration tests |
-| `tests/api-profile-connections.test.js` | 1 | HTTP integration tests |
-| `tests/api-categories.test.js` | 2 | HTTP integration tests |
-| `tests/api-videos.test.js` | 6 | HTTP integration tests |
-| `tests/api-submissions.test.js` | 8 | HTTP integration tests |
-| `tests/api-admin-stats-contact.test.js` | 4 | HTTP integration tests |
-| `tests/api-admin-user-controls.test.js` | 5 | HTTP integration tests |
-| `tests/safeName.test.js` | 3 | Unit tests |
-| `tests/localStorage.test.js` | 6 | Filesystem/storage integration tests |
-| `tests/videoService.test.js` | 9 | Unit tests |
+- **Requirements** are the FR13.x functional requirements, OR-19 (consent) and the SE-x
+  security requirements from the SRS.
+- **Checklist** is the ID from `docs/SignPakCommons review checklist.md` (C1–C5, S1–S10,
+  B1–B8), or `—` when a test covers behaviour that was already correct.
+- **Level** is unit, integration, security or E2E, matching the layout in
+  `docs/FIX-PLAN.md` section 4.1.
 
-## Test types
+Counts as of **Phase 0** (backend 1.0.6, frontend 1.0.9):
 
-- **HTTP integration** exercises the Express app through HTTP requests and checks
-  interactions between routing, middleware, services, MongoDB, and local storage.
-  The suite uses MongoDB Memory Server by default. Email and contact-delivery
-  providers are stubbed.
-- **Unit** checks a focused function or service rule, with external dependencies
-  stubbed where needed.
-- **Filesystem/storage integration** exercises the local storage driver or storage
-  service against temporary directories and real files.
+| Level | Where | Files | Cases |
+| --- | --- | ---: | ---: |
+| Unit (backend) | `backend/tests/unit/` | 6 | 34 |
+| Integration (backend) | `backend/tests/integration/` | 10 | 45 |
+| Security (backend) | `backend/tests/security/` | 2 | 51 |
+| Unit (frontend) | `frontend/test/unit/` | 6 | 20 |
+| Integration (frontend) | `frontend/test/integration/` | 1 | 4 |
+| End-to-end | `e2e/tests/` | 2 | 9 (3 specs × 3 browsers) |
+| **Total** | | **27** | **163** |
 
-## API suite files — HTTP integration tests
+The backend security count is per-route: the access matrix produces one case per route (47
+today) plus the completeness check, and the hook suite adds three.
 
-Each API suite file uses `tests/apiContext.js` to start the app with a fresh test
-database, create representative admin and contributor accounts, and clean up the
-database and server afterward. The suite-specific fixtures are initialized within
-their respective test file. Each API case below is an HTTP integration test.
+## 1. Backend unit tests — `backend/tests/unit/`
 
-### `tests/api-basics.test.js` — Basics
+| ID | Test file | Test name | Requirement | Checklist | Level |
+| --- | --- | --- | --- | --- | --- |
+| U-01 | `safeName.test.js` | safeName uses its fallback for nullish and blank values | FR13.8 | — | unit |
+| U-02 | `safeName.test.js` | safeName replaces reserved path characters and collapses whitespace | FR13.8, SE-6 | — | unit |
+| U-03 | `safeName.test.js` | safeName caps its output at 100 characters | FR13.8 | — | unit |
+| U-04 | `localStorage.test.js` | local driver stores named files in folders and appends suffixes on collisions | FR13.8 | — | unit |
+| U-05 | `localStorage.test.js` | local driver handles named files without an extension and dotfiles | FR13.8 | — | unit |
+| U-06 | `localStorage.test.js` | local driver generates unique UUID keys when no file name is supplied | FR13.8 | — | unit |
+| U-07 | `localStorage.test.js` | local driver rejects paths escaping the storage root and keeps the source file | SE-6 | — | unit |
+| U-08 | `localStorage.test.js` | local driver stat reports missing files and remove is idempotent | FR13.8 | — | unit |
+| U-09 | `localStorage.test.js` | storageService forwards named folder and file name to the local driver | FR13.8 | — | unit |
+| U-10 | `videoService.test.js` | video create names video and poster from title and category safely | FR13.11 | — | unit |
+| U-11 | `videoService.test.js` | video create uses Unassigned and Untitled fallbacks when optional labels are absent | FR13.11 | — | unit |
+| U-12 | `videoService.test.js` | video create selects detected video and image extensions | FR13.11, SE-6 | — | unit |
+| U-13 | `videoService.test.js` | video create rejects a missing upload, unsupported content, and invalid categories before storage | FR13.11, SE-6 | — | unit |
+| U-14 | `videoService.test.js` | poster metadata is cached in Redis for five minutes | FR13.11 | — | unit |
+| U-15 | `videoService.test.js` | video create rejects oversized or unsupported posters before storage | FR13.7, SE-6 | — | unit |
+| U-16 | `videoService.test.js` | video create accepts a poster exactly at the size limit | FR13.7 | — | unit |
+| U-17 | `videoService.test.js` | video create surfaces filesystem errors instead of reporting invalid video content | FR13.11 | — | unit |
+| U-18 | `videoService.test.js` | video create removes already stored files when poster storage fails | FR13.8 | B1 (partly) | unit |
+| U-19 | `videoService.test.js` | video create removes video and poster if the database write fails | FR13.8 | B1 (partly) | unit |
+| U-20 | `fakeDriveDriver.test.js` | fake Drive driver exposes the same interface as the real Google Drive driver | FR13.8 | — | unit |
+| U-21 | `fakeDriveDriver.test.js` | fake Drive driver stores bytes under an opaque key and leaves the temp file alone | FR13.8 | C5 (fixture) | unit |
+| U-22 | `fakeDriveDriver.test.js` | fake Drive driver reuses one folder id per path and creates nested folders once | FR13.8 | B8 (fixture) | unit |
+| U-23 | `fakeDriveDriver.test.js` | fake Drive driver supports byte ranges and idempotent removal | FR13.3, FR13.8 | — | unit |
+| U-24 | `fakeDriveDriver.test.js` | fake Drive driver can be told to fail on save, stat and remove | FR13.8 | B1 (fixture) | unit |
+| U-25 | `emailDriver.test.js` | the capture driver records recipient, purpose and code without sending anything | FR13.1 | — | unit |
+| U-26 | `emailDriver.test.js` | captured codes can be filtered by recipient and purpose, newest first | FR13.1 | — | unit |
+| U-27 | `emailDriver.test.js` | the capture store keeps only the last 100 codes and can be cleared | FR13.1 | — | unit |
+| U-28 | `emailDriver.test.js` | the test environment selects the capture driver and brevo stays the default elsewhere | FR13.1, SE-3 | — | unit |
+| U-29 | `emailDriver.test.js` | authService sends its codes through the email driver | FR13.1 | — | unit |
+| U-30 | `env-guards.test.js` | a valid production configuration starts with brevo mail and no test hooks | SE-3 | — | unit |
+| U-31 | `env-guards.test.js` | production refuses to start with E2E_TEST_HOOKS enabled | SE-3 | — | unit |
+| U-32 | `env-guards.test.js` | production refuses to start with the capture email driver | SE-3, FR13.1 | — | unit |
+| U-33 | `env-guards.test.js` | an unknown email driver is rejected in every environment | SE-3 | — | unit |
+| U-34 | `env-guards.test.js` | test environments may enable the hooks and the capture driver | SE-3 | — | unit |
 
-1. **root advertises the API and favicon is ignored** — Checks the root response,
-   favicon handling, both documentation UI routes, and both OpenAPI JSON routes.
-2. **health check reports the database** — Checks that the health endpoint reports
-   a connected database.
-3. **public landing stats return aggregate counts without authentication** —
-   Checks the public aggregate response shape and verifies its counts against the
-   public category and video lists.
-4. **unknown routes and bad JSON use the error shape** — Checks 404 handling and
-   malformed JSON handling, including their standard error codes.
-5. **cross-origin writes are refused, allowed origin passes** — Checks that a
-   disallowed request origin is rejected while the configured client origin can
-   perform a write.
+## 2. Backend integration tests — `backend/tests/integration/`
 
-### `tests/api-demo-video.test.js` — Demo video
+Each file uses `tests/support/apiContext.js`: the real Express app, a fresh in-memory
+MongoDB, local storage in a temporary folder, captured email and a recording contact sender.
 
-6. **admins can upload, replace, and delete the public demo video** — Checks public
-   empty and file responses, admin-only upload, replacement and cleanup, and that
-   the demo video is separate from the regular video library.
+| ID | Test file | Test name | Requirement | Checklist | Level |
+| --- | --- | --- | --- | --- | --- |
+| I-01 | `api-basics.test.js` | root advertises the API and favicon is ignored | FR13.12 | — | integration |
+| I-02 | `api-basics.test.js` | health check reports the database | OR (operations) | — | integration |
+| I-03 | `api-basics.test.js` | public landing stats return aggregate counts without authentication | FR13.10 | B2 (to extend) | integration |
+| I-04 | `api-basics.test.js` | unknown routes and bad JSON use the error shape | SE-5 | — | integration |
+| I-05 | `api-basics.test.js` | cross-origin writes are refused, allowed origin passes | SE-2 | — | integration |
+| I-06 | `api-auth.test.js` | signup validates every field | FR13.1 | — | integration |
+| I-07 | `api-auth.test.js` | signup only creates an account after consent and never leaks the hash or accepts a role | FR13.1, OR-19 | — | integration |
+| I-08 | `api-auth.test.js` | password reset codes are one-time and replace the old password | FR13.1, SE-4 | — | integration |
+| I-09 | `api-auth.test.js` | duplicate emails conflict, case-insensitively | FR13.1 | B3 (to change) | integration |
+| I-10 | `api-auth.test.js` | login: wrong password and unknown email give the same answer | SE-4 | — | integration |
+| I-11 | `api-auth.test.js` | session, logout and tampered cookies | SE-4 | S6 (to extend) | integration |
+| I-12 | `api-auth.test.js` | the env admin exists once, has the admin role, and re-running is harmless | FR13.12 | S7 (to extend) | integration |
+| I-13 | `api-auth.test.js` | admin-only routes reject contributors and visitors | FR13.12, SE-2 | — | integration |
+| I-14 | `api-consent.test.js` | creates the account only after consent and records the acceptance time | OR-19 | — | integration |
+| I-15 | `api-consent.test.js` | declining consent discards the unfinished signup | OR-19 | — | integration |
+| I-16 | `api-consent.test.js` | legacy accounts without consent cannot submit until they accept | OR-19 | — | integration |
+| I-17 | `api-profile-connections.test.js` | normalises, validates, and disconnects | FR13.10 | — | integration |
+| I-18 | `api-categories.test.js` | only admins write; names are unique regardless of case | FR13.2, FR13.11 | — | integration |
+| I-19 | `api-categories.test.js` | update and public listing | FR13.2, FR13.11 | — | integration |
+| I-20 | `api-videos.test.js` | upload needs a real video file | FR13.11, SE-6 | B6 (to extend) | integration |
+| I-21 | `api-videos.test.js` | admin uploads with and without a poster; the API hides storage internals | FR13.11 | — | integration |
+| I-22 | `api-videos.test.js` | admin can register a direct HTTPS video URL with a stored poster | FR13.11 | — | integration |
+| I-23 | `api-videos.test.js` | external video URLs require HTTPS and a poster, and cannot be combined with an upload | FR13.11, SE-6 | — | integration |
+| I-24 | `api-videos.test.js` | visibility: contributors and visitors only see published, categorised videos | FR13.2, FR13.11 | — | integration |
+| I-25 | `api-videos.test.js` | published files stream publicly with Range support | FR13.3 | — | integration |
+| I-26 | `api-videos.test.js` | posters are served as images | FR13.3 | — | integration |
+| I-27 | `api-videos.test.js` | editing: moving categories appends to the end of that path | FR13.11 | — | integration |
+| I-28 | `api-demo-video.test.js` | admins can upload, replace, and delete the public demo video | FR13.11 | — | integration |
+| I-29 | `api-submissions.test.js` | archive and database failures release cooldown and remove any archived file | FR13.8, FR13.9 | B1 | integration |
+| I-30 | `api-submissions.test.js` | input is checked before anything is stored | FR13.6, FR13.7 | — | integration |
+| I-31 | `api-submissions.test.js` | a valid submission is stored and listed | FR13.8 | — | integration |
+| I-32 | `api-submissions.test.js` | COOLDOWN: a second submission for the same video, too soon, is refused and stores nothing | FR13.9 | — | integration |
+| I-33 | `api-submissions.test.js` | COOLDOWN: concurrent double-submits for the same video produce exactly one submission | FR13.9 | — | integration |
+| I-34 | `api-submissions.test.js` | COOLDOWN: once it elapses, the same video can be submitted again, as a new, separate recording | FR13.9 | — | integration |
+| I-35 | `api-submissions.test.js` | a submission can never be edited, deleted, or read once archived | FR13.8 | — | integration |
+| I-36 | `api-submissions.test.js` | deleting a base video keeps contributors' submissions on record | FR13.8, FR13.11 | — | integration |
+| I-37 | `api-admin-stats-contact.test.js` | stats add up | FR13.12 | B7 (to extend) | integration |
+| I-38 | `api-admin-stats-contact.test.js` | deleting a category unassigns its videos instead of deleting them | FR13.11 | — | integration |
+| I-39 | `api-admin-stats-contact.test.js` | contact delivery requires matching account email, enforces quotas, and blocks abusive devices | FR13.13 | S4 (to change) | integration |
+| I-40 | `api-admin-stats-contact.test.js` | oversized uploads are rejected with 413 | FR13.7 | — | integration |
+| I-41 | `api-admin-user-controls.test.js` | suspending a user blocks its existing session and login; reactivation restores access | FR13.12 | — | integration |
+| I-42 | `api-admin-user-controls.test.js` | contributors can delete their account without removing submitted recordings | FR13.12 | C3 (to change) | integration |
+| I-43 | `api-admin-user-controls.test.js` | admin deletion removes the account and cooldowns but retains submissions and recordings | FR13.12 | C3 (to change) | integration |
+| I-44 | `api-admin-user-controls.test.js` | device restrictions reject matching IDs, expose only a hint, and can be removed | FR13.12 | S10 | integration |
+| I-45 | `api-admin-user-controls.test.js` | IP restrictions block API traffic while admin routes remain available for recovery | FR13.12 | — | integration |
 
-### `tests/api-auth.test.js` — Authentication
+## 3. Backend security tests — `backend/tests/security/`
 
-7. **signup validates every field** — Checks required signup fields, password
-   confirmation, and minimum password length.
-8. **signup only creates an account after consent and never leaks the hash or
-   accepts a role** — Checks that signup and email verification do not create a
-   session, ignores a submitted admin role, activates the account after consent,
-   sets secure cookie attributes, and does not expose the password hash.
-9. **password reset codes are one-time and replace the old password** — Checks the
-   generic reset-request response, invalid-code handling, password replacement,
-   code reuse rejection, and invalidation of the old session.
-10. **duplicate emails conflict, case-insensitively** — Checks that signup rejects
-   an address that already exists with different letter casing.
-11. **login: wrong password and unknown email give the same answer** — Checks
-    equivalent unauthorized responses for an unknown account and a wrong
-    password.
-12. **session, logout and tampered cookies** — Checks anonymous and authenticated
-    session responses, logout, and rejection of an invalid session cookie.
-13. **the env admin exists once, has the admin role, and re-running is harmless**
-    — Checks environment-admin bootstrap is idempotent and assigns the admin role.
-14. **admin-only routes reject contributors and visitors** — Checks role and
-    authentication enforcement on an admin endpoint.
+| ID | Test file | Test name | Requirement | Checklist | Level |
+| --- | --- | --- | --- | --- | --- |
+| S-01 | `access-matrix.test.js` | `<METHOD> <path>` enforces its access rules (one case per registered route) | SE-2, FR13.12 | — | security |
+| S-02 | `access-matrix.test.js` | every registered route has a matrix entry | SE-2 | — | security |
+| S-03 | `test-hooks.test.js` | E2E_TEST_HOOKS is off in this environment | SE-3 | — | security |
+| S-04 | `test-hooks.test.js` | GET /__test/emails does not exist without E2E_TEST_HOOKS | SE-3 | — | security |
+| S-05 | `test-hooks.test.js` | the router stack contains no /__test route | SE-3 | — | security |
 
-### `tests/api-profile-connections.test.js` — Profile connections
+The matrix in S-01 calls every route as an anonymous visitor, a contributor, a suspended
+contributor and an admin. A denied caller must get the exact status (401 or 403); an allowed
+caller only has to get past the guards. S-02 compares the table with the live router stack, so
+a new route cannot be added without an access decision.
 
-15. **normalises, validates, and disconnects** — Checks GitHub and LinkedIn URL
-    normalization, invalid-handle validation, clearing one connection without
-    changing the other, and authentication requirements.
+## 4. Frontend unit tests — `frontend/test/unit/`
 
-### `tests/api-categories.test.js` — Categories
+| ID | Test file | Test name | Requirement | Checklist | Level |
+| --- | --- | --- | --- | --- | --- |
+| FU-01 | `limits.test.js` | accepts a recording exactly at both limits | FR13.7 | — | unit |
+| FU-02 | `limits.test.js` | rejects a recording longer than ten minutes | FR13.7 | — | unit |
+| FU-03 | `limits.test.js` | rejects a recording larger than the configured upload limit | FR13.7 | — | unit |
+| FU-04 | `AuthValidation.test.jsx` | shows Zod field errors on signup and does not submit invalid values | FR13.1 | — | unit |
+| FU-05 | `AuthValidation.test.jsx` | validates auth API payloads before sending a request | FR13.1 | — | unit |
+| FU-06 | `AuthValidation.test.jsx` | maps API validation errors back to the corresponding login field | FR13.1 | — | unit |
+| FU-07 | `RecorderPanel.test.jsx` | prepares the camera and starts capture after the three-second countdown | FR13.4 | — | unit |
+| FU-08 | `RecorderPanel.test.jsx` | does not start a countdown when camera preparation fails | FR13.4 | — | unit |
+| FU-09 | `RecorderPanel.test.jsx` | shows a live recording status and lets the user stop recording | FR13.4 | — | unit |
+| FU-10 | `RecorderPanel.test.jsx` | shows a notice when the recorder automatically stops at a limit | FR13.4, FR13.7 | — | unit |
+| FU-11 | `RecorderPanel.test.jsx` | lets the user review, delete, or save a finished take | FR13.5 | — | unit |
+| FU-12 | `RecorderPanel.test.jsx` | displays camera errors and disables start while a request is pending | FR13.4 | — | unit |
+| FU-13 | `UploadQueueProvider.test.jsx` | refuses oversized recordings before uploading | FR13.7 | — | unit |
+| FU-14 | `UploadQueueProvider.test.jsx` | refuses recordings longer than ten minutes before uploading | FR13.7 | — | unit |
+| FU-15 | `UploadQueueProvider.test.jsx` | serializes two queued uploads and retries a failure | FR13.8 | — | unit |
+| FU-16 | `UploadQueueProvider.test.jsx` | shows the remaining cooldown time from a rejected upload in the toast | FR13.9 | — | unit |
+| FU-17 | `ProfileDeletion.test.jsx` | warns that recordings remain and requires the current password in its confirmation dialog | FR13.12, OR-19 | C3 (context) | unit |
+| FU-18 | `AdminVideos.test.jsx` | requires an explicit poster image or auto-frame choice | FR13.11 | — | unit |
+| FU-19 | `AdminVideos.test.jsx` | uploads a selected poster image instead of the auto-generated frame | FR13.11 | — | unit |
+| FU-20 | `AdminVideos.test.jsx` | adds a direct HTTPS video URL with a required poster instead of uploading video bytes | FR13.11 | — | unit |
 
-16. **only admins write; names are unique regardless of case** — Checks role
-    access, category creation, case-insensitive uniqueness, and invalid tone
-    validation.
-17. **update and public listing** — Checks category updates, duplicate-name and
-    empty-update validation, public listing, and invalid ID validation.
+## 5. Frontend integration tests — `frontend/test/integration/`
 
-### `tests/api-videos.test.js` — Videos
+Rendered with the real router, providers and API client; only the network is mocked, with MSW.
 
-18. **upload needs a real video file** — Checks missing, fake, and invalid-category
-    uploads, admin access, and cleanup of rejected temporary uploads.
-19. **admin uploads with and without a poster; the API hides storage internals** —
-    Checks upload responses and defaults, ordering, optional posters, public
-    resource URLs, storage metadata privacy, and stored-file counts.
-20. **visibility: contributors and visitors only see published, categorised
-    videos** — Checks that admins can see all videos while contributors and
-    visitors only see published videos assigned to a category.
-21. **published files stream publicly with Range support** — Checks full and
-    partial video responses, suffix ranges, unsatisfiable ranges, content types,
-    and hidden draft files.
-22. **posters are served as images** — Checks public poster delivery and the
-    missing-poster response.
-23. **editing: moving categories appends to the end of that path** — Checks video
-    movement and ordering, invalid category/status handling, draft updates, and
-    admin-only editing.
+| ID | Test file | Test name | Requirement | Checklist | Level |
+| --- | --- | --- | --- | --- | --- |
+| FI-01 | `Login.test.jsx` | signs the contributor in and puts the session in the auth provider | FR13.1 | — | integration |
+| FI-02 | `Login.test.jsx` | shows the server message when the credentials are refused | FR13.1, SE-4 | — | integration |
+| FI-03 | `Login.test.jsx` | puts field errors from a 422 next to their input | FR13.1 | — | integration |
+| FI-04 | `Login.test.jsx` | never reaches the network when the form itself is invalid | FR13.1 | — | integration |
 
-### `tests/api-submissions.test.js` — Submissions and cooldown
+## 6. End-to-end tests — `e2e/tests/`
 
-24. **archive and database failures release cooldown and remove any archived
-    file** — Checks rollback and cleanup when archive storage or database creation
-    fails after the cooldown is claimed.
-25. **input is checked before anything is stored** — Checks authentication,
-    required and valid recording content, trim ranges, video IDs and visibility,
-    plus absence of orphaned files on rejection.
-26. **a valid submission is stored and listed** — Checks successful submission
-    metadata, recording privacy, archive storage, contributor ownership, and
-    admin visibility.
-27. **COOLDOWN: a second submission for the same video, too soon, is refused and
-    stores nothing** — Checks cooldown rejection and temporary/archive file
-    cleanup.
-28. **COOLDOWN: concurrent double-submits for the same video produce exactly one
-    submission** — Checks atomic cooldown behavior under concurrent uploads and
-    cleanup of losing uploads.
-29. **COOLDOWN: once it elapses, the same video can be submitted again, as a new,
-    separate recording** — Checks that a later submission succeeds as a distinct
-    append-only record after the cooldown expires.
-30. **a submission can never be edited, deleted, or read once archived** — Checks
-    that submission mutation and recording playback endpoints remain unavailable
-    to contributors and admins.
-31. **deleting a base video keeps contributors' submissions on record** — Checks
-    that deleting the reference video removes its file and record without
-    removing archived submissions.
+Playwright, in Chromium, Firefox and WebKit, against the production frontend build and a real
+API with an in-memory database.
 
-### `tests/api-admin-stats-contact.test.js` — Admin stats and contact
+| ID | Spec | Test name | Requirement | Checklist | Level |
+| --- | --- | --- | --- | --- | --- |
+| E-01 | `landing.spec.js` | loads and shows the public sections without page errors | FR13.10 | — | E2E |
+| E-02 | `landing.spec.js` | the API the site talks to is healthy through the preview proxy | FR13.10 | C1 (fixture) | E2E |
+| E-03 | `signup.spec.js` | sign-up: form, emailed code, consent, then the library | FR13.1, OR-19 | — | E2E |
 
-32. **stats add up** — Checks admin access, aggregate totals, daily activity,
-    category counts, recent submissions, handling of deleted videos, and the
-    allowed day range.
-33. **deleting a category unassigns its videos instead of deleting them** —
-    Checks that category deletion keeps videos but makes unassigned videos
-    invisible to contributors.
-34. **contact delivery requires matching account email, enforces quotas, and
-    blocks abusive devices** — Checks contact validation, delivery failure
-    handling, matching account email, per-user and global daily quotas, anonymous
-    recording-deletion requests, rejection of other anonymous topics, device
-    blocking, message listing, and admin-only access.
-35. **oversized uploads are rejected with 413** — Checks payload-too-large
-    responses and temporary-file cleanup.
+## 7. Gaps to close in later phases
 
-### `tests/api-admin-user-controls.test.js` — Admin user controls and access restrictions
+Phase 0 built the levels; the checklist items themselves are still open. Each phase adds at
+least one regression test named with its ID (for example `C5: removes the temp file after a
+Drive upload`) and a row here.
 
-36. **suspending a user blocks its existing session and login; reactivation
-    restores access** — Checks self-suspension protection, suspension effects on
-    sessions and login, and reactivation.
-37. **contributors can delete their account without removing submitted
-    recordings** — Checks current-password confirmation, session invalidation,
-    account removal, retained submission/archive data, and cooldown cleanup.
-38. **admin deletion removes the account and cooldowns but retains submissions
-    and recordings** — Checks admin account removal, retained archive files,
-    cooldown cleanup, and updated account/submission listings.
-39. **device restrictions reject matching IDs, expose only a hint, and can be
-    removed** — Checks device restriction creation, hashed-identifier privacy,
-    blocking, duplicate detection, and removal.
-40. **IP restrictions block API traffic while admin routes remain available for
-    recovery** — Checks IP validation and restriction enforcement while
-    preserving admin access to remove restrictions.
+| Checklist | Planned coverage | Phase |
+| --- | --- | --- |
+| C1, C4, S3, S5 | 503 detail hidden in production, proxy IP handling, health storage status, cross-hostname cookie | 1 |
+| C5, B1, B6, B8 | temp-file cleanup, cooldown release on cleanup failure, video brand sniffing, single Drive folder per path | 2 |
+| S1 | the whole suite re-run on updated dependencies; the audit job becomes required | 3 |
+| C2, S4 | contact form sends, deletion request with an emailed code, per-sender quotas | 4 |
+| C3 | recording deletion for one contributor, deletion log, admin messages page | 5 |
+| S2, S6, S9, B2, B3, B4 | login lockout, logout invalidating the JWT, unverified-signup expiry, verified-only counts, re-signup, consent token in sessionStorage | 6 |
+| S7 | admin list promotion/demotion and the activity log | 7 |
+| B5, B7 | submissions export (CSV/JSON) and paginated admin data | 8 |
+| S8, S10 | CSP and security headers, `X-Request-Id` validation, axe checks | 9 |
+| all | final traceability check: every FR13.x and checklist ID has a test | 10 |
 
-## Utility, storage, and video-service test files
+## 8. Running the suites
 
-These tests call functions and services directly rather than exercising HTTP
-routes. The cases are separated by the behavior under test.
-
-### `tests/safeName.test.js` — Safe names (unit tests)
-
-41. **safeName uses its fallback for nullish and blank values** — Checks fallback
-    behavior for nullish, whitespace-only, and fully sanitized names.
-42. **safeName replaces reserved path characters and collapses whitespace** —
-    Checks removal of path-reserved characters, whitespace normalization, and
-    string conversion of non-string values.
-43. **safeName caps its output at 100 characters** — Checks the maximum safe-name
-    length.
-
-### `tests/localStorage.test.js` — Local driver and storage service (filesystem/storage integration tests)
-
-44. **local driver stores named files in folders and appends suffixes on
-    collisions** — Checks directory placement, readable keys, collision naming,
-    and file contents.
-45. **local driver handles named files without an extension and dotfiles** —
-    Checks collision naming for extensionless names and dotfiles.
-46. **local driver generates unique UUID keys when no file name is supplied** —
-    Checks generated key format and uniqueness.
-47. **local driver rejects paths escaping the storage root and keeps the source
-    file** — Checks rejection of traversal through file names or folder names and
-    confirms rejected saves do not consume the source file.
-48. **local driver stat reports missing files and remove is idempotent** — Checks
-    missing-file errors from stat and harmless removal of an absent key.
-49. **storageService forwards named folder and file name to the local driver** —
-    Checks storage-service metadata, destination key, file size, and cleanup.
-
-### `tests/videoService.test.js` — Video service (unit tests)
-
-50. **video create names video and poster from title and category safely** —
-    Checks sanitized names, category folder selection, poster naming, storage
-    calls, and category ordering.
-51. **video create uses Unassigned and Untitled fallbacks when optional labels
-    are absent** — Checks fallback folder and file names, default ordering, and
-    absent poster metadata.
-52. **video create selects detected video and image extensions** — Checks
-    content-detected extensions for WebM, MOV, PNG, and WebP rather than relying
-    on the original file name.
-53. **video create rejects a missing upload, unsupported content, and invalid
-    categories before storage** — Checks validation errors and confirms storage is
-    not called for invalid input.
-54. **video create rejects oversized or unsupported posters before storage** —
-    Checks poster size and real-content validation before any storage call.
-55. **video create accepts a poster exactly at the size limit** — Checks that a
-    poster at the configured maximum size is accepted.
-56. **video create surfaces filesystem errors instead of reporting invalid video
-    content** — Checks missing-file I/O errors are preserved and storage is not
-    called.
-57. **video create removes already stored files when poster storage fails** —
-    Checks cleanup of the stored video when the subsequent poster save fails.
-58. **video create removes video and poster if the database write fails** —
-    Checks cleanup of both stored files when database record creation fails.
-59. **creates the account only after consent and records the acceptance time** —
-    Checks that verification alone cannot log in, current consent activates the
-    account, the acceptance time and version are stored, and consent tokens
-    cannot be replayed.
-60. **declining consent discards the unfinished signup** — Checks the pending
-    account is removed and its email can be used for a new signup.
-61. **legacy accounts without consent cannot submit until they accept** — Checks
-    that older accounts are blocked from submitting until they accept the current
-    notice.
-
-## Running the suite
-
-From `backend/`, run:
-
-```bash
-npm test
+```sh
+cd backend  && npm run test:unit && npm run test:integration && npm run test:security
+cd backend  && npm run test:coverage     # c8 + the floors in coverage-thresholds.json
+cd frontend && npm run lint && npm test && npm run test:coverage && npm run build
+cd e2e      && npm run e2e               # one-off first: npx playwright install
 ```
 
-This executes `node --test --test-concurrency=1` across all `.test.js` files.
+See [setup.md](./setup.md) section 8 for the fixtures and environment each level uses, and
+`docs/FIX-PLAN.md` section 4.6 for the full gate.

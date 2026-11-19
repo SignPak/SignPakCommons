@@ -1,0 +1,9 @@
+{
+  "all": true,
+  "src": ["src"],
+  "include": ["src/**/*.js"],
+  "exclude": ["src/docs/**"],
+  "reporter": ["text-summary", "json-summary", "json", "lcov"],
+  "reports-dir": "coverage",
+  "clean": true
+}

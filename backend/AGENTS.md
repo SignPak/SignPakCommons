@@ -13,19 +13,29 @@ Run from `backend/`:
 
 ```sh
 npm run dev
-npm test
-npm test -- tests/api-videos.test.js
+npm run test:unit
+npm run test:integration
+npm run test:security
+npm test                 # all three
+npm run test:coverage    # c8 plus the floors in coverage-thresholds.json
+npm test -- tests/integration/api-videos.test.js
 ```
 
-The test runner is Node's built-in serial runner. API tests use MongoDB Memory
-Server by default. If `MONGODB_URI_TEST` is configured, tests drop that
-database; only use a disposable test database.
+The test runner is Node's built-in serial runner. Tests are split by level:
+`tests/unit/`, `tests/integration/`, `tests/security/`, with shared fixtures in
+`tests/support/`. Integration and security tests use MongoDB Memory Server by
+default; if `MONGODB_URI_TEST` is configured, tests drop that database, so only
+use a disposable one. Authentication email goes through the in-memory capture
+driver in tests (`EMAIL_DRIVER`), so nothing is sent.
+
+End-to-end tests live in `e2e/` at the repository root. `npm run e2e:server`
+here starts the API they run against.
 
 ## Guardrails
 
 - Never commit `.env`, credentials, tokens, service-account JSON, or production
   data. Environment variables are validated in `src/config/env.js`; update
-  `.env.example` and `docs/SETUP.md` when adding configuration.
+  `.env.example` and `docs/setup.md` when adding configuration.
 - Keep Zod request validation in `src/middlewares/validators/` and business
   rules in services. Use shared response and `AppError` helpers.
 - Verify file contents from signatures, not supplied MIME types. Route uploads
@@ -40,11 +50,18 @@ database; only use a disposable test database.
 - Update `src/docs/openapi.js`, `docs/API.md`, tests, and relevant architecture
   docs when changing endpoints or behavior. Do not silently change append-only
   submission or account-data retention behavior.
+- Add every new route to the access matrix in
+  `tests/security/access-matrix.test.js`; the suite fails on a route with no
+  access decision. Add a test at each level the change touches, and never lower
+  a coverage floor.
+- Keep test-only behavior unreachable in production. `EMAIL_DRIVER=capture` and
+  `E2E_TEST_HOOKS` are rejected by `src/config/env.js` when
+  `NODE_ENV=production`; keep it that way.
 
 ## References
 
 - [Backend docs index](docs/README.md)
-- [Setup and environment](docs/SETUP.md)
+- [Setup and environment](docs/setup.md)
 - [API contract](docs/API.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Module reference](docs/MODULE-REFERENCE.md)

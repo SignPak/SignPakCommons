@@ -95,6 +95,7 @@ URL-encode special characters in the database username or password.
 | `AUTH_OTP_TTL_MINUTES` | Set manually; default `5`, range `1`–`30` | Lifetime of email verification and password-reset codes. |
 | `AUTH_OTP_RESEND_SECONDS` | Set manually; default `60`, range `0`–`3600` | Minimum interval between verification-code resend requests. |
 | `AUTH_OTP_MAX_ATTEMPTS` | Set manually; default `5`, range `1`–`10` | Maximum code verification attempts. |
+| `EMAIL_DRIVER` | `brevo` or `capture`; default `brevo` | How verification and reset codes are delivered. `capture` keeps them in memory for the automated tests and never sends anything; the server refuses to start with `capture` when `NODE_ENV=production`. |
 
 Generate a JWT secret:
 
@@ -150,6 +151,7 @@ shared credentials.
 | `CONTACT_DAILY_LIMIT` | Set manually; default `25` | Maximum successfully delivered messages per UTC day. |
 | `CONTACT_USER_DAILY_LIMIT` | Set manually; default `1` | Maximum contact messages per account per UTC day. |
 | `CONTACT_ABUSE_BLOCK_MINUTES` | Set manually; default `10`, range `1`–`1440` | Temporary device/IP restriction for anonymous, mismatched-email, or over-limit contact attempts. |
+| `E2E_TEST_HOOKS` | Leave unset outside the test environment; default `false` | Test-only. With `NODE_ENV=test`, mounts `GET /__test/emails` so the Playwright suite can read captured codes. The server refuses to start when this is set with `NODE_ENV=production`. |
 
 In production, `BREVO_API_KEY`, a valid `BREVO_SENDER_EMAIL`, and
 `WEB3FORMS_ACCESS_KEY` are required. The OTP, contact, and upload values above
@@ -243,15 +245,39 @@ Check the service:
 
 ## 8. Run tests
 
-The backend test suite uses Node's built-in test runner and starts `mongodb-memory-server` when `MONGODB_URI_TEST` is not provided:
+Tests are split by level, so each can run on its own (see
+[docs/FIX-PLAN.md](../../docs/FIX-PLAN.md) section 4):
 
-```bash
-npm test
-```
+| Script | Runs | Location |
+| --- | --- | --- |
+| `npm run test:unit` | functions, services and drivers with their dependencies faked | `tests/unit/` |
+| `npm run test:integration` | HTTP requests against the real Express app with MongoDB in memory | `tests/integration/` |
+| `npm run test:security` | the route access matrix and the test-hook guard | `tests/security/` |
+| `npm test` | all three, serially | |
+| `npm run test:coverage` | all three under c8, then the coverage floors | `coverage/` |
 
-To use a disposable MongoDB database instead, set `MONGODB_URI_TEST` before running tests. The test suite drops that database, so never point it at production data.
+Shared fixtures live in `tests/support/`: `helpers.js` (environment, HTTP client, sample
+files), `apiContext.js` (app plus a fresh in-memory database and seeded accounts),
+`fakeDriveDriver.js` (an in-memory stand-in for Google Drive) and `routeInventory.js` (the
+router walk the access-matrix test uses).
 
-The GitHub Actions workflow at `.github/workflows/backend-tests.yml` runs `npm ci` and `npm test` on pushes to `main` or `master` and on pull requests.
+The suite starts `mongodb-memory-server` unless `MONGODB_URI_TEST` is set; the first run
+downloads a MongoDB binary of roughly 600 MB and caches it under `node_modules/.cache/`. To
+use a disposable MongoDB database instead, set `MONGODB_URI_TEST` before running tests — the
+suite drops that database, so never point it at real data.
+
+Authentication email goes through the capture driver in tests (`EMAIL_DRIVER` defaults to
+`capture` when `NODE_ENV=test`), so no mail is sent and the codes can be read back in-process.
+
+Coverage floors live in `coverage-thresholds.json` and are enforced by
+`scripts/check-coverage.js`. They may only be raised.
+
+End-to-end tests live in `e2e/` at the repository root and are run with `npm run e2e` from
+there; `npm run e2e:server` in this folder starts the API they use (in-memory MongoDB, local
+storage, captured email, test hooks on). See [e2e/README.md](../../e2e/README.md).
+
+`.github/workflows/ci.yml` runs the whole gate — backend, frontend, e2e and the dependency
+audit — on every push and pull request.
 
 ## 9. Frontend connection
 
@@ -274,5 +300,6 @@ The browser must send credentials for the HTTP-only authentication cookie. In pr
 - Keep `COOKIE_SAMESITE=lax` when frontend and API share a site; use `none` only when required by cross-site deployment.
 - Use `ARCHIVE_STORAGE_DRIVER=gdrive` with dedicated archive credentials and a restricted Drive folder for append-only recordings.
 - Keep `RATE_LIMIT_ENABLED=true`.
+- Leave `EMAIL_DRIVER=brevo` and `E2E_TEST_HOOKS` unset; the server refuses to start otherwise.
 - Confirm the upload limits match available storage and request limits.
 - Never commit `.env`, Google service-account JSON, JWT secrets, or database credentials.
