@@ -259,6 +259,19 @@ Frontend floors are far below the 70% target, which is the honest baseline: 24 t
 about 90 source files. Each later phase adds the page tests for the area it touches and raises
 the floor; the mapping is in the gaps table in `backend/docs/TEST-CASES.md`.
 
+### CI result
+
+Run [44596374890](https://github.com/SignPak/SignPakCommons/actions/runs/44596374890) on
+commit `c227e08`, Ubuntu + Node 22:
+
+| Job | Conclusion |
+| --- | --- |
+| Backend (unit, integration, security, coverage) | **success** — all four steps green, "Coverage gate passed." |
+| Frontend (lint, test, coverage, build) | **success** — Test Files 7 passed (7), Tests 24 passed (24) |
+| End-to-end (Playwright) | **success** — "Running 9 tests using 1 worker", "9 passed (31.4s)" |
+| Dependency audit (high and above) | **failure**, tolerated by `continue-on-error` until Phase 3 |
+| **Overall run conclusion** | **success** |
+
 ### CI fix after the first push (commit 2)
 
 The first push failed the `backend` and `e2e` jobs at `npm ci`:
@@ -284,6 +297,13 @@ suites were re-run afterwards (backend 130 passed, frontend 24 passed, lint clea
 
 The rule is now documented in `backend/AGENTS.md`, `frontend/AGENTS.md` and
 `backend/docs/setup.md`, so a later phase does not reintroduce it.
+
+### FIX-PLAN "done when" list
+
+- [x] The full test gate passes locally (audit may fail until Phase 3).
+- [x] CI is green on the branch (run 44596374890; the audit job fails by design).
+- [x] Coverage numbers are recorded, before and after, with the floors they set.
+- [x] The existing tests all still pass in their new places (64 backend, 20 frontend).
 
 ## How to verify by hand
 
@@ -365,11 +385,13 @@ Spot checks worth doing by hand:
 3. **First runs are slow.** The backend suite downloads a ~600 MB MongoDB binary once, and the
    E2E suite downloads the three Playwright browser engines once. Both are cached afterwards
    (locally and in CI), but a cold CI cache makes the first run long.
-4. **CI has not been observed yet.** The workflow is written against the same commands that
-   pass locally, but it has only ever run on this machine (Node 24, Windows) — CI uses Node 22
-   on Ubuntu. The first push is the first real run of `ci.yml`.
-5. **WebKit and Firefox E2E on Windows** are the least predictable targets locally. See the
-   gate results below for exactly which projects were run and which were not.
+4. **CI is green, on its second attempt.** Run 44596374890 passes backend, frontend and e2e
+   on Ubuntu + Node 22 (the audit job fails by design). The first attempt failed at `npm ci`;
+   see "CI fix after the first push" above. Residual risk: `ci.yml` has now run exactly twice,
+   both times with a cold MongoDB and Playwright cache, so the cache-hit path is unproven.
+5. **WebKit and Firefox E2E** pass both locally (Windows) and in CI (Ubuntu), 9 tests in each
+   environment, with no retries used. They are still the least predictable targets, and the
+   suite is small — a flake would more likely show up as later phases add real flows.
 6. **The access matrix asserts "not 401/403" for an allowed caller**, not an exact status. That
    is deliberate — it keeps the table about access control rather than duplicating every route's
    body rules — but it means the matrix would not notice a route that starts answering 500 to
