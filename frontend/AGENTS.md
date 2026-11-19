@@ -30,6 +30,19 @@ proxies `/api` to `http://localhost:5000`; start the backend separately. `vite
 preview` proxies `/api` to the end-to-end API on port 5099 instead, which is how
 the Playwright suite in `e2e/` runs the production build.
 
+### Lockfiles
+
+CI installs with the npm that ships with Node 22 (npm 10). npm 11 prunes lock entries that
+npm 10 still requires, so a lockfile written by npm 11 fails `npm ci` on CI with
+"Missing: <package> from lock file". After changing dependencies, regenerate the lockfile
+with npm 10:
+
+```sh
+npx npm@10 install --package-lock-only
+```
+
+Then check both: `npx npm@10 ci --dry-run` and `npm ci --dry-run`.
+
 ## Guardrails
 
 - Do not put credentials or private keys in `VITE_*` variables; they are exposed

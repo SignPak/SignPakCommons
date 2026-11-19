@@ -31,6 +31,19 @@ driver in tests (`EMAIL_DRIVER`), so nothing is sent.
 End-to-end tests live in `e2e/` at the repository root. `npm run e2e:server`
 here starts the API they run against.
 
+### Lockfiles
+
+CI installs with the npm that ships with Node 22 (npm 10). npm 11 prunes lock entries that
+npm 10 still requires, so a lockfile written by npm 11 fails `npm ci` on CI with
+"Missing: <package> from lock file". After changing dependencies, regenerate the lockfile
+with npm 10:
+
+```sh
+npx npm@10 install --package-lock-only
+```
+
+Then check both: `npx npm@10 ci --dry-run` and `npm ci --dry-run`.
+
 ## Guardrails
 
 - Never commit `.env`, credentials, tokens, service-account JSON, or production

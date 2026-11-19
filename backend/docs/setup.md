@@ -29,6 +29,10 @@ Set-Location backend
 npm install
 ```
 
+Dependency changes: regenerate `package-lock.json` with npm 10
+(`npx npm@10 install --package-lock-only`), because CI installs with the npm bundled with
+Node 22. A lockfile written by npm 11 omits entries npm 10 requires and fails `npm ci` there.
+
 ## 3. Create the environment file
 
 Copy the committed template. Never commit the resulting `.env` file.
