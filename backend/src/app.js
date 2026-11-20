@@ -16,12 +16,15 @@ import { verifyOrigin } from './middlewares/verifyOrigin.js'
 import routes from './routes/index.js'
 import testHookRoutes from './routes/testHooks.js'
 import { logger } from './utils/logger.js'
+import { requestLogProps } from './utils/requestLog.js'
 import swaggerUi from 'swagger-ui-express'
 
 const app = express()
 
 app.disable('x-powered-by')
-if (env.TRUST_PROXY) app.set('trust proxy', 1) // needed behind nginx/Render/Railway so rate limits see real IPs
+// Behind Nginx (deploy/nginx/api.conf) every request comes from 127.0.0.1; trusting exactly one
+// proxy hop makes req.ip the visitor's address from X-Forwarded-For (S3). Never trust more hops.
+if (env.TRUST_PROXY) app.set('trust proxy', 1)
 
 app.use(ensureServicesInitialized)
 
@@ -30,6 +33,7 @@ app.use(pinoHttp({
   logger,
   genReqId: (req, res) => { const id = req.headers['x-request-id'] || randomUUID(); res.setHeader('X-Request-Id', id); return id },
   autoLogging: { ignore: (req) => req.url.endsWith('/health') },
+  customProps: requestLogProps, // the visitor's IP (req.ip), not the proxy's socket address
   customLogLevel: (req, res, error) => (error || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),
 }))
 

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import swaggerUi from 'swagger-ui-express'
-import { isDbReady } from '../config/db.js'
 import { env } from '../config/env.js'
+import { healthController } from '../controllers/healthController.js'
 import { openapi } from '../docs/openapi.js'
 import adminRoutes from './adminRoutes.js'
 import authRoutes from './authRoutes.js'
@@ -15,10 +15,7 @@ import videoRoutes from './videoRoutes.js'
 
 const router = Router()
 
-router.get('/health', (req, res) => {
-  const db = isDbReady()
-  res.status(db ? 200 : 503).json({ data: { status: db ? 'ok' : 'degraded', database: db ? 'connected' : 'disconnected', uptime: Math.round(process.uptime()) } })
-})
+router.get('/health', healthController.get)
 
 router.get('/docs.json', (req, res) => res.json(openapi))
 // Kept out of production: swagger-ui-express serves bundled static assets from disk, and

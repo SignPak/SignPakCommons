@@ -16,6 +16,8 @@ import path from 'node:path'
 import process from 'node:process'
 
 const PORT = Number(process.env.E2E_API_PORT || 5099)
+// '::' listens on IPv6 and IPv4 loopback alike (the cross-host E2E names resolve to both).
+const HOST = process.env.E2E_API_HOST || '127.0.0.1'
 const PREVIEW_ORIGINS = process.env.E2E_CLIENT_ORIGIN || 'http://127.0.0.1:4173,http://localhost:4173'
 
 const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'signpak-e2e-'))
@@ -60,8 +62,8 @@ await Promise.all(Object.values(mongoose.models).map((model) => model.init()))
 await storageService.init()
 await authService.ensureAdminFromEnv()
 
-const server = app.listen(PORT, '127.0.0.1', () => {
-  console.log(`[e2e] API listening on http://127.0.0.1:${PORT}`)
+const server = app.listen(PORT, HOST, () => {
+  console.log(`[e2e] API listening on ${HOST}:${PORT}`)
   console.log(`[e2e] uploads in ${uploadDir}`)
   console.log(`[e2e] allowed client origins: ${PREVIEW_ORIGINS}`)
 })

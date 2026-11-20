@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 import { env } from '../../config/env.js'
 import { AppError } from '../../utils/AppError.js'
@@ -7,9 +6,9 @@ import { logger } from '../../utils/logger.js'
 import { createGoogleDriveDriver } from './googleDriveDriver.js'
 import { createLocalDriver } from './localDriver.js'
 
-const localDriver = createLocalDriver(
-  path.resolve(process.env.VERCEL ? os.tmpdir() : process.cwd(), env.UPLOAD_DIR)
-)
+// UPLOAD_DIR is resolved against the working directory (backend/ under PM2, see
+// deploy/ecosystem.config.cjs); an absolute UPLOAD_DIR is used as-is.
+const localDriver = createLocalDriver(path.resolve(process.cwd(), env.UPLOAD_DIR))
 
 /**
  * Builds a Google Drive driver instance with a explicit instance name

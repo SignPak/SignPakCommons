@@ -5,15 +5,28 @@
 The backend is an Express 4 application using Node.js 22+ and MongoDB through
 Mongoose. Environment validation lives in `src/config/env.js`. The HTTP app is
 composed in `src/app.js`; it exports an Express app without binding its own port so
-that tests and serverless hosts can import it.
+that tests can import it.
 
-`server.js` is the deployment entry point. It starts the standalone HTTP listener
-and exports a request handler for Vercel. Background initialization is idempotent
-and shared between startup and requests: `src/services/initialization.js`
-connects MongoDB, initializes the selected storage drivers, and ensures the
-configured admin exists. The app-level initialization middleware awaits this
-setup before processing a request and returns a `503 SERVICE_UNAVAILABLE` response
-if initialization fails.
+In production the API is one long-running Node process on the team's own Linux server,
+kept alive by PM2 (one process, fork mode) behind Nginx with HTTPS at `api.<DOMAIN>`;
+the website is on Vercel at `commons.<DOMAIN>`. The deployment files and the server guide
+are in `deploy/`.
+
+`server.js` is the entry point. It logs configuration warnings from
+`src/config/startupChecks.js` (for example `TRUST_PROXY` off in production), starts the
+HTTP listener, and starts initialization straight away. On `SIGTERM`/`SIGINT` it shuts down
+gracefully (`src/utils/gracefulShutdown.js`): it stops accepting connections, lets in-flight
+requests finish, closes MongoDB, and exits, or exits 1 after 10 seconds. PM2 waits 15 seconds
+before forcing it.
+
+Initialization is idempotent and shared between startup and requests:
+`src/services/initialization.js` connects MongoDB, initializes the selected storage drivers,
+and ensures the configured admin exists. The app-level initialization middleware awaits it
+before processing a request, and returns `503 SERVICE_UNAVAILABLE` if it fails. In production
+that body is generic; the underlying error is only included as `detail` outside production,
+because it can contain hosts or credentials (checklist S5). `GET /api/v1/health` is let
+through even when initialization fails, so it can report `database` and `storage` status
+(booleans only) instead of the generic 503.
 
 ## Request flow
 
@@ -114,8 +127,10 @@ stored during a failed multi-step operation.
 - Access restrictions store hashed identifiers and expose only short hints.
 - Contact requires a signed-in account email match and enforces per-account and
   global daily quotas; abusive attempts may create a temporary device/IP block.
-- `TRUST_PROXY` controls Express proxy awareness and should match the hosting
-  topology used for IP-based rate limits and restrictions.
+- `TRUST_PROXY` makes Express trust exactly one proxy hop (Nginx). With it, `req.ip`
+  is the visitor's address from `X-Forwarded-For`; rate limits, IP restrictions and the
+  `clientIp` field on every request log line all use it. Without it, a client-supplied
+  `X-Forwarded-For` is ignored. Production must set it; the server warns at startup if not.
 
 ## Testing and API documentation
 

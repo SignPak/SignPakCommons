@@ -6,7 +6,9 @@ implementation layers.
 
 | Concern | Primary modules | Notes |
 | --- | --- | --- |
-| App composition and startup | `server.js`, `src/app.js`, `src/services/initialization.js` | App composition is importable without binding a listener; initialization is shared and idempotent. |
+| App composition and startup | `server.js`, `src/app.js`, `src/services/initialization.js`, `src/config/startupChecks.js`, `src/utils/gracefulShutdown.js` | App composition is importable without binding a listener; initialization is shared and idempotent; startup warnings and graceful shutdown live in their own testable modules. |
+| Health | `src/controllers/healthController.js` | Public; booleans only; answers even when initialization failed. |
+| Deployment | `deploy/` (Nginx, PM2, `deploy.sh`, server guide), `backend/.env.production.example` | Nginx + PM2 on the team's own server. Keep `deploy/` and the deploy-config tests in step. |
 | Routes and access policy | `src/routes/`, `src/middlewares/authenticate.js`, `src/middlewares/requireRole.js` | Route definitions compose auth and validation middleware. |
 | Request validation | `src/middlewares/validators/`, `src/middlewares/validate.js` | Zod schemas validate bodies, params, and queries. |
 | HTTP response/error boundary | `src/controllers/`, `src/utils/response.js`, `src/middlewares/errorHandler.js` | Controllers adapt HTTP; services should throw `AppError` for expected failures. |

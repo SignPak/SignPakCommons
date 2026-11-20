@@ -8,8 +8,27 @@
  * (src/seo/seoUtils.js) and a plain Node script, regardless of package.json's "type".
  */
 
-// TODO: replace with the real production domain before deploying.
-export const SITE_URL = 'https://signpakcommons.example'
+/**
+ * The public site's origin, from the SITE_URL environment variable (set it in Vercel to
+ * https://commons.<your domain>). Two readers, one variable:
+ *   - Node (scripts/generateSeoAssets.js) reads process.env.SITE_URL directly;
+ *   - the browser bundle gets the same value baked in at build time as __SITE_URL__
+ *     (see `define` in vite.config.js), because process.env does not exist in a browser.
+ * Until SITE_URL is set this is the <DOMAIN> placeholder, and the SEO script warns.
+ */
+export const DEFAULT_SITE_URL = 'https://commons.<DOMAIN>'
+
+export const resolveSiteUrl = (value) => {
+  const trimmed = String(value ?? '').trim().replace(/\/+$/, '')
+  return trimmed || DEFAULT_SITE_URL
+}
+
+/* global __SITE_URL__ */
+const configuredSiteUrl = typeof __SITE_URL__ !== 'undefined'
+  ? __SITE_URL__
+  : globalThis.process?.env?.SITE_URL
+
+export const SITE_URL = resolveSiteUrl(configuredSiteUrl)
 
 export const SEO_ROUTES = [
   {

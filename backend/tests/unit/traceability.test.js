@@ -12,7 +12,8 @@ import url from 'node:url'
 
 const backendRoot = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..', '..')
 const repoRoot = path.resolve(backendRoot, '..')
-const table = fs.readFileSync(path.join(backendRoot, 'docs', 'TEST-CASES.md'), 'utf8')
+// Normalised: a Windows checkout (core.autocrlf) gives CRLF line endings.
+const table = fs.readFileSync(path.join(backendRoot, 'docs', 'TEST-CASES.md'), 'utf8').replace(/\r\n/g, '\n')
 
 // SRS security requirements this project traces (see the legend in TEST-CASES.md).
 const DEFINED_SE = new Set(['SE-1', 'SE-2', 'SE-3', 'SE-4', 'SE-6', 'SE-9', 'SE-10'])

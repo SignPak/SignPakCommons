@@ -11,6 +11,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  // The site's public origin for canonical links, baked in at build time. Same SITE_URL
+  // variable the SEO script reads (src/seo/seoCatalog.mjs); empty means "<DOMAIN> placeholder".
+  define: {
+    __SITE_URL__: JSON.stringify(process.env.SITE_URL ?? ''),
+  },
   // ffmpeg.wasm starts its own module worker; pre-bundling would break the worker URL.
   optimizeDeps: {
     exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
@@ -24,6 +29,8 @@ export default defineConfig({
   // the site and the API on one origin, so the session cookie behaves the same in every
   // browser engine (the cross-hostname cookie case gets its own test in Phase 1).
   preview: {
+    // The cross-host E2E serves the site as commons.localtest.me (e2e/playwright.config.js).
+    allowedHosts: ['.localtest.me'],
     proxy: {
       '/api': `http://127.0.0.1:${E2E_API_PORT}`,
     },

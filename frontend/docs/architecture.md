@@ -188,9 +188,10 @@ saved or OS preference before the first paint.
 
 `src/seo/seoCatalog.mjs` is the source for static route metadata and the
 canonical site URL. Only indexable entries in the catalog are included in the
-sitemap and React Snap route list; entries marked `noindex` are excluded. Set
-`SITE_URL` to the deployed frontend origin before generating production SEO
-assets.
+sitemap and React Snap route list; entries marked `noindex` are excluded. The site URL
+comes from the `SITE_URL` environment variable: the Node SEO script reads it directly, and
+`vite.config.js` bakes the same value into the bundle as `__SITE_URL__`. Unset, it is the
+`https://commons.<DOMAIN>` placeholder and `npm run seo:generate` prints a warning.
 
 `npm run seo:generate` writes the sitemap, robots file, and
 `react-snap-routes.json`; it runs as part of `npm run build`. `npm run snap`
@@ -202,10 +203,12 @@ site plus an available headless Chromium executable.
 The Vite development server provides the `/api` proxy. For Vercel, `vercel.json`
 rewrites application routes to `/` so that direct navigation or a reload on a
 client-side route such as `/admin/categories` serves the SPA entry point. When
-the frontend and API are deployed on different origins, configure
-`VITE_API_ORIGIN` in the frontend build environment and set the backend's
-`CLIENT_ORIGIN` to the frontend origin. Cross-site session cookies require HTTPS
-and compatible backend cookie settings.
+In production the site is `commons.<DOMAIN>` (Vercel) and the API is `api.<DOMAIN>` (the
+team's server): different origins but the same site, so the API's host-only `SameSite=Lax`
+cookie is sent on the site's credentialed requests. Set `VITE_API_ORIGIN=https://api.<DOMAIN>`
+in the Vercel build environment, and the backend's `CLIENT_ORIGIN` to the site origin.
+`e2e/tests/cross-host-cookie.spec.js` reproduces this layout with `commons.localtest.me` and
+`api.localtest.me`.
 
 ## Project map
 
