@@ -195,6 +195,19 @@ Run on this branch, Windows 11, Node v24.13.1, 21 Nov 2026, pasted from real out
 
 All three backend directory targets from FIX-PLAN 4.6 are now met.
 
+### CI
+
+Run [44801123374](https://github.com/SignPak/SignPakCommons/actions/runs/44801123374) on
+`13076bf`, overall **success**:
+
+| Job | Result |
+| --- | --- |
+| Backend | pass 89 / 56 / 59; 204 under coverage; "Coverage gate passed." |
+| Frontend | success |
+| End-to-end | "12 passed (36.7s)" |
+| Deploy files | success |
+| Dependency audit | failure, tolerated until Phase 3 |
+
 ## Go-live check (pending, joins Phase 1's list)
 
 - [ ] After a production upload, `uploads/tmp` on the server is empty.
