@@ -453,6 +453,13 @@ Run on this branch, Windows 11, Node v24.13.1, 20 Nov 2026.
 Traceability: 6 new rows (U-58–U-61, S-09, S-10), U-56 renamed; the counts are now 40 files and
 205 cases. The traceability test validates every row.
 
+**CI** on `f1a5223`, run
+[44796632561](https://github.com/SignPak/SignPakCommons/actions/runs/44796632561): overall
+**success**. Backend (pass 61 / 49 / 56; 166 under coverage), frontend, e2e and deploy files all
+green; the audit fails as expected. On the Linux runner, S-10 probed the runner's real network
+address and was refused immediately (2 ms, no "no non-loopback address" diagnostic), so the
+loopback-only bind is proven there too.
+
 ### Real-server "done when" — still pending, now with the real addresses
 
 **Blocked on: the server (D1).** The domain is decided.
