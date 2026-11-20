@@ -400,3 +400,46 @@ Spot checks worth doing by hand:
    production (`env.isTest`, `E2E_TEST_HOOKS`, and the `env.js` production refusal), and five
    tests assert them, but it is still code that must never be reachable. Worth a look in every
    future review.
+
+## Fixes after verification
+
+### 1. Wrong SE mappings in `backend/docs/TEST-CASES.md`
+Every row was re-checked against the SRS definitions (SE-1 RBAC, SE-2 sessions/JWT/logout,
+SE-3 password hashing, SE-4 lockout, SE-6 data separation, SE-9 valid token, SE-10 server-side
+validation). All corrections from the verification list were applied as given. Beyond that list,
+a row now cites an SE only when its test asserts that behaviour (checked in each test body):
+- Added: I-06, I-19, I-40 → SE-10; I-07 → SE-1, SE-2, SE-3 (ignores a submitted role, cookie
+  attributes, no hash in the response); I-12, I-18, I-24, I-25, I-28, I-37 → SE-1; I-17, I-30 →
+  SE-9 + SE-10; I-20, I-27, I-39 → SE-1 + SE-10; I-31 → SE-6 (another contributor sees 0
+  submissions); I-41, I-42 → SE-2 (old session gets 401).
+- I-10 (same answer for wrong password and unknown email) → FR13.1 only; it is not lockout.
+- No row cites SE-4 any more: lockout does not exist until Phase 6.
+- U-20–U-27 (fake Drive driver, capture email store) → "— (test infrastructure)"; I-01 (root
+  and docs routes) → "— (API metadata)". Previously FR13.x, which they don't test.
+- **Please check:** I-42 and FU-17 (contributor *self*-deletion) moved from FR13.12 to FR13.13.
+  FR13.12 covers admin suspend/delete; FR13.13 is the deletion-request flow these tests' "recordings
+  remain until requested" behaviour belongs to. The SRS isn't in the repo, so I couldn't confirm.
+- The table legend now states these definitions.
+
+Regression guard: new `backend/tests/unit/traceability.test.js` (U-35–U-37) fails if the table
+cites an undefined requirement ID (e.g. SE-5), or lists a test file/name that does not exist
+(parameterised `it.each` names are matched against their `%s` template). Verified it fails when
+I-04 is set back to SE-5.
+
+### 2. Frontend audit skipped when the backend audit fails
+Added `if: always()` to "Audit frontend production dependencies" in `.github/workflows/ci.yml`.
+No unit test: the CI run on this push is the check (the frontend audit step must run even though
+the backend audit fails).
+
+### Test gate after the fixes (local, 20 Nov 2026)
+| Gate | Result | Exit |
+| --- | --- | --- |
+| backend test:unit | 37 passed (34 + 3 new) | 0 |
+| backend test:integration / test:security | 45 / 51 passed | 0 |
+| backend test:coverage | 130 passed before the new test; 86.77% lines / 85.09% branches; floors passed | 0 |
+| frontend lint / test / test:coverage / build | clean / 24 passed / passed / built | 0 |
+| e2e | 9 passed (36.8 s), chromium + firefox + webkit | 0 |
+| audits | backend 6 (4 high), frontend 2 high | 1 (expected until Phase 3) |
+
+Not re-run after adding the traceability test: `test:coverage` (the new test reads docs only and
+adds no `src` coverage).

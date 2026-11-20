@@ -179,5 +179,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
       - name: Audit frontend production dependencies
+        # Run even when the backend audit fails, so both results are always reported.
+        if: always()
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high
