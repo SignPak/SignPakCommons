@@ -436,10 +436,15 @@ the backend audit fails).
 | --- | --- | --- |
 | backend test:unit | 37 passed (34 + 3 new) | 0 |
 | backend test:integration / test:security | 45 / 51 passed | 0 |
-| backend test:coverage | 130 passed before the new test; 86.77% lines / 85.09% branches; floors passed | 0 |
+| backend test:coverage | 133 passed (includes the new test); 86.77% lines / 85.09% branches; floors passed | 0 |
 | frontend lint / test / test:coverage / build | clean / 24 passed / passed / built | 0 |
 | e2e | 9 passed (36.8 s), chromium + firefox + webkit | 0 |
 | audits | backend 6 (4 high), frontend 2 high | 1 (expected until Phase 3) |
 
-Not re-run after adding the traceability test: `test:coverage` (the new test reads docs only and
-adds no `src` coverage).
+### CI on the fixes
+Run [44752537254](https://github.com/SignPak/SignPakCommons/actions/runs/44752537254) on
+`b390394`, overall conclusion **success**: backend (tests 133, pass 133, "Coverage gate
+passed."), frontend and e2e ("9 passed (26.2s)") all green. In the audit job, "Audit frontend
+production dependencies" now **runs** after the backend audit fails (step conclusion: failure,
+2 high) instead of being skipped — issue 2 confirmed fixed. The job is still tolerated by
+`continue-on-error` until Phase 3.
