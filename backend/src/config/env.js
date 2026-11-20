@@ -32,6 +32,9 @@ const testSafeEnv = isTest
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(5000),
+  // Address the server listens on. Unset: 127.0.0.1 in production (only Nginx on the same
+  // machine can connect, so nobody can bypass it and forge X-Forwarded-For), 0.0.0.0 elsewhere.
+  HOST: z.string().trim().min(1, 'HOST must be an address such as 127.0.0.1; leave it unset for the default.').optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   TRUST_PROXY: bool.default(false),
 
@@ -190,6 +193,7 @@ export const env = Object.freeze({
   ...data,
   isProduction: data.NODE_ENV === 'production',
   isTest: data.NODE_ENV === 'test',
+  HOST: data.HOST ?? (data.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0'),
   COOKIE_SECURE: data.COOKIE_SECURE ?? data.NODE_ENV === 'production',
   clientOrigins: data.CLIENT_ORIGIN.split(',').map((item) => item.trim().replace(/\/$/, '')).filter(Boolean),
 })

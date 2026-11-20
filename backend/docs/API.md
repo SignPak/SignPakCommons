@@ -59,7 +59,7 @@ All paths below are relative to `/api/v1`.
 
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
-| GET | `/health` | Public | Report API uptime and database connectivity; returns `503` while the database is unavailable. |
+| GET | `/health` | Public | Report uptime, database connectivity and whether storage initialized. `200` with `status: ok` only when both are up; otherwise `503` with `status: degraded`. Booleans only, and it answers even when initialization failed. |
 | POST | `/auth/signup` | Public | Create an unverified contributor and send an email code. |
 | POST | `/auth/login` | Public | Authenticate and set the session cookie. |
 | POST | `/auth/verify-email` | Public | Verify an email code and return a short-lived consent token. |

@@ -17,8 +17,8 @@ npm test                  # unit, integration, and security suites
 Use Node.js 22+ and a MongoDB instance (local or Atlas). Environment values are
 validated while loading the app. The standalone server binds its listener and
 initializes MongoDB, selected storage drivers, and the configured admin.
-Requests wait for the same shared initialization to finish. `server.js` also
-exports a handler for Vercel.
+Requests wait for the same shared initialization to finish. In production it runs
+under PM2 behind Nginx on the team's own server; see [deploy/README.md](../deploy/README.md).
 
 ## Architecture
 
@@ -46,7 +46,8 @@ business rules.
 
 `src/app.js` composes the Express app without binding a port;
 `src/services/initialization.js` initializes MongoDB, storage, and the configured
-admin idempotently; `server.js` is the standalone and Vercel entry point.
+admin idempotently; `server.js` is the entry point (startup warnings, listener, graceful
+shutdown on `SIGTERM`/`SIGINT`).
 
 Read the [documentation index](docs/README.md), [API](docs/API.md),
 [architecture](docs/ARCHITECTURE.md), [module reference](docs/MODULE-REFERENCE.md),

@@ -82,7 +82,7 @@ async function main() {
   )
 
   console.log(
-    `Generated SEO assets for ${routes.length} canonical routes in ${publicDir}`,
+    `Generated SEO assets for ${routes.length} canonical routes in ${publicDir} (site: ${catalog.SITE_URL})`,
   )
 }
 

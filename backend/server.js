@@ -1,26 +1,24 @@
 import app from './src/app.js'
+import { disconnectDb } from './src/config/db.js'
 import { env } from './src/config/env.js'
+import { startupWarnings } from './src/config/startupChecks.js'
 import { initServices } from './src/services/initialization.js'
+import { createShutdown } from './src/utils/gracefulShutdown.js'
 import { logger } from './src/utils/logger.js'
 
-// Vercel serverless handler export
-async function handler(req, res) {
-  return app(req, res)
-}
+// Standalone Node process, kept alive by PM2 behind Nginx (deploy/). See deploy/README.md.
+for (const warning of startupWarnings(env)) logger.warn(warning)
 
-// Standalone execution (Railway / Docker / Local Node)
-// Ignore process.env.VERCEL if running via direct `node server.js` command
-const PORT = env.PORT || process.env.PORT || 5000
-
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`==================================================`)
-  console.log(`API SERVER LISTENING ON http://0.0.0.0:${PORT}`)
-  console.log(`==================================================`)
+// HOST defaults to 127.0.0.1 in production: Nginx is the only client (S3).
+const server = app.listen(env.PORT, env.HOST, () => {
+  logger.info({ host: env.HOST, port: env.PORT }, 'API server listening')
 })
 
-// Trigger background initialization immediately after port binding
+// Start connecting right away instead of waiting for the first request.
 initServices().catch((error) => {
-  console.error('[BOOT ERROR] Service initialization failed on boot:', error.message)
+  logger.error({ err: error }, 'Service initialization failed on boot; requests will retry it')
 })
 
-export default handler
+const shutdown = createShutdown({ server, disconnectDb, logger })
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))

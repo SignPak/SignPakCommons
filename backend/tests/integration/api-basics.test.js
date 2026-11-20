@@ -33,6 +33,43 @@ describe('basics', () => {
     assert.deepEqual(res.body.data.database, 'connected')
   })
 
+  test('C1: health reports database and storage status', async () => {
+    const res = await new Client(base).get('/health')
+    assert.equal(res.status, 200)
+    assert.equal(res.body.data.status, 'ok')
+    assert.equal(res.body.data.database, 'connected')
+    assert.equal(res.body.data.storage, true)
+    // Public endpoint: booleans and counters only.
+    assert.deepEqual(Object.keys(res.body.data).sort(), ['database', 'status', 'storage', 'uptime'])
+  })
+
+  test('S3: without TRUST_PROXY a forged X-Forwarded-For is ignored', async () => {
+    const forged = '203.0.113.9'
+    const made = await admin.post('/admin/restrictions', { type: 'ip', value: forged, reason: 'forged header test' })
+    assert.equal(made.status, 201, JSON.stringify(made.body))
+    try {
+      // Not behind a trusted proxy, so the header is just client input and must not decide req.ip.
+      const res = await new Client(base).get('/health', { headers: { 'x-forwarded-for': forged } })
+      assert.equal(res.status, 200)
+    } finally {
+      assert.equal((await admin.delete(`/admin/restrictions/${made.body.data.id}`)).status, 204)
+    }
+  })
+
+  test('C4: the session cookie is host-only, HttpOnly and SameSite=Lax', async () => {
+    const login = await new Client(base).post('/auth/login', { email: 'omar@example.com', password: 'password1' })
+    assert.equal(login.status, 200)
+    const cookie = login.setCookie.find((line) => line.startsWith('signpak_token='))
+    assert.ok(cookie, 'login must set the session cookie')
+    const attributes = cookie.split(';').slice(1).map((part) => part.trim().toLowerCase())
+    assert.ok(attributes.includes('httponly'))
+    assert.ok(attributes.includes('samesite=lax'))
+    assert.ok(attributes.includes('path=/'))
+    // No Domain attribute: the cookie belongs to api.commons.signpak.tech alone (D2), and same-site
+    // requests from commons.signpak.tech still carry it.
+    assert.ok(!attributes.some((part) => part.startsWith('domain=')), cookie)
+  })
+
   test('public landing stats return aggregate counts without authentication', async () => {
     const client = new Client(base)
     const response = await client.get('/public/stats')

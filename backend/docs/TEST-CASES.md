@@ -20,20 +20,21 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 0** (backend 1.0.6, frontend 1.0.9):
+Counts as of **Phase 1** (backend 1.0.7, frontend 1.0.10):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 7 | 37 |
-| Integration (backend) | `backend/tests/integration/` | 10 | 45 |
-| Security (backend) | `backend/tests/security/` | 2 | 51 |
-| Unit (frontend) | `frontend/test/unit/` | 6 | 20 |
+| Unit (backend) | `backend/tests/unit/` | 14 | 61 |
+| Integration (backend) | `backend/tests/integration/` | 11 | 49 |
+| Security (backend) | `backend/tests/security/` | 4 | 56 |
+| Unit (frontend) | `frontend/test/unit/` | 7 | 23 |
 | Integration (frontend) | `frontend/test/integration/` | 1 | 4 |
-| End-to-end | `e2e/tests/` | 2 | 9 (3 specs × 3 browsers) |
-| **Total** | | **28** | **166** |
+| End-to-end | `e2e/tests/` | 3 | 12 (4 tests × 3 browsers) |
+| **Total** | | **40** | **205** |
 
 The backend security count is per-route: the access matrix produces one case per route (47
-today) plus the completeness check, and the hook suite adds three.
+today) plus the completeness check; the hook suite adds three, the production-error suite
+three and the listen-address suite two.
 
 ## 1. Backend unit tests — `backend/tests/unit/`
 
@@ -76,6 +77,30 @@ today) plus the completeness check, and the hook suite adds three.
 | U-35 | `traceability.test.js` | TEST-CASES.md has one well-formed row per test ID | — (test infrastructure, no SRS requirement) | — | unit |
 | U-36 | `traceability.test.js` | TEST-CASES.md cites only requirement IDs the SRS defines | — (test infrastructure, no SRS requirement) | — | unit |
 | U-37 | `traceability.test.js` | every row in TEST-CASES.md points at a test that exists | — (test infrastructure, no SRS requirement) | — | unit |
+| U-38 | `initialization.test.js` | S5: production 503 bodies carry no detail | — (deployment safety, no SRS requirement) | S5 | unit |
+| U-39 | `initialization.test.js` | S5: development 503 bodies keep the detail for debugging | — (deployment safety, no SRS requirement) | S5 | unit |
+| U-40 | `initialization.test.js` | S5: a missing error still gives a well-formed body | — (deployment safety, no SRS requirement) | S5 | unit |
+| U-41 | `startupChecks.test.js` | S3: warns when TRUST_PROXY is off in production | — (deployment safety, no SRS requirement) | S3 | unit |
+| U-42 | `startupChecks.test.js` | S3: no proxy warning in production when TRUST_PROXY is on | — (deployment safety, no SRS requirement) | S3 | unit |
+| U-43 | `startupChecks.test.js` | S3: no proxy warning outside production | — (deployment safety, no SRS requirement) | S3 | unit |
+| U-44 | `gracefulShutdown.test.js` | C1: shutdown stops accepting requests, closes MongoDB and exits 0 | QA-3 | C1 | unit |
+| U-45 | `gracefulShutdown.test.js` | C1: a second signal during shutdown is ignored | QA-3 | C1 | unit |
+| U-46 | `gracefulShutdown.test.js` | C1: shutdown forces exit 1 when draining takes too long | QA-3 | C1 | unit |
+| U-47 | `gracefulShutdown.test.js` | C1: a failure while closing exits 1 instead of hanging | QA-3 | C1 | unit |
+| U-48 | `healthController.test.js` | C1: health is ok only when the database and storage are both up | QA-3 | C1 | unit |
+| U-49 | `healthController.test.js` | C1: health exposes booleans and counters only | QA-3 | C1 | unit |
+| U-50 | `requestLog.test.js` | S3: request logs record the client IP Express resolved, not the proxy socket | — (deployment safety, no SRS requirement) | S3 | unit |
+| U-51 | `requestLog.test.js` | S3: request logs fall back to the socket address when req.ip is unavailable | — (deployment safety, no SRS requirement) | S3 | unit |
+| U-52 | `deployConfig.test.js` | C1: nginx config sets the body limit, unbuffered uploads, timeouts and forwarding headers | FR13.7, QA-3 | C1, S3 | unit |
+| U-53 | `deployConfig.test.js` | C1: nginx body limit leaves room above the API upload limit | FR13.7 | C1 | unit |
+| U-54 | `deployConfig.test.js` | C1: PM2 runs exactly one fork-mode process | QA-3 | C1, S3 | unit |
+| U-55 | `deployConfig.test.js` | C1: deploy.sh stops on errors and fails unless health reports ok | QA-3 | C1 | unit |
+| U-56 | `deployConfig.test.js` | C1: deploy files name api.commons.signpak.tech and commons.signpak.tech, with no placeholders left | — (deployment safety, no SRS requirement) | C1 | unit |
+| U-57 | `deployConfig.test.js` | C1: the production env template is a valid production configuration once filled in | — (deployment safety, no SRS requirement) | C1, C4, S3 | unit |
+| U-58 | `listenHost.test.js` | S3: production listens on 127.0.0.1 by default, so only Nginx can reach Node | FR13.12 | S3 | unit |
+| U-59 | `listenHost.test.js` | S3: development and test listen on 0.0.0.0 by default | FR13.12 | S3 | unit |
+| U-60 | `listenHost.test.js` | S3: an explicit HOST wins in every environment | FR13.12 | S3 | unit |
+| U-61 | `listenHost.test.js` | S3: a blank HOST is rejected instead of silently meaning "all interfaces" | FR13.12 | S3 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -129,6 +154,10 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-43 | `api-admin-user-controls.test.js` | admin deletion removes the account and cooldowns but retains submissions and recordings | FR13.12 | C3 (to change) | integration |
 | I-44 | `api-admin-user-controls.test.js` | device restrictions reject matching IDs, expose only a hint, and can be removed | FR13.12 | S10 | integration |
 | I-45 | `api-admin-user-controls.test.js` | IP restrictions block API traffic while admin routes remain available for recovery | FR13.12 | — | integration |
+| I-46 | `api-basics.test.js` | C1: health reports database and storage status | QA-3 | C1 | integration |
+| I-47 | `api-basics.test.js` | S3: without TRUST_PROXY a forged X-Forwarded-For is ignored | FR13.12 | S3 | integration |
+| I-48 | `api-basics.test.js` | C4: the session cookie is host-only, HttpOnly and SameSite=Lax | SE-2 | C4 | integration |
+| I-49 | `api-proxy.test.js` | S3: with TRUST_PROXY=true the client IP comes from X-Forwarded-For | FR13.12 | S3 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -139,6 +168,11 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | S-03 | `test-hooks.test.js` | E2E_TEST_HOOKS is off in this environment | — (deployment safety, no SRS requirement) | — | security |
 | S-04 | `test-hooks.test.js` | GET /__test/emails does not exist without E2E_TEST_HOOKS | — (deployment safety, no SRS requirement) | — | security |
 | S-05 | `test-hooks.test.js` | the router stack contains no /__test route | — (deployment safety, no SRS requirement) | — | security |
+| S-06 | `production-errors.test.js` | S5: the production 503 has no detail and does not echo the error | — (deployment safety, no SRS requirement) | S5 | security |
+| S-07 | `production-errors.test.js` | S5: every route answers with the same generic body while initialization fails | — (deployment safety, no SRS requirement) | S5 | security |
+| S-08 | `production-errors.test.js` | C1: the production health check reports the failure as booleans only | QA-3 | C1, S5 | security |
+| S-09 | `listen-address.test.js` | S3: the production server answers on loopback, where Nginx connects | FR13.12 | S3 | security |
+| S-10 | `listen-address.test.js` | S3: the production server refuses connections on the machine's network addresses | FR13.12 | S3 | security |
 
 The matrix in S-01 calls every route as an anonymous visitor, a contributor, a suspended
 contributor and an admin. A denied caller must get the exact status (401 or 403); an allowed
@@ -169,6 +203,9 @@ a new route cannot be added without an access decision.
 | FU-18 | `AdminVideos.test.jsx` | requires an explicit poster image or auto-frame choice | FR13.11 | — | unit |
 | FU-19 | `AdminVideos.test.jsx` | uploads a selected poster image instead of the auto-generated frame | FR13.11 | — | unit |
 | FU-20 | `AdminVideos.test.jsx` | adds a direct HTTPS video URL with a required poster instead of uploading video bytes | FR13.11 | — | unit |
+| FU-21 | `seoCatalog.test.js` | C1: SITE_URL defaults to https://commons.signpak.tech | — (deployment safety, no SRS requirement) | C1 | unit |
+| FU-22 | `seoCatalog.test.js` | C1: an explicit SITE_URL is used, with a trailing slash trimmed | — (deployment safety, no SRS requirement) | C1 | unit |
+| FU-23 | `seoCatalog.test.js` | C1: no longer points at the old signpakcommons.example placeholder | — (deployment safety, no SRS requirement) | C1 | unit |
 
 ## 5. Frontend integration tests — `frontend/test/integration/`
 
@@ -191,6 +228,7 @@ API with an in-memory database.
 | E-01 | `landing.spec.js` | loads and shows the public sections without page errors | UI 3.1.1.3 | — | E2E |
 | E-02 | `landing.spec.js` | the API the site talks to is healthy through the preview proxy | QA-3 | C1 (fixture) | E2E |
 | E-03 | `signup.spec.js` | sign-up: form, emailed code, consent, then the library | FR13.1, OR-19 | — | E2E |
+| E-04 | `cross-host-cookie.spec.js` | C4: login cookie set by api.localtest.me works on commons.localtest.me | FR13.1, SE-2 | C4 | E2E |
 
 ## 7. Gaps to close in later phases
 
@@ -200,7 +238,7 @@ Drive upload`) and a row here.
 
 | Checklist | Planned coverage | Phase |
 | --- | --- | --- |
-| C1, C4, S3, S5 | 503 detail hidden in production, proxy IP handling, health storage status, cross-hostname cookie | 1 |
+| C1, C4, S3, S5 | **Covered in Phase 1** (U-38–U-61, I-46–I-49, S-06–S-10, FU-21–FU-23, E-04). The real-server checks are still pending: see `docs/phase-reports/PHASE-1.md`. | 1 |
 | C5, B1, B6, B8 | temp-file cleanup, cooldown release on cleanup failure, video brand sniffing, single Drive folder per path | 2 |
 | S1 | the whole suite re-run on updated dependencies; the audit job becomes required | 3 |
 | C2, S4 | contact form sends, deletion request with an emailed code, per-sender quotas | 4 |

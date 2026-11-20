@@ -8,8 +8,26 @@
  * (src/seo/seoUtils.js) and a plain Node script, regardless of package.json's "type".
  */
 
-// TODO: replace with the real production domain before deploying.
-export const SITE_URL = 'https://signpakcommons.example'
+/**
+ * The public site's origin: https://commons.signpak.tech (decision D2), overridable with the
+ * SITE_URL environment variable, e.g. for a staging deployment. Two readers, one variable:
+ *   - Node (scripts/generateSeoAssets.js) reads process.env.SITE_URL directly;
+ *   - the browser bundle gets the same value baked in at build time as __SITE_URL__
+ *     (see `define` in vite.config.js), because process.env does not exist in a browser.
+ */
+export const DEFAULT_SITE_URL = 'https://commons.signpak.tech'
+
+export const resolveSiteUrl = (value) => {
+  const trimmed = String(value ?? '').trim().replace(/\/+$/, '')
+  return trimmed || DEFAULT_SITE_URL
+}
+
+/* global __SITE_URL__ */
+const configuredSiteUrl = typeof __SITE_URL__ !== 'undefined'
+  ? __SITE_URL__
+  : globalThis.process?.env?.SITE_URL
+
+export const SITE_URL = resolveSiteUrl(configuredSiteUrl)
 
 export const SEO_ROUTES = [
   {

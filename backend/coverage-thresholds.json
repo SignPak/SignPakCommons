@@ -10,11 +10,11 @@
     {
       "name": "src/services",
       "match": "src/services/",
-      "lines": 77,
+      "lines": 78,
       "branches": 75,
       "target": {
         "lines": 80,
-        "note": "Phase 0 baseline is 77.77%. googleDriveDriver.js and the two external senders cannot be exercised without Google/Brevo; Phase 2 wires in tests/support/fakeDriveDriver.js and should clear 80%."
+        "note": "Phase 0 baseline 77.77%, Phase 1 78.52%. googleDriveDriver.js and the two external senders cannot be exercised without Google/Brevo; Phase 2 wires in tests/support/fakeDriveDriver.js and should clear 80%."
       }
     },
     {

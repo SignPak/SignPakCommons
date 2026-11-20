@@ -37,6 +37,12 @@ Node 22. A lockfile written by npm 11 omits entries npm 10 requires and fails `n
 
 Copy the committed template. Never commit the resulting `.env` file.
 
+`.env.example` is for **local development**. A production server starts from
+`.env.production.example` instead, which already holds the production settings
+(`NODE_ENV=production`, `TRUST_PROXY=true`, HTTPS-only `SameSite=Lax` cookies, Google Drive
+storage, 10-minute codes); the server guide in [deploy/README.md](../../deploy/README.md)
+walks through it.
+
 macOS/Linux:
 
 ```bash
@@ -83,6 +89,7 @@ URL-encode special characters in the database username or password.
 | --- | --- | --- |
 | `NODE_ENV` | Set manually: `development`, `test`, or `production` | Selects runtime behavior and production cookie defaults. |
 | `PORT` | Set manually; default `5000` | Port used by the Express server. |
+| `HOST` | Usually leave unset | Address the server listens on. Unset: `127.0.0.1` in production, so only Nginx on the same machine can reach Node (nobody can bypass it and forge `X-Forwarded-For`); `0.0.0.0` in development and test. Set it only for an unusual topology. |
 | `LOG_LEVEL` | Set manually: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent` | Controls structured log verbosity. |
 | `TRUST_PROXY` | Set `true` behind a trusted reverse proxy | Enables Express proxy awareness for client IPs used by rate limits and access restrictions. |
 | `CLIENT_ORIGIN` | Frontend URL, for example `http://localhost:5173` | CORS allowlist and state-changing request origin check. Separate multiple origins with commas. |
@@ -230,10 +237,10 @@ Production-style start:
 npm start
 ```
 
-For a standalone Node process, `server.js` binds the HTTP listener and starts
-service initialization. Requests await the same shared initialization promise
-before routing. On Vercel, `server.js` exports an Express-compatible handler and
-the first request performs initialization. Initialization does the following:
+`server.js` logs any configuration warnings, binds the HTTP listener and starts service
+initialization; requests await the same shared initialization promise before routing. In
+production PM2 runs it (`deploy/ecosystem.config.cjs`); `SIGTERM` drains in-flight requests
+and closes MongoDB before exiting. Initialization does the following:
 
 1. Validate environment variables while loading the app.
 2. Connect to MongoDB if it is not already connected.
@@ -291,17 +298,24 @@ The frontend uses the API base configured by `VITE_API_ORIGIN`. For local develo
 CLIENT_ORIGIN=http://localhost:5173
 ```
 
-The browser must send credentials for the HTTP-only authentication cookie. In production, set `CLIENT_ORIGIN` to the exact deployed frontend origin and configure HTTPS cookie settings.
+The browser must send credentials for the HTTP-only authentication cookie. In production the site is `https://commons.signpak.tech` (Vercel, `VITE_API_ORIGIN=https://api.commons.signpak.tech`) and the API is `https://api.commons.signpak.tech`: two hosts of one site, so the host-only `SameSite=Lax` cookie is sent on every request the site makes (decision D2). Set `CLIENT_ORIGIN=https://commons.signpak.tech`.
 
 ## 10. Production checklist
 
+The step-by-step server guide (Nginx, PM2, certbot, firewall, DNS, Vercel) is
+[deploy/README.md](../../deploy/README.md). Start `backend/.env` from
+`.env.production.example`.
+
 - Use MongoDB Atlas or a managed MongoDB deployment.
+- Set `TRUST_PROXY=true` (the API is behind Nginx); the server warns at startup otherwise.
+- Check `GET /api/v1/health` reports `"status":"ok"`, `"database":"connected"` and
+  `"storage":true` (`deploy/deploy.sh` does this after every deploy).
 - Set `NODE_ENV=production`.
 - Generate a unique `JWT_SECRET` and store it in the host secret manager.
 - Set a strong admin password and never expose it to the frontend.
 - Set the exact production frontend URL in `CLIENT_ORIGIN`.
 - Use HTTPS with `COOKIE_SECURE=true`.
-- Keep `COOKIE_SAMESITE=lax` when frontend and API share a site; use `none` only when required by cross-site deployment.
+- Keep `COOKIE_SAMESITE=lax`: site and API are `commons.signpak.tech` and `api.commons.signpak.tech`, one site. `none` would only be needed across sites, which Safari, iOS, Brave and private windows block.
 - Use `ARCHIVE_STORAGE_DRIVER=gdrive` with dedicated archive credentials and a restricted Drive folder for append-only recordings.
 - Keep `RATE_LIMIT_ENABLED=true`.
 - Leave `EMAIL_DRIVER=brevo` and `E2E_TEST_HOOKS` unset; the server refuses to start otherwise.

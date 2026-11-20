@@ -43,3 +43,6 @@ e2e/playwright-report/
 
 # mongodb-memory-server download cache used by CI (MONGOMS_DOWNLOAD_DIR)
 .mongodb-binaries/
+
+# Second frontend build used by the cross-host E2E test
+frontend/dist-crosshost/

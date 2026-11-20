@@ -82,7 +82,8 @@ JSON and multipart upload requests use the same request helper.
 
 | Variable | Purpose |
 | --- | --- |
-| `VITE_API_ORIGIN` | Optional API origin, e.g. `https://api.example.com`. Empty by default; requests use the Vite `/api` proxy locally. |
+| `VITE_API_ORIGIN` | API origin. Production: `https://api.commons.signpak.tech`. Empty by default; requests then use the Vite `/api` proxy locally. |
+| `SITE_URL` | Public site origin for the sitemap, robots.txt and canonical links. Production: `https://commons.signpak.tech`. Not `VITE_`-prefixed because the Node SEO script reads it too; the build bakes the same value into the bundle. Unset means the production default, `https://commons.signpak.tech`; set it only for another deployment (e.g. staging). |
 | `VITE_MAX_RECORDING_UPLOAD_MB` | Optional client-side recording size limit in MiB. Defaults to `100`; keep it equal to the backend's `MAX_RECORDING_UPLOAD_MB`. Recordings also stop automatically at 10 minutes, and the upload queue rejects any take exceeding either limit. |
 | `VITE_SUBMISSION_COOLDOWN_MS` | Optional client countdown duration in milliseconds. Defaults to `30000`; the backend independently enforces its cooldown. |
 
@@ -158,7 +159,8 @@ theme, then saves that choice in `localStorage`. An inline bootstrap in
 ## SEO and prerendering
 
 `src/seo/seoCatalog.mjs` is the source for static page metadata and the production
-site URL. Replace its placeholder `SITE_URL` before deployment. The build runs
+site URL: `https://commons.signpak.tech`, overridable with the `SITE_URL` environment
+variable (e.g. for a staging deployment). The build runs
 `npm run seo:generate` automatically to produce the sitemap, robots file, and
 React Snap route list. After building, `npm run snap` can prerender those public
 routes; it requires a working headless Chromium installation.
@@ -167,10 +169,12 @@ routes; it requires a working headless Chromium installation.
 
 `vercel.json` rewrites direct route requests to the SPA entry point so refreshing
 URLs such as `/admin/categories` loads the client router instead of returning a
-host-level 404. Configure the frontend build with `frontend/` as its root when
-deploying this app separately, set `VITE_API_ORIGIN` for a separately hosted
-backend, and configure the backend's `CLIENT_ORIGIN` to the exact frontend
-origin. API cookies require compatible HTTPS and cookie settings.
+host-level 404. The site is deployed on Vercel at `commons.signpak.tech` with `frontend/`
+as its root, and the API runs on the team's own server at `api.commons.signpak.tech` (see
+`deploy/README.md`). In the Vercel project set `VITE_API_ORIGIN=https://api.commons.signpak.tech` and
+`SITE_URL=https://commons.signpak.tech`, then redeploy (both are read at build time). The two
+hostnames are one site, so the API's `SameSite=Lax` login cookie works in every browser,
+including Safari, iOS, Brave and private windows.
 
 ## Checks
 

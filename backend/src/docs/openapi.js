@@ -36,6 +36,16 @@ const idParameter = {
   required: true,
   schema: { type: 'string', pattern: '^[a-f\\d]{24}$' },
 }
+const healthSchema = (statuses) => ({
+  type: 'object',
+  required: ['status', 'database', 'storage', 'uptime'],
+  properties: {
+    status: { type: 'string', enum: statuses },
+    database: { type: 'string', enum: ['connected', 'disconnected'] },
+    storage: { type: 'boolean' },
+    uptime: { type: 'integer', description: 'Seconds since the process started.' },
+  },
+})
 const userSecurity = [{ cookieAuth: [] }]
 const adminSecurity = userSecurity
 const authErrors = { 400: errorResponse, 422: errorResponse, 429: errorResponse }
@@ -311,10 +321,11 @@ export const openapi = {
     '/health': {
       get: {
         tags: ['Health'],
-        summary: 'Check API and database health',
+        summary: 'Check API, database and storage health',
+        description: 'Public. Booleans and counters only. Answers even when service initialization failed, so a deployment can see why the API is degraded. `storage` means the configured drivers initialized; it does not prove a Google Drive token is still valid.',
         responses: {
-          200: jsonResponse('Healthy', { type: 'object', properties: { status: { type: 'string', enum: ['ok'] }, database: { type: 'string', enum: ['connected'] }, uptime: { type: 'integer' } } }),
-          503: { description: 'Database unavailable' },
+          200: jsonResponse('Healthy: database connected and storage initialized', healthSchema(['ok'])),
+          503: jsonResponse('Degraded: the database is disconnected or storage failed to initialize', healthSchema(['degraded'])),
         },
       },
     },
