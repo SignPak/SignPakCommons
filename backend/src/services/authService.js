@@ -7,7 +7,7 @@ import { badRequest, conflict, unauthorized } from '../utils/AppError.js'
 import { logger } from '../utils/logger.js'
 import { isDuplicateKeyError } from '../utils/mongoose.js'
 import { signConsentToken, signToken, verifyConsentToken } from '../utils/tokens.js'
-import { sendOTPEmailBrevo } from './external/sendOTPBrevo.js'
+import { emailService } from './email/index.js'
 
 // Compared against when the email is unknown, so "no such user" takes as long as "wrong password".
 const DUMMY_HASH = bcrypt.hashSync('signpak-timing-guard', env.BCRYPT_ROUNDS)
@@ -62,7 +62,8 @@ export const authService = {
     }
   },
 
-  sendOTPEmail: sendOTPEmailBrevo,
+  // Goes through the configured email driver (EMAIL_DRIVER): Brevo in production, capture in tests.
+  sendOTPEmail: (email, code, purpose) => emailService.sendOtp(email, code, purpose),
 
   async verifyEmail({ email, code }) {
     const user = await userRepo.findByEmail(email, { withOtp: true })

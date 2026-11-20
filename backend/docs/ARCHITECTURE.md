@@ -50,7 +50,8 @@ owning business policy.
 | Storage | `src/services/storage/` | Provide local and Google Drive implementations behind storage operations. |
 | Configuration | `src/config/` | Validate environment variables, manage DB connection, and define constants. |
 | OpenAPI | `src/docs/openapi.js` | Describe API operations and schemas used by Swagger UI and raw JSON. |
-| Tests | `tests/*.test.js` | Separate HTTP API suites and focused utility, storage, and service tests. |
+| Email | `src/services/email/` | Driver seam for authentication codes: Brevo in production, in-memory capture in tests. |
+| Tests | `tests/unit/`, `tests/integration/`, `tests/security/`, `tests/support/` | Levels run separately; shared fixtures, the fake Drive driver and the router inventory live in `support/`. |
 | Documentation | `docs/` | Human-readable API, setup, architecture, and test references. |
 
 ## API boundary and middleware
@@ -118,13 +119,32 @@ stored during a failed multi-step operation.
 
 ## Testing and API documentation
 
-`npm test` runs Node's test runner serially across all `tests/*.test.js`. Each
-HTTP integration suite has its own file and a fresh API test context;
-`apiContext.js` stubs email/contact providers and provisions isolated test
-fixtures. By default, those suites use MongoDB Memory Server. Set
-`MONGODB_URI_TEST` to use an existing disposable database instead—the tests drop
-it. Focused unit and filesystem/storage integration tests use isolated temporary
-directories. See [TEST-CASES.md](./TEST-CASES.md) for the case inventory.
+Tests are organised by level, and each level can run on its own:
+
+| Level | Location | What it exercises |
+| --- | --- | --- |
+| Unit | `tests/unit/` | single functions, services and storage drivers with their dependencies faked |
+| Integration | `tests/integration/` | HTTP requests against the real app, with MongoDB in memory and local storage in a temporary folder |
+| Security | `tests/security/` | the access matrix for every registered route, and the guard on the test-only hook |
+
+`npm test` runs all three serially through Node's test runner; `npm run test:unit`,
+`test:integration` and `test:security` run one level. `npm run test:coverage` adds c8 and
+then enforces the per-directory floors in `coverage-thresholds.json` through
+`scripts/check-coverage.js`; floors may only be raised.
+
+Shared fixtures live in `tests/support/`: `helpers.js` (test environment, cookie-aware HTTP
+client, sample media), `apiContext.js` (the app plus a fresh database and seeded accounts),
+`fakeDriveDriver.js` (an in-memory driver with the Google Drive interface and failure
+switches) and `routeInventory.js` (walks the Express router so the access matrix can prove
+every route has an access decision).
+
+Integration suites use MongoDB Memory Server by default. Set `MONGODB_URI_TEST` to use an
+existing disposable database instead—the tests drop it.
+
+End-to-end tests are Playwright specs in `e2e/` at the repository root, run against the
+production frontend build and an API started by `scripts/e2e-server.js` (in-memory MongoDB,
+local storage, captured email, test hooks enabled). See [TEST-CASES.md](./TEST-CASES.md) for
+the full inventory and traceability table.
 
 Raw OpenAPI JSON is available at `/api/v1/docs.json` in every environment.
 Interactive Swagger UI is only mounted outside production. Update

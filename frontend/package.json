@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"
@@ -11,7 +11,10 @@
     "prebuild": "npm run seo:generate",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "vitest run --environment jsdom",
+    "test": "vitest run",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:coverage": "vitest run --coverage",
     "preview": "vite preview",
     "seo:generate": "node scripts/generateSeoAssets.js",
     "snap": "node scripts/runReactSnap.js"
@@ -34,11 +37,13 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",
     "globals": "^17.12.0",
     "jsdom": "^29.1.1",
+    "msw": "^3.0.7",
     "react-snap": "^1.23.0",
     "vite": "^8.3.0",
     "vitest": "^5.0.4"

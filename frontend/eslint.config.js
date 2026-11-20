@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'build']),
+  globalIgnores(['dist', 'build', 'coverage']),
   {
     files: ['src/**/*.{js,jsx}'],
     extends: [
@@ -25,6 +25,17 @@ export default defineConfig([
     extends: [js.configs.recommended],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+  // Vitest files: browser globals (jsdom) plus Node's, since MSW handlers and setup helpers
+  // use both. Test helpers export fixtures, so the react-refresh component rule is a poor
+  // fit here and is left off.
+  {
+    files: ['test/**/*.{js,jsx}'],
+    extends: [js.configs.recommended, reactHooks.configs.flat.recommended],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node },
+      parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
 ])

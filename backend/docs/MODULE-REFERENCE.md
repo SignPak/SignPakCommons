@@ -18,7 +18,10 @@ implementation layers.
 | Authentication and consent | `src/services/authService.js`, `src/controllers/authController.js`, auth validators | Signup does not activate until the current consent is accepted. |
 | Submissions and archive | `src/services/submissionService.js`, `src/repositories/submissionRepo.js` | Submission records are append-only; archive storage is selected independently. |
 | API specification | `src/docs/openapi.js`, `docs/API.md` | Update both with route, schema, or response changes. |
-| Tests | `tests/*.test.js` | API-level suites plus focused service, filesystem, and utility suites. |
+| Email delivery | `src/services/email/`, `src/services/external/sendOTPBrevo.js` | `EMAIL_DRIVER` selects Brevo or the in-memory capture driver used by tests. |
+| Test-only hooks | `src/routes/testHooks.js` | `GET /__test/emails`, mounted only when `NODE_ENV=test` and `E2E_TEST_HOOKS=true`. |
+| Tests | `tests/unit/`, `tests/integration/`, `tests/security/` | One folder per level, with shared fixtures in `tests/support/`. |
+| Coverage gate | `.c8rc.json`, `coverage-thresholds.json`, `scripts/check-coverage.js` | Per-directory floors; raise them, never lower them. |
 
 ## Typical request path
 
@@ -35,5 +38,7 @@ using the established logger.
 
 For behavior changes, add focused tests at the service layer and API boundary
 where practical. Run the relevant test file, then `npm test` for broader
-changes. API and storage test setup is described in
-[SETUP.md](SETUP.md) and the [test-case inventory](TEST-CASES.md).
+changes, and `npm run test:coverage` before opening a pull request. A new route
+also needs an entry in `tests/security/access-matrix.test.js`, which fails if a
+registered route has no access decision. API and storage test setup is described
+in [setup.md](setup.md) and the [test-case inventory](TEST-CASES.md).

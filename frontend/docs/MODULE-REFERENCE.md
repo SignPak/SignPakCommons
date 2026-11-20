@@ -16,7 +16,7 @@ For the complete runtime and data-flow explanation, see
 | Background submission uploads | `src/context/UploadQueueProvider.jsx`, `src/components/UploadToaster.jsx` | One upload at a time, one waiting slot; queue does not persist across tabs. |
 | Theme and notifications | `src/context/ThemeProvider.jsx`, `src/context/NotificationProvider.jsx` | Browser-local preferences and per-user notification state. |
 | Styling | `src/styles/`, `src/index.css` | Global tokens and component styles are imported through `index.css`. |
-| Tests | `test/` | Vitest and Testing Library; use targeted test files before the full suite. |
+| Tests | `test/unit/`, `test/integration/`, `test/support/` | Vitest and Testing Library; unit tests mock the API client, integration tests mock only HTTP with MSW. Use targeted files before the full suite. |
 
 ## API changes
 

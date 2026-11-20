@@ -14,6 +14,7 @@ import { ensureServicesInitialized } from './services/initialization.js'
 import { apiLimiter } from './middlewares/rateLimiter.js'
 import { verifyOrigin } from './middlewares/verifyOrigin.js'
 import routes from './routes/index.js'
+import testHookRoutes from './routes/testHooks.js'
 import { logger } from './utils/logger.js'
 import swaggerUi from 'swagger-ui-express'
 
@@ -53,6 +54,10 @@ if (!env.isProduction) {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }))
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }))
 }
+
+// Playwright needs to read the codes the capture email driver "sent". Both conditions are
+// required, and env.js refuses to start if either is set in production, so this cannot ship.
+if (env.isTest && env.E2E_TEST_HOOKS) app.use('/__test', testHookRoutes)
 
 app.use(API_PREFIX, apiLimiter, verifyOrigin, enforceAccessRestrictions, routes)
 

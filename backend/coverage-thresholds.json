@@ -1,0 +1,33 @@
+{
+  "comment": "Coverage floors enforced by scripts/check-coverage.js after c8 runs. FIX-PLAN section 4.6: these may only go up. Where a floor is below the figure FIX-PLAN asks for, 'target' records what it has to reach and which phase should get it there.",
+  "groups": [
+    {
+      "name": "overall",
+      "match": "src/",
+      "lines": 75,
+      "branches": 75
+    },
+    {
+      "name": "src/services",
+      "match": "src/services/",
+      "lines": 77,
+      "branches": 75,
+      "target": {
+        "lines": 80,
+        "note": "Phase 0 baseline is 77.77%. googleDriveDriver.js and the two external senders cannot be exercised without Google/Brevo; Phase 2 wires in tests/support/fakeDriveDriver.js and should clear 80%."
+      }
+    },
+    {
+      "name": "src/middlewares",
+      "match": "src/middlewares/",
+      "lines": 80,
+      "branches": 75
+    },
+    {
+      "name": "src/utils",
+      "match": "src/utils/",
+      "lines": 80,
+      "branches": 75
+    }
+  ]
+}

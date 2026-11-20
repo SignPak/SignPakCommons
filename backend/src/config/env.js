@@ -25,6 +25,7 @@ const testSafeEnv = isTest
       STORAGE_DRIVER: explicitEnv.STORAGE_DRIVER ?? 'local',
       ARCHIVE_STORAGE_DRIVER: explicitEnv.ARCHIVE_STORAGE_DRIVER ?? 'local',
       RATE_LIMIT_ENABLED: explicitEnv.RATE_LIMIT_ENABLED ?? 'false',
+      EMAIL_DRIVER: explicitEnv.EMAIL_DRIVER ?? 'capture',
     }
   : mergedEnv
 
@@ -44,6 +45,11 @@ const schema = z.object({
   COOKIE_SECURE: bool.optional(),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
+
+  // brevo sends real mail; capture keeps codes in memory for the test and E2E suites only.
+  EMAIL_DRIVER: z.enum(['brevo', 'capture']).default('brevo'),
+  // Mounts GET /__test/emails. Test environments only; rejected in production below.
+  E2E_TEST_HOOKS: bool.default(false),
 
   BREVO_API_KEY: z.string().optional(),
   BREVO_SENDER_EMAIL: z.string().email('BREVO_SENDER_EMAIL must be a valid email').optional().or(z.literal('')),
@@ -92,6 +98,12 @@ const schema = z.object({
   }
 
   if (data.NODE_ENV === 'production') {
+    if (data.E2E_TEST_HOOKS) {
+      context.addIssue({ code: 'custom', path: ['E2E_TEST_HOOKS'], message: 'Test hooks must never be enabled in production. Remove E2E_TEST_HOOKS.' })
+    }
+    if (data.EMAIL_DRIVER === 'capture') {
+      context.addIssue({ code: 'custom', path: ['EMAIL_DRIVER'], message: 'The capture driver never delivers mail. Use EMAIL_DRIVER=brevo in production.' })
+    }
     if (!data.BREVO_API_KEY) {
       context.addIssue({ code: 'custom', path: ['BREVO_API_KEY'], message: 'Required in production for email verification and password reset.' })
     }

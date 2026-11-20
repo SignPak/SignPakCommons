@@ -34,3 +34,12 @@ react-snap-routes.json
 *.tmp
 
 %SystemDrive%/
+
+# Test and coverage output
+coverage/
+e2e/test-results/
+e2e/playwright-report/
+.playwright/
+
+# mongodb-memory-server download cache used by CI (MONGOMS_DOWNLOAD_DIR)
+.mongodb-binaries/
