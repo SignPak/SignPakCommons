@@ -13,7 +13,7 @@ Repo: https://github.com/SignPak/SignPakCommons (base commit `b10d90b`).
 | # | Topic | Decision | What it means for the code |
 | --- | --- | --- | --- |
 | D1 | Backend host | A self-hosted Linux server: a **Hostinger VPS** or the **university GPU server**. Final choice pending, so the setup must work on both. | Run Node 22 behind **Nginx** with HTTPS (Let's Encrypt), kept alive by **PM2** (one process, fork mode). Add the deployment files to `deploy/`. No Vercel or Railway-specific code. |
-| D2 | Domain | A domain the team owns. Site at `commons.<DOMAIN>` (Vercel), API at `api.<DOMAIN>` (the server). | Both are on the same site, so the login cookie works as `SameSite=Lax`, host-only (no `COOKIE_DOMAIN` needed). `CLIENT_ORIGIN=https://commons.<DOMAIN>`, `VITE_API_ORIGIN=https://api.<DOMAIN>`. |
+| D2 | Domain | **Decided (20 Nov 2026):** the team's domain is `signpak.tech`. Site at **`commons.signpak.tech`** (Vercel), API at **`api.commons.signpak.tech`** (the server). The API is deliberately **not** `api.signpak.tech`: that name is kept for the future SignPAK app backend. | Both are hosts of one site (`signpak.tech`; checked against the Public Suffix List), so the login cookie works as `SameSite=Lax`, host-only (no `COOKIE_DOMAIN` needed). `CLIENT_ORIGIN=https://commons.signpak.tech`, `VITE_API_ORIGIN=https://api.commons.signpak.tech`, `SITE_URL=https://commons.signpak.tech`. Email is sent as `no-reply@signpak.tech`, so `signpak.tech` must be authenticated in Brevo. |
 | D3 | Google Drive sign-in | Keep the current OAuth refresh token. | The team sets the Google Cloud OAuth consent screen to **In production**, because "Testing" tokens expire every 7 days. The code only adds a clear log message when the token stops working. |
 | D4 | Verifying deletion requests | **Emailed 6-digit code.** | A signed-out deletion request sends a code to the account's email; the request shows as "verified" once the code is entered. Requests from signed-in contributors are verified straight away. Requests for an email with no account stay "unverified" and are checked by hand. |
 | D5 | Admins | **Separate admin accounts for each team member, plus an activity log.** | Add `ADMIN_EMAILS` (comma-separated). Team members sign up normally; at startup the accounts on the list become admins, and admins not on the list (other than `ADMIN_EMAIL`) go back to normal users. Every admin action is written to an `AuditLog`. |
@@ -31,7 +31,15 @@ Smaller choices, also settled:
 | Browser notifications | Keep them in the browser only, and document that they are per device. |
 | Upload limit | 100 MB. If the API is ever put behind Cloudflare (its free plan caps request bodies at 100 MB), set `MAX_RECORDING_UPLOAD_MB=95`. |
 
-Values the team fills in at deploy time (they don't change the code): `<DOMAIN>`, the server's IP address, and the secrets in `backend/.env`.
+Values the team fills in at deploy time (they don't change the code): the server's IP address, and the secrets in `backend/.env`.
+
+**Reading `<DOMAIN>` in the rest of this plan.** The phases below were written before D2 was decided and still say `<DOMAIN>`. Read them with this mapping (applied in the code, config and docs since Phase 1):
+
+| Written below | Means |
+| --- | --- |
+| `api.<DOMAIN>` | `api.commons.signpak.tech` |
+| `commons.<DOMAIN>` | `commons.signpak.tech` |
+| `<DOMAIN>` alone | `signpak.tech` |
 
 ---
 

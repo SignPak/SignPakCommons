@@ -315,3 +315,156 @@ Spot checks:
    failure itself is logged at `fatal`.
 7. **`<DOMAIN>` ends up in the built sitemap/robots** until `SITE_URL` is set in Vercel. The
    build warns every time.
+
+## Fixes after verification
+
+### 1. Node listened on 0.0.0.0, so Nginx could be bypassed (S3)
+
+**The problem.** `server.js` hardcoded `0.0.0.0` while `deploy/nginx/api.conf` and
+`deploy/README.md` said Node was on `127.0.0.1:5000`. With `TRUST_PROXY=true`, anyone who could
+reach port 5000 directly could send their own `X-Forwarded-For` and evade IP restrictions and
+rate limits. This was risk 4 above. I had relied on the firewall alone; it is now fixed in the
+code.
+
+**The fix.**
+- New `HOST` env var in `src/config/env.js`. Unset means `127.0.0.1` when
+  `NODE_ENV=production` and `0.0.0.0` otherwise. A blank value is rejected rather than quietly
+  meaning "all interfaces".
+- `server.js` uses `env.HOST` and logs it.
+- Documented in `backend/.env.production.example` (`HOST=127.0.0.1`, with the reason),
+  `backend/.env.example`, `backend/docs/setup.md`, `backend/docs/ARCHITECTURE.md`,
+  `deploy/README.md` (firewall step) and the `deploy/nginx/api.conf` header.
+
+**Tests.**
+- `tests/unit/listenHost.test.js` (U-58–U-61):
+  - S3: production listens on 127.0.0.1 by default, so only Nginx can reach Node
+  - S3: development and test listen on 0.0.0.0 by default
+  - S3: an explicit HOST wins in every environment
+  - S3: a blank HOST is rejected instead of silently meaning "all interfaces"
+- `tests/security/listen-address.test.js` (S-09, S-10) starts the **real `server.js`** in
+  production and checks:
+  - S3: the production server answers on loopback, where Nginx connects
+  - S3: the production server refuses connections on the machine's network addresses
+- **Proof that S-10 catches the original bug:** with `server.js` temporarily set back to the
+  old hardcoded `'0.0.0.0'`, it failed with "port 24524 must not be reachable on 26.199.74.56
+  (got connected)". With `env.HOST` it passes.
+- `deployConfig.test.js` asserts `HOST=127.0.0.1` in the production template, and that the
+  filled-in template resolves to `host: '127.0.0.1'`.
+
+### 2. The addresses are decided (D2)
+
+| Role | Address |
+| --- | --- |
+| Site (Vercel) | `https://commons.signpak.tech` |
+| API (our server) | `https://api.commons.signpak.tech` |
+
+The API is deliberately **not** `api.signpak.tech`, which is kept for the future SignPAK app
+backend.
+
+**Checked first:** the Public Suffix List's only matching entry is `tech` itself. So the
+registrable domain is `signpak.tech`, and `commons.signpak.tech` / `api.commons.signpak.tech`
+are the same site. The host-only `SameSite=Lax` cookie works exactly as the cross-host E2E
+test showed.
+
+**Replaced everywhere:** `api.<DOMAIN>` became `api.commons.signpak.tech` and `commons.<DOMAIN>`
+became `commons.signpak.tech`, in these files:
+- `deploy/` (Nginx config, guide, CI check script)
+- `backend/.env.production.example` and `backend/.env.example`
+- `backend/docs/{ARCHITECTURE,setup,TEST-CASES}.md`
+- frontend `README.md` and `docs/architecture.md`
+- the `SITE_URL` default in `seoCatalog.mjs`, the `vite.config.js` comment, and
+  `seoCatalog.test.js`
+- the e2e config and spec comments, and the review checklist
+
+The following were also changed, beyond the mechanical replacement:
+- `.env.production.example`:
+  - `CLIENT_ORIGIN=https://commons.signpak.tech`
+  - `BREVO_SENDER_EMAIL=no-reply@signpak.tech`, with a comment that `signpak.tech` must be
+    authenticated in Brevo first (pointing at the guide's section 1)
+  - the "replace every `<DOMAIN>`" instruction removed
+- `deploy/README.md`:
+  - **section 1 is now "DNS and email authentication"**, with a table of records: `A`, host
+    `api.commons` → `<SERVER_IP>`; `CNAME`, host `commons` → what Vercel shows; and the Brevo
+    records. A **Brevo domain authentication** step adds the records Brevo shows, then clicks
+    Authenticate. It sits inside section 1 rather than in a new section, so the section numbers
+    that the config files point at stay valid.
+  - a note in the Vercel section to **make `commonssignpak.vercel.app` redirect (308) to
+    `commons.signpak.tech` once the API is live**, and only after the section 10 health check
+    passes, because until then the old address is the only working copy of the site
+  - the placeholder-substitution (`sed`) install step is gone, since the config now names the
+    real host
+  - the "what to send back" list now asks for the server IP, Cloudflare Tunnel yes/no, and
+    Brevo authentication status
+  - the Cloudflare Tunnel fallback notes that moving `signpak.tech`'s DNS means recreating the
+    Vercel and Brevo records there
+- `deploy/scripts/check-nginx.sh` now tests the **unmodified** config with a throwaway
+  certificate at `/etc/letsencrypt/live/api.commons.signpak.tech/`, and fails if a `<DOMAIN>`
+  placeholder ever reappears.
+- **The `SITE_URL` default is now the real site**, so the build warning about a placeholder
+  had nothing left to warn about and was removed. `SITE_URL` still overrides it (e.g. for a
+  staging deployment). Because the sitemap and robots.txt now name the real site with no Vercel
+  setting needed, the checklist's `SITE_URL` leftover is **ticked**.
+- `docs/FIX-PLAN.md` section 0: D2 is marked **Decided (20 Nov 2026)** with both addresses, the
+  `api.signpak.tech` reservation, the cookie reasoning and the Brevo sender. A mapping table
+  (`api.<DOMAIN>` → `api.commons.signpak.tech`, `commons.<DOMAIN>` → `commons.signpak.tech`,
+  `<DOMAIN>` → `signpak.tech`) tells readers how to read the later phases, which were written
+  with the placeholder. Those phases' text is left as written.
+
+**Tests.** `deployConfig.test.js` (U-56, renamed to "C1: deploy files name
+api.commons.signpak.tech and commons.signpak.tech, with no placeholders left") now checks:
+- no `<DOMAIN>` remains in `deploy/` or the production template;
+- `server_name api.commons.signpak.tech;` is present, and the guide names both https addresses;
+- `api.signpak.tech` is **never used as an address** (URL, `server_name`, certificate path or
+  env value). The first version of this check also matched the Nginx comment explaining the
+  reservation, so it now targets address contexts only.
+- the production template sets `CLIENT_ORIGIN=https://commons.signpak.tech` and
+  `BREVO_SENDER_EMAIL=no-reply@signpak.tech`, and resolves to
+  `clientOrigins: ['https://commons.signpak.tech']`.
+
+`seoCatalog.test.js` FU-21 now asserts the default `https://commons.signpak.tech`.
+
+**Left as they are, deliberately:**
+- `docs/phase-reports/PHASE-1.md` above this section, which is the record of what was submitted
+  (risks 4 and 7 above are resolved by these fixes)
+- `docs/CLAUDE-CODE-KICKOFF.md`, whose one `<DOMAIN>` is the instruction to use placeholders
+- the generated (gitignored) `frontend/public/robots.txt`, which now regenerates with the real
+  site
+
+`nginx -t` was re-run locally on Nginx 1.24 and 1.27 with the real hostname (both "test is
+successful"); shellcheck v0.10.0 is clean on both scripts.
+
+### Test gate after the fixes
+
+Run on this branch, Windows 11, Node v24.13.1, 20 Nov 2026.
+
+| Gate | Result | Exit |
+| --- | --- | --- |
+| backend `test:unit` | tests 61, pass 61, fail 0 (57 + 4 new) | 0 |
+| backend `test:integration` | tests 49, suites 11, pass 49, fail 0 | 0 |
+| backend `test:security` | tests 56, suites 4, pass 56, fail 0 (54 + 2 new) | 0 |
+| backend `test:coverage` | tests 166, pass 166; 87.82% lines / 85.92% branches; floors passed (`src/services` 78.52% vs floor 78) | 0 |
+| frontend `lint` | clean | 0 |
+| frontend `test` | Test Files 8 passed (8), Tests 27 passed (27) | 0 |
+| frontend `test:coverage` | 18.9% lines; thresholds passed | 0 |
+| frontend `build` | built; SEO assets generated for `https://commons.signpak.tech` | 0 |
+| `e2e` | 12 passed (1.0 m) | 0 |
+| audits | backend 6 (4 high), frontend 2 high | 1 (expected until Phase 3) |
+
+Traceability: 6 new rows (U-58–U-61, S-09, S-10), U-56 renamed; the counts are now 40 files and
+205 cases. The traceability test validates every row.
+
+### Real-server "done when" — still pending, now with the real addresses
+
+**Blocked on: the server (D1).** The domain is decided.
+- [ ] `https://api.commons.signpak.tech/api/v1/health` returns OK with a valid certificate.
+- [ ] Sign-up, login and logout work at `https://commons.signpak.tech` in Chrome, Firefox,
+  Safari (macOS and iOS) and a private window.
+- [ ] A recording of about 90 MB uploads successfully.
+- [ ] The server logs show the real visitor IPs (`clientIp`), not 127.0.0.1.
+
+New prerequisites before those checks, both from `deploy/README.md` section 1:
+- the DNS records: `A api.commons`, `CNAME commons`, and the Brevo records;
+- `signpak.tech` authenticated in Brevo.
+
+Once the API is live, `commonssignpak.vercel.app` should be set to redirect to
+`commons.signpak.tech` (section 11).

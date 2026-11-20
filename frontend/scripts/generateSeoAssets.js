@@ -84,13 +84,6 @@ async function main() {
   console.log(
     `Generated SEO assets for ${routes.length} canonical routes in ${publicDir} (site: ${catalog.SITE_URL})`,
   )
-  if (catalog.SITE_URL.includes('<DOMAIN>')) {
-    console.warn(
-      'WARNING: SITE_URL is not set, so sitemap.xml, robots.txt and canonical links use the ' +
-      `"${catalog.SITE_URL}" placeholder. Set SITE_URL=https://commons.<your domain> in the ` +
-      'Vercel project before a production build.',
-    )
-  }
 }
 
 main().catch((error) => {

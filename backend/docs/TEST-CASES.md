@@ -24,17 +24,17 @@ Counts as of **Phase 1** (backend 1.0.7, frontend 1.0.10):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 13 | 57 |
+| Unit (backend) | `backend/tests/unit/` | 14 | 61 |
 | Integration (backend) | `backend/tests/integration/` | 11 | 49 |
-| Security (backend) | `backend/tests/security/` | 3 | 54 |
+| Security (backend) | `backend/tests/security/` | 4 | 56 |
 | Unit (frontend) | `frontend/test/unit/` | 7 | 23 |
 | Integration (frontend) | `frontend/test/integration/` | 1 | 4 |
 | End-to-end | `e2e/tests/` | 3 | 12 (4 tests × 3 browsers) |
-| **Total** | | **38** | **199** |
+| **Total** | | **40** | **205** |
 
 The backend security count is per-route: the access matrix produces one case per route (47
-today) plus the completeness check; the hook suite adds three and the production-error suite
-three more.
+today) plus the completeness check; the hook suite adds three, the production-error suite
+three and the listen-address suite two.
 
 ## 1. Backend unit tests — `backend/tests/unit/`
 
@@ -95,8 +95,12 @@ three more.
 | U-53 | `deployConfig.test.js` | C1: nginx body limit leaves room above the API upload limit | FR13.7 | C1 | unit |
 | U-54 | `deployConfig.test.js` | C1: PM2 runs exactly one fork-mode process | QA-3 | C1, S3 | unit |
 | U-55 | `deployConfig.test.js` | C1: deploy.sh stops on errors and fails unless health reports ok | QA-3 | C1 | unit |
-| U-56 | `deployConfig.test.js` | C1: deploy files use the <DOMAIN> placeholder, never a real host | — (deployment safety, no SRS requirement) | C1 | unit |
+| U-56 | `deployConfig.test.js` | C1: deploy files name api.commons.signpak.tech and commons.signpak.tech, with no placeholders left | — (deployment safety, no SRS requirement) | C1 | unit |
 | U-57 | `deployConfig.test.js` | C1: the production env template is a valid production configuration once filled in | — (deployment safety, no SRS requirement) | C1, C4, S3 | unit |
+| U-58 | `listenHost.test.js` | S3: production listens on 127.0.0.1 by default, so only Nginx can reach Node | FR13.12 | S3 | unit |
+| U-59 | `listenHost.test.js` | S3: development and test listen on 0.0.0.0 by default | FR13.12 | S3 | unit |
+| U-60 | `listenHost.test.js` | S3: an explicit HOST wins in every environment | FR13.12 | S3 | unit |
+| U-61 | `listenHost.test.js` | S3: a blank HOST is rejected instead of silently meaning "all interfaces" | FR13.12 | S3 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -167,6 +171,8 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | S-06 | `production-errors.test.js` | S5: the production 503 has no detail and does not echo the error | — (deployment safety, no SRS requirement) | S5 | security |
 | S-07 | `production-errors.test.js` | S5: every route answers with the same generic body while initialization fails | — (deployment safety, no SRS requirement) | S5 | security |
 | S-08 | `production-errors.test.js` | C1: the production health check reports the failure as booleans only | QA-3 | C1, S5 | security |
+| S-09 | `listen-address.test.js` | S3: the production server answers on loopback, where Nginx connects | FR13.12 | S3 | security |
+| S-10 | `listen-address.test.js` | S3: the production server refuses connections on the machine's network addresses | FR13.12 | S3 | security |
 
 The matrix in S-01 calls every route as an anonymous visitor, a contributor, a suspended
 contributor and an admin. A denied caller must get the exact status (401 or 403); an allowed
@@ -197,7 +203,7 @@ a new route cannot be added without an access decision.
 | FU-18 | `AdminVideos.test.jsx` | requires an explicit poster image or auto-frame choice | FR13.11 | — | unit |
 | FU-19 | `AdminVideos.test.jsx` | uploads a selected poster image instead of the auto-generated frame | FR13.11 | — | unit |
 | FU-20 | `AdminVideos.test.jsx` | adds a direct HTTPS video URL with a required poster instead of uploading video bytes | FR13.11 | — | unit |
-| FU-21 | `seoCatalog.test.js` | C1: SITE_URL defaults to https://commons.<DOMAIN> | — (deployment safety, no SRS requirement) | C1 | unit |
+| FU-21 | `seoCatalog.test.js` | C1: SITE_URL defaults to https://commons.signpak.tech | — (deployment safety, no SRS requirement) | C1 | unit |
 | FU-22 | `seoCatalog.test.js` | C1: an explicit SITE_URL is used, with a trailing slash trimmed | — (deployment safety, no SRS requirement) | C1 | unit |
 | FU-23 | `seoCatalog.test.js` | C1: no longer points at the old signpakcommons.example placeholder | — (deployment safety, no SRS requirement) | C1 | unit |
 
@@ -232,7 +238,7 @@ Drive upload`) and a row here.
 
 | Checklist | Planned coverage | Phase |
 | --- | --- | --- |
-| C1, C4, S3, S5 | **Covered in Phase 1** (U-38–U-57, I-46–I-49, S-06–S-08, FU-21–FU-23, E-04). The real-server checks are still pending: see `docs/phase-reports/PHASE-1.md`. | 1 |
+| C1, C4, S3, S5 | **Covered in Phase 1** (U-38–U-61, I-46–I-49, S-06–S-10, FU-21–FU-23, E-04). The real-server checks are still pending: see `docs/phase-reports/PHASE-1.md`. | 1 |
 | C5, B1, B6, B8 | temp-file cleanup, cooldown release on cleanup failure, video brand sniffing, single Drive folder per path | 2 |
 | S1 | the whole suite re-run on updated dependencies; the audit job becomes required | 3 |
 | C2, S4 | contact form sends, deletion request with an emailed code, per-sender quotas | 4 |

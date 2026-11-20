@@ -12,7 +12,8 @@ export default defineConfig({
     tailwindcss(),
   ],
   // The site's public origin for canonical links, baked in at build time. Same SITE_URL
-  // variable the SEO script reads (src/seo/seoCatalog.mjs); empty means "<DOMAIN> placeholder".
+  // variable the SEO script reads (src/seo/seoCatalog.mjs); empty means the production default,
+  // https://commons.signpak.tech.
   define: {
     __SITE_URL__: JSON.stringify(process.env.SITE_URL ?? ''),
   },

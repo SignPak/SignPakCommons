@@ -8,13 +8,15 @@ composed in `src/app.js`; it exports an Express app without binding its own port
 that tests can import it.
 
 In production the API is one long-running Node process on the team's own Linux server,
-kept alive by PM2 (one process, fork mode) behind Nginx with HTTPS at `api.<DOMAIN>`;
-the website is on Vercel at `commons.<DOMAIN>`. The deployment files and the server guide
+kept alive by PM2 (one process, fork mode) behind Nginx with HTTPS at `api.commons.signpak.tech`;
+the website is on Vercel at `commons.signpak.tech`. The deployment files and the server guide
 are in `deploy/`.
 
 `server.js` is the entry point. It logs configuration warnings from
 `src/config/startupChecks.js` (for example `TRUST_PROXY` off in production), starts the
-HTTP listener, and starts initialization straight away. On `SIGTERM`/`SIGINT` it shuts down
+HTTP listener on `HOST` (`127.0.0.1` in production, so only Nginx on the same machine can
+connect and nobody can bypass it to forge `X-Forwarded-For`; `0.0.0.0` elsewhere), and starts
+initialization straight away. On `SIGTERM`/`SIGINT` it shuts down
 gracefully (`src/utils/gracefulShutdown.js`): it stops accepting connections, lets in-flight
 requests finish, closes MongoDB, and exits, or exits 1 after 10 seconds. PM2 waits 15 seconds
 before forcing it.

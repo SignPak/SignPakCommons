@@ -31,13 +31,13 @@ test('C1: nginx config sets the body limit, unbuffered uploads, timeouts and for
     'proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;',
     'proxy_set_header X-Forwarded-Proto $scheme;',
     'proxy_no_cache 1;',
-    'server_name api.<DOMAIN>;',
+    'server_name api.commons.signpak.tech;',
     'return 301 https://$host$request_uri;',
   ]) {
     assert.ok(has(directive), `deploy/nginx/api.conf is missing: ${directive}`)
   }
   assert.ok(!directives.some((line) => line.startsWith('proxy_cache ')), 'API responses must never be cached by Nginx')
-  assert.ok(nginx.includes('/etc/letsencrypt/live/api.<DOMAIN>/fullchain.pem'))
+  assert.ok(nginx.includes('/etc/letsencrypt/live/api.commons.signpak.tech/fullchain.pem'))
 })
 
 test('C1: nginx body limit leaves room above the API upload limit', () => {
@@ -74,13 +74,21 @@ test('C1: deploy.sh stops on errors and fails unless health reports ok', () => {
   assert.match(script, /exit 1\s*$/)
 })
 
-test('C1: deploy files use the <DOMAIN> placeholder, never a real host', () => {
-  const files = ['deploy/nginx/api.conf', 'deploy/README.md', 'backend/.env.production.example']
+test('C1: deploy files name api.commons.signpak.tech and commons.signpak.tech, with no placeholders left', () => {
+  // D2: the site is commons.signpak.tech and the API api.commons.signpak.tech. The API is
+  // deliberately not api.signpak.tech, which is kept for the future SignPAK app backend.
+  const files = ['deploy/nginx/api.conf', 'deploy/README.md', 'deploy/deploy.sh', 'backend/.env.production.example']
   for (const file of files) {
     const text = read(file)
-    assert.ok(text.includes('<DOMAIN>'), `${file} should use the <DOMAIN> placeholder`)
-    assert.ok(!/railway\.app|vercel\.app|signpakcommons\.example/i.test(text), `${file} names an old host`)
+    assert.ok(!text.includes('<DOMAIN>'), `${file} still has a <DOMAIN> placeholder`)
+    // Used as an address (URL, server_name, certificate path, env value); a sentence explaining
+    // why it is not used is fine.
+    assert.ok(!/(https?:\/\/|server_name\s+|live\/|=)api\.signpak\.tech/.test(text), `${file} uses api.signpak.tech, which is reserved for the SignPAK app`)
+    assert.ok(!/railway\.app|signpakcommons\.example/i.test(text), `${file} names an old host`)
   }
+  assert.ok(read('deploy/nginx/api.conf').includes('server_name api.commons.signpak.tech;'))
+  assert.ok(read('deploy/README.md').includes('https://api.commons.signpak.tech'))
+  assert.ok(read('deploy/README.md').includes('https://commons.signpak.tech'))
 })
 
 test('C1: the production env template is a valid production configuration once filled in', () => {
@@ -88,11 +96,13 @@ test('C1: the production env template is a valid production configuration once f
   const values = Object.fromEntries(template.split('\n')
     .map((line) => /^([A-Z0-9_]+)=(.*)$/.exec(line.trim()))
     .filter(Boolean)
-    .map(([, key, value]) => [key, value.replaceAll('<DOMAIN>', 'example.test')]))
+    .map(([, key, value]) => [key, value]))
 
   assert.equal(values.NODE_ENV, 'production')
   assert.equal(values.TRUST_PROXY, 'true')
-  assert.equal(values.CLIENT_ORIGIN, 'https://commons.example.test')
+  assert.equal(values.HOST, '127.0.0.1') // S3: only Nginx can reach Node
+  assert.equal(values.CLIENT_ORIGIN, 'https://commons.signpak.tech')
+  assert.equal(values.BREVO_SENDER_EMAIL, 'no-reply@signpak.tech')
   assert.equal(values.COOKIE_SAMESITE, 'lax')
   assert.equal(values.COOKIE_SECURE, 'true')
   assert.equal(values.STORAGE_DRIVER, 'gdrive')
@@ -105,7 +115,6 @@ test('C1: the production env template is a valid production configuration once f
     MONGODB_URI: 'mongodb://127.0.0.1/signpak',
     JWT_SECRET: 'a'.repeat(48),
     BREVO_API_KEY: 'key',
-    BREVO_SENDER_EMAIL: 'auth@example.test',
     WEB3FORMS_ACCESS_KEY: 'key',
     ADMIN_EMAIL: 'admin@example.test',
     ADMIN_PASSWORD: 'Admin@12345',
@@ -117,12 +126,18 @@ test('C1: the production env template is a valid production configuration once f
   const output = execFileSync(process.execPath, ['--input-type=module', '-e', `
     const { env } = await import('./src/config/env.js')
     const { startupWarnings } = await import('./src/config/startupChecks.js')
-    console.log(JSON.stringify({ production: env.isProduction, secure: env.COOKIE_SECURE, warnings: startupWarnings(env) }))
+    console.log(JSON.stringify({ production: env.isProduction, secure: env.COOKIE_SECURE, host: env.HOST, origins: env.clientOrigins, warnings: startupWarnings(env) }))
   `], {
     cwd: backendRoot,
     encoding: 'utf8',
     env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...filled },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  assert.deepEqual(JSON.parse(output.trim()), { production: true, secure: true, warnings: [] })
+  assert.deepEqual(JSON.parse(output.trim()), {
+    production: true,
+    secure: true,
+    host: '127.0.0.1',
+    origins: ['https://commons.signpak.tech'],
+    warnings: [],
+  })
 })

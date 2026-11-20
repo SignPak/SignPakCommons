@@ -5,14 +5,14 @@ import { expectInLibrary, signUpThroughUi, uniqueEmail } from '../support/flows.
 /**
  * C4: the production layout, on two real hostnames.
  *
- * Production runs the site at commons.<DOMAIN> (Vercel) and the API at api.<DOMAIN> (our
+ * Production runs the site at commons.signpak.tech (Vercel) and the API at api.commons.signpak.tech (our
  * server): different hosts, same site (D2). The login cookie is set by the API host with
  * SameSite=Lax and no Domain attribute, and must still come back on every request the site
  * makes to the API — including in WebKit, Safari's engine, which drops cross-*site* cookies.
  *
  * commons.localtest.me / api.localtest.me reproduce that: both resolve to this machine, and
  * localtest.me is not on the Public Suffix List, so the two are same-site exactly like
- * commons.<DOMAIN> / api.<DOMAIN>. The site here is a build with VITE_API_ORIGIN pointing at
+ * commons.signpak.tech / api.commons.signpak.tech. The site here is a build with VITE_API_ORIGIN pointing at
  * the API host directly (no proxy), as on Vercel.
  */
 

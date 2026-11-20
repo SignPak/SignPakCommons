@@ -21,7 +21,7 @@ export const webOrigin = `http://127.0.0.1:${WEB_PORT}`
 
 // api.localtest.me and commons.localtest.me resolve to this machine (127.0.0.1 and ::1), and
 // localtest.me is not on the Public Suffix List, so they are two hosts of one site, like
-// api.<DOMAIN> and commons.<DOMAIN>. The servers listen on both IPv4 and IPv6 loopback.
+// api.commons.signpak.tech and commons.signpak.tech. The servers listen on both IPv4 and IPv6 loopback.
 export const crossHost = {
   apiHostname: 'api.localtest.me',
   api: `http://api.localtest.me:${API_PORT}`,

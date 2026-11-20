@@ -89,6 +89,7 @@ URL-encode special characters in the database username or password.
 | --- | --- | --- |
 | `NODE_ENV` | Set manually: `development`, `test`, or `production` | Selects runtime behavior and production cookie defaults. |
 | `PORT` | Set manually; default `5000` | Port used by the Express server. |
+| `HOST` | Usually leave unset | Address the server listens on. Unset: `127.0.0.1` in production, so only Nginx on the same machine can reach Node (nobody can bypass it and forge `X-Forwarded-For`); `0.0.0.0` in development and test. Set it only for an unusual topology. |
 | `LOG_LEVEL` | Set manually: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent` | Controls structured log verbosity. |
 | `TRUST_PROXY` | Set `true` behind a trusted reverse proxy | Enables Express proxy awareness for client IPs used by rate limits and access restrictions. |
 | `CLIENT_ORIGIN` | Frontend URL, for example `http://localhost:5173` | CORS allowlist and state-changing request origin check. Separate multiple origins with commas. |
@@ -297,7 +298,7 @@ The frontend uses the API base configured by `VITE_API_ORIGIN`. For local develo
 CLIENT_ORIGIN=http://localhost:5173
 ```
 
-The browser must send credentials for the HTTP-only authentication cookie. In production the site is `https://commons.<DOMAIN>` (Vercel, `VITE_API_ORIGIN=https://api.<DOMAIN>`) and the API is `https://api.<DOMAIN>`: two hosts of one site, so the host-only `SameSite=Lax` cookie is sent on every request the site makes (decision D2). Set `CLIENT_ORIGIN=https://commons.<DOMAIN>`.
+The browser must send credentials for the HTTP-only authentication cookie. In production the site is `https://commons.signpak.tech` (Vercel, `VITE_API_ORIGIN=https://api.commons.signpak.tech`) and the API is `https://api.commons.signpak.tech`: two hosts of one site, so the host-only `SameSite=Lax` cookie is sent on every request the site makes (decision D2). Set `CLIENT_ORIGIN=https://commons.signpak.tech`.
 
 ## 10. Production checklist
 
@@ -314,7 +315,7 @@ The step-by-step server guide (Nginx, PM2, certbot, firewall, DNS, Vercel) is
 - Set a strong admin password and never expose it to the frontend.
 - Set the exact production frontend URL in `CLIENT_ORIGIN`.
 - Use HTTPS with `COOKIE_SECURE=true`.
-- Keep `COOKIE_SAMESITE=lax`: site and API are `commons.<DOMAIN>` and `api.<DOMAIN>`, one site. `none` would only be needed across sites, which Safari, iOS, Brave and private windows block.
+- Keep `COOKIE_SAMESITE=lax`: site and API are `commons.signpak.tech` and `api.commons.signpak.tech`, one site. `none` would only be needed across sites, which Safari, iOS, Brave and private windows block.
 - Use `ARCHIVE_STORAGE_DRIVER=gdrive` with dedicated archive credentials and a restricted Drive folder for append-only recordings.
 - Keep `RATE_LIMIT_ENABLED=true`.
 - Leave `EMAIL_DRIVER=brevo` and `E2E_TEST_HOOKS` unset; the server refuses to start otherwise.

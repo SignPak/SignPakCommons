@@ -65,8 +65,8 @@ describe('basics', () => {
     assert.ok(attributes.includes('httponly'))
     assert.ok(attributes.includes('samesite=lax'))
     assert.ok(attributes.includes('path=/'))
-    // No Domain attribute: the cookie belongs to api.<DOMAIN> alone (D2), and same-site
-    // requests from commons.<DOMAIN> still carry it.
+    // No Domain attribute: the cookie belongs to api.commons.signpak.tech alone (D2), and same-site
+    // requests from commons.signpak.tech still carry it.
     assert.ok(!attributes.some((part) => part.startsWith('domain=')), cookie)
   })
 

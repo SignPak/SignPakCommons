@@ -6,20 +6,21 @@ from **Let's Encrypt**, kept alive by **PM2**. The website stays on **Vercel**.
 
 | | Address | Runs on |
 | --- | --- | --- |
-| Website | `https://commons.<DOMAIN>` | Vercel |
-| API | `https://api.<DOMAIN>` | this server: Nginx → Node on `127.0.0.1:5000` |
+| Website | `https://commons.signpak.tech` | Vercel |
+| API | `https://api.commons.signpak.tech` | this server: Nginx → Node on `127.0.0.1:5000` |
 
-Both are on the same site (`<DOMAIN>`), which is what lets the login cookie work in Safari, iOS,
-Brave and private windows with `SameSite=Lax` (decision D2, checklist C4).
+Both are hosts of one site, `signpak.tech`, which is what lets the login cookie work in Safari,
+iOS, Brave and private windows with `SameSite=Lax` (decision D2, checklist C4). The API is
+deliberately **not** `api.signpak.tech`: that name is kept for the future SignPAK app backend.
 
-Replace `<DOMAIN>` everywhere below with the real domain (for example `signpak.org`), and
-`<SERVER_IP>` with the server's public IPv4 address.
+Replace `<SERVER_IP>` below with the server's public IPv4 address (the server, D1, is still
+being chosen).
 
 **Files in this folder**
 
 | File | What it is |
 | --- | --- |
-| `nginx/api.conf` | The Nginx site for `api.<DOMAIN>` |
+| `nginx/api.conf` | The Nginx site for `api.commons.signpak.tech` |
 | `ecosystem.config.cjs` | The PM2 process definition (one process, fork mode) |
 | `deploy.sh` | Pull, install, reload and health-check, in one command |
 | `scripts/check-nginx.sh` | CI only: runs `nginx -t` on `nginx/api.conf` in Docker |
@@ -30,26 +31,40 @@ Replace `<DOMAIN>` everywhere below with the real domain (for example `signpak.o
 
 You need:
 
-- the domain, with access to its DNS settings at the registrar;
+- access to the DNS settings of `signpak.tech` at the registrar;
 - the server, reachable over SSH, with a **public IP address** and ports **80 and 443 reachable
   from the internet** (see section 12 for the university server);
 - Ubuntu 22.04 or 24.04 (other Debian-based systems work with the same commands);
 - the MongoDB Atlas connection string, the Brevo and Web3Forms keys, the Google OAuth client
   and refresh token, and a strong admin password.
 
-## 1. DNS
+## 1. DNS and email authentication
 
-At the domain registrar:
+All of these are records in the DNS settings of `signpak.tech` at the registrar. Registrars
+want the **host** part only, without `.signpak.tech`.
 
-1. Add an **`A` record**: name `api`, value `<SERVER_IP>`. (If the server also has a public IPv6
-   address, add an `AAAA` record too.)
-2. In Vercel: **Project → Settings → Domains → Add** `commons.<DOMAIN>`. Vercel shows a
-   **CNAME** record (usually `cname.vercel-dns.com`); add it at the registrar exactly as shown.
+| What | Type | Host | Value |
+| --- | --- | --- | --- |
+| The API | `A` | `api.commons` | `<SERVER_IP>` |
+| The API over IPv6 (only if the server has a public IPv6) | `AAAA` | `api.commons` | the server's IPv6 |
+| The website | `CNAME` | `commons` | what Vercel shows (usually `cname.vercel-dns.com`) |
+| Email sender | as Brevo shows | as Brevo shows | as Brevo shows |
+
+1. **The API:** add the `A` record above.
+2. **The website:** in Vercel, **Project → Settings → Domains → Add** `commons.signpak.tech`.
+   Vercel shows a `CNAME` record; add it with host `commons`, exactly as shown.
+3. **Brevo domain authentication.** Verification and password-reset codes are sent as
+   `no-reply@signpak.tech` (`BREVO_SENDER_EMAIL`). Brevo only delivers reliably for an
+   authenticated domain: in Brevo, **Senders, Domains & Dedicated IPs → Domains → Add a domain →**
+   `signpak.tech`. Brevo then lists a few DNS records (a Brevo code `TXT` record, DKIM, and
+   DMARC/SPF). Add each one at the registrar exactly as shown, then click **Authenticate** in
+   Brevo. Until Brevo shows the domain as authenticated, codes may be rejected or land in spam.
 
 Check before continuing (DNS can take a few minutes to an hour):
 
 ```sh
-dig +short api.<DOMAIN>        # must print <SERVER_IP>
+dig +short api.commons.signpak.tech      # must print <SERVER_IP>
+dig +short commons.signpak.tech          # must point at Vercel
 ```
 
 ## 2. A non-root user
@@ -75,7 +90,9 @@ sudo ufw enable
 sudo ufw status            # 22, 80, 443 only. Port 5000 must NOT be listed.
 ```
 
-Node listens on port 5000, but only Nginx should talk to it. Keep 5000 closed.
+Node listens on port 5000 on **127.0.0.1 only** (`HOST`, the production default), so even with
+the port open nobody outside the machine could reach it. Keep it closed anyway: the two layers
+together are what stop anyone bypassing Nginx and forging `X-Forwarded-For`.
 
 ## 4. Install Node 22, Nginx, PM2 and certbot
 
@@ -100,13 +117,14 @@ npm ci --omit=dev
 
 cp .env.production.example .env
 chmod 600 .env             # only the signpak user can read the secrets
-nano .env                  # replace <DOMAIN>, fill in every empty value
+nano .env                  # fill in every empty value
 ```
 
 `backend/.env.production.example` already has the production settings: `NODE_ENV=production`,
-`TRUST_PROXY=true`, `CLIENT_ORIGIN=https://commons.<DOMAIN>`, `COOKIE_SECURE=true`,
-`COOKIE_SAMESITE=lax`, Google Drive storage, and 10-minute email codes. Every variable is
-explained in `backend/docs/setup.md`.
+`HOST=127.0.0.1`, `TRUST_PROXY=true`, `CLIENT_ORIGIN=https://commons.signpak.tech`,
+`COOKIE_SECURE=true`, `COOKIE_SAMESITE=lax`, `BREVO_SENDER_EMAIL=no-reply@signpak.tech`, Google
+Drive storage, and 10-minute email codes. Every variable is explained in
+`backend/docs/setup.md`.
 
 ## 6. MongoDB Atlas: allow this server
 
@@ -123,7 +141,7 @@ sudo mkdir -p /var/www/certbot
 sudo tee /etc/nginx/sites-available/certbot-bootstrap.conf > /dev/null <<'EOF'
 server {
     listen 80;
-    server_name api.<DOMAIN>;
+    server_name api.commons.signpak.tech;
     location ^~ /.well-known/acme-challenge/ { root /var/www/certbot; }
 }
 EOF
@@ -131,7 +149,7 @@ sudo ln -sf /etc/nginx/sites-available/certbot-bootstrap.conf /etc/nginx/sites-e
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 
-sudo certbot certonly --webroot -w /var/www/certbot -d api.<DOMAIN> \
+sudo certbot certonly --webroot -w /var/www/certbot -d api.commons.signpak.tech \
   --email <TEAM_EMAIL> --agree-tos --no-eff-email
 ```
 
@@ -148,7 +166,6 @@ sudo certbot renew --dry-run
 ```sh
 sudo rm /etc/nginx/sites-enabled/certbot-bootstrap.conf
 sudo cp /srv/signpakcommons/deploy/nginx/api.conf /etc/nginx/sites-available/signpakcommons-api.conf
-sudo sed -i 's/<DOMAIN>/your-domain.org/g' /etc/nginx/sites-available/signpakcommons-api.conf
 sudo ln -s /etc/nginx/sites-available/signpakcommons-api.conf /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -176,15 +193,16 @@ so a second process would double every visitor's allowance.
 ## 10. Check it
 
 ```sh
-curl -s http://127.0.0.1:5000/api/v1/health      # on the server
-curl -s https://api.<DOMAIN>/api/v1/health       # from anywhere
+curl -s http://127.0.0.1:5000/api/v1/health               # on the server
+curl -s https://api.commons.signpak.tech/api/v1/health     # from anywhere
 ```
 
 Both must show `"status":"ok"`, `"database":"connected"` and `"storage":true`. A 503 with
 `"status":"degraded"` says which part is down; `pm2 logs signpakcommons-api` says why.
 
-`pm2 logs` must show real visitor addresses, not `127.0.0.1`. If they are all `127.0.0.1`,
-`TRUST_PROXY` is not `true`; the API also logs a warning about it at startup.
+`pm2 logs` must show real visitor addresses in each request line's `clientIp` field, not
+`127.0.0.1`. If they are all `127.0.0.1`, `TRUST_PROXY` is not `true`; the API also logs a
+warning about it at startup.
 
 ## 11. The website on Vercel
 
@@ -192,10 +210,16 @@ Both must show `"status":"ok"`, `"database":"connected"` and `"storage":true`. A
 
 | Variable | Value | Why |
 | --- | --- | --- |
-| `VITE_API_ORIGIN` | `https://api.<DOMAIN>` | where the site sends API requests |
-| `SITE_URL` | `https://commons.<DOMAIN>` | sitemap, robots.txt and canonical links |
+| `VITE_API_ORIGIN` | `https://api.commons.signpak.tech` | where the site sends API requests |
+| `SITE_URL` | `https://commons.signpak.tech` | sitemap, robots.txt and canonical links |
 
 Redeploy the site after setting them (environment variables are read at build time).
+
+**Once the API is live at `https://api.commons.signpak.tech`, retire the old address.** In
+Vercel, **Project → Settings → Domains**, edit `commonssignpak.vercel.app` and set it to
+**redirect to `commons.signpak.tech`** (permanent, 308). Do it only after the health check in
+section 10 passes: until then the old address is the only working copy of the site, and after
+it, anyone still using an old link lands on the address whose login cookie works everywhere.
 
 ## 12. Server-specific notes
 
@@ -208,9 +232,10 @@ internet**, or university IT has to forward those two ports to it. Ask IT for ex
 
 If neither is possible, use **Cloudflare Tunnel** instead of opening ports:
 
-1. Move the domain's DNS to Cloudflare (free plan).
+1. Move the DNS of `signpak.tech` to Cloudflare (free plan), recreating the website and Brevo
+   records from section 1 there.
 2. Install `cloudflared` on the server, run `cloudflared tunnel login`, create a tunnel, and
-   route `api.<DOMAIN>` to `http://127.0.0.1:5000`. Nginx and certbot are then not needed for
+   route `api.commons.signpak.tech` to `http://127.0.0.1:5000`. Nginx and certbot are then not needed for
    the API; Cloudflare terminates HTTPS.
 3. Cloudflare's free plan caps request bodies at **100 MB**, so set
    `MAX_RECORDING_UPLOAD_MB=95` in `backend/.env` (FIX-PLAN section 0).
@@ -237,11 +262,11 @@ finishes its in-flight requests first), and waits up to 30 seconds for the healt
 
 ## What to send back to the developers
 
-Once the domain and server exist, send:
+Once the server exists, send:
 
-1. the domain (so `<DOMAIN>` can be replaced in the repo);
-2. the server's public IP, and which server it is (Hostinger or university);
-3. whether Cloudflare Tunnel was needed.
+1. the server's public IP, and which server it is (Hostinger or university);
+2. whether Cloudflare Tunnel was needed;
+3. confirmation that `signpak.tech` shows as authenticated in Brevo.
 
 Then the Phase 1 checks that need the real server can be run and ticked: health over HTTPS with
 a valid certificate; sign-up/login/logout in Chrome, Firefox, Safari (macOS and iOS) and a

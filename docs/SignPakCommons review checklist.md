@@ -27,7 +27,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 
 ## Critical (fix first)
 
-- [ ] **C1. The live backend is down.** *(Phase 1: code and deployment files done — `deploy/` (Nginx, PM2, deploy.sh, server guide), health reports storage, graceful shutdown. **Pending:** deploying to `api.<DOMAIN>` once the domain and server exist; see `docs/phase-reports/PHASE-1.md`.)* The deployed frontend calls `https://signpakcommons-production.up.railway.app`, which answers `404 Application not found`. Nobody can log in or upload on commonssignpak.vercel.app.
+- [ ] **C1. The live backend is down.** *(Phase 1: code and deployment files done — `deploy/` (Nginx, PM2, deploy.sh, server guide), health reports storage, graceful shutdown. Domain decided: `api.commons.signpak.tech` (D2). **Pending:** the server (D1) and deploying to it; see `docs/phase-reports/PHASE-1.md`.)* The deployed frontend calls `https://signpakcommons-production.up.railway.app`, which answers `404 Application not found`. Nobody can log in or upload on commonssignpak.vercel.app.
   - Redeploy or restore the backend.
   - Set `VITE_API_ORIGIN` to the new URL and rebuild the frontend.
 - [ ] **C2. The contact form never sends.** In `frontend/src/pages/Landing.jsx`, `ContactForm.submit()` sets `status = 'sending'` and never calls `api.contact.send`, so the button stays on "Sending…".
@@ -38,7 +38,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
   - Add an admin endpoint and UI that deletes one contributor's recordings: the Drive files (`storageService.remove`) and the Submission documents.
   - Add an option to do this when deleting a user.
   - Keep a record that the deletion happened.
-- [ ] **C4. The cookie is cross-site, so login breaks in Safari/iOS, Brave and incognito.** *(Phase 1: first option chosen (D2): `commons.<DOMAIN>` + `api.<DOMAIN>`, host-only `SameSite=Lax` cookie, proven across two hostnames in E2E. **Pending:** the real-browser checks on the deployed domain.)* The frontend (`*.vercel.app`) and API (`*.railway.app`) are on different sites, so the cookie must be `SameSite=None` and browsers that block third-party cookies drop it. Either:
+- [ ] **C4. The cookie is cross-site, so login breaks in Safari/iOS, Brave and incognito.** *(Phase 1: first option chosen (D2): `commons.signpak.tech` + `api.commons.signpak.tech`, host-only `SameSite=Lax` cookie, proven across two hostnames in E2E. **Pending:** the real-browser checks once `api.commons.signpak.tech` is live.)* The frontend (`*.vercel.app`) and API (`*.railway.app`) are on different sites, so the cookie must be `SameSite=None` and browsers that block third-party cookies drop it. Either:
   - put both on one domain (for example `commons.example.org` and `api.example.org`) with `COOKIE_SAMESITE=lax`, or
   - proxy `/api/*` through a rewrite in `frontend/vercel.json`, so requests stay on the same origin.
 - [ ] **C5. Temp files are never deleted when the storage is Drive.** In `backend/src/services/storage/googleDriveDriver.js`, `save()` uploads from the temp file but never deletes it (only `localDriver` moves it). Every upload, up to 100 MB, stays in `uploads/tmp`.
@@ -79,7 +79,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 - [ ] There is no admin page for contact messages. The `GET /admin/messages` endpoint exists but nothing uses it.
 - [ ] There is no admin page to browse or export submissions (this ties in with B5).
 - [ ] There is no way to change the password while logged in; only reset by email works.
-- [ ] `SITE_URL` in `frontend/src/seo/seoCatalog.mjs` is still `https://signpakcommons.example`, so the sitemap and robots file are wrong. *(Phase 1: now read from the `SITE_URL` env var, default `https://commons.<DOMAIN>`, with a build warning. **Pending:** setting it in Vercel once the domain exists.)*
+- [x] `SITE_URL` in `frontend/src/seo/seoCatalog.mjs` is still `https://signpakcommons.example`, so the sitemap and robots file are wrong. *(Phase 1: defaults to `https://commons.signpak.tech` (D2), overridable with the `SITE_URL` env var; sitemap and robots.txt now name the real site.)*
 - [ ] Remove the unused `frontend/src/utils/blobStore.js`. Notifications are only stored in the browser (`api.notifications`); decide whether that is enough.
 - [ ] The main bundle is 526 KB. Load the admin pages and the ffmpeg tool separately.
 - [x] The backend tests run only on pull requests (`.github/workflows`). Also run them on pushes to `main`. *(Phase 0: `.github/workflows/ci.yml` runs backend, frontend, e2e and audit jobs on every push and pull request; the two old workflows were folded into it.)*

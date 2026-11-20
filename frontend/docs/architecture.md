@@ -191,7 +191,7 @@ canonical site URL. Only indexable entries in the catalog are included in the
 sitemap and React Snap route list; entries marked `noindex` are excluded. The site URL
 comes from the `SITE_URL` environment variable: the Node SEO script reads it directly, and
 `vite.config.js` bakes the same value into the bundle as `__SITE_URL__`. Unset, it is the
-`https://commons.<DOMAIN>` placeholder and `npm run seo:generate` prints a warning.
+production site, `https://commons.signpak.tech` (decision D2).
 
 `npm run seo:generate` writes the sitemap, robots file, and
 `react-snap-routes.json`; it runs as part of `npm run build`. `npm run snap`
@@ -203,9 +203,9 @@ site plus an available headless Chromium executable.
 The Vite development server provides the `/api` proxy. For Vercel, `vercel.json`
 rewrites application routes to `/` so that direct navigation or a reload on a
 client-side route such as `/admin/categories` serves the SPA entry point. When
-In production the site is `commons.<DOMAIN>` (Vercel) and the API is `api.<DOMAIN>` (the
+In production the site is `commons.signpak.tech` (Vercel) and the API is `api.commons.signpak.tech` (the
 team's server): different origins but the same site, so the API's host-only `SameSite=Lax`
-cookie is sent on the site's credentialed requests. Set `VITE_API_ORIGIN=https://api.<DOMAIN>`
+cookie is sent on the site's credentialed requests. Set `VITE_API_ORIGIN=https://api.commons.signpak.tech`
 in the Vercel build environment, and the backend's `CLIENT_ORIGIN` to the site origin.
 `e2e/tests/cross-host-cookie.spec.js` reproduces this layout with `commons.localtest.me` and
 `api.localtest.me`.

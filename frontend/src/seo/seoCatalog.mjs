@@ -9,14 +9,13 @@
  */
 
 /**
- * The public site's origin, from the SITE_URL environment variable (set it in Vercel to
- * https://commons.<your domain>). Two readers, one variable:
+ * The public site's origin: https://commons.signpak.tech (decision D2), overridable with the
+ * SITE_URL environment variable, e.g. for a staging deployment. Two readers, one variable:
  *   - Node (scripts/generateSeoAssets.js) reads process.env.SITE_URL directly;
  *   - the browser bundle gets the same value baked in at build time as __SITE_URL__
  *     (see `define` in vite.config.js), because process.env does not exist in a browser.
- * Until SITE_URL is set this is the <DOMAIN> placeholder, and the SEO script warns.
  */
-export const DEFAULT_SITE_URL = 'https://commons.<DOMAIN>'
+export const DEFAULT_SITE_URL = 'https://commons.signpak.tech'
 
 export const resolveSiteUrl = (value) => {
   const trimmed = String(value ?? '').trim().replace(/\/+$/, '')
