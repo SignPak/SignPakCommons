@@ -5,31 +5,34 @@ export function parseServiceAccountCredentials(rawEnvVar) {
     throw new Error('Service account credentials environment variable is missing.');
   }
 
-  let creds = rawEnvVar.trim();
+  const creds = String(rawEnvVar).trim();
 
-  // 1. Strip surrounding quotes if the env variable was saved with extra wrapping quotes
-  if (
-    (creds.startsWith('"') && creds.endsWith('"')) ||
-    (creds.startsWith("'") && creds.endsWith("'"))
-  ) {
-    creds = creds.slice(1, -1);
-  }
-
-  // 2. Parse JSON (with a fallback double-parse if it was double-encoded)
+  // 1. Parse as stored. A double-encoded value (JSON.stringify of the JSON) parses to a string,
+  //    which is parsed once more. Only if the raw value is not JSON at all are wrapping quotes
+  //    stripped (e.g. '{"type":...}' saved with single quotes). Stripping first, as this used to,
+  //    broke the double-encoded case: '"{\"a\":1}"' minus its quotes is not JSON.
   let parsed;
   try {
-    parsed = typeof creds === 'string' ? JSON.parse(creds) : creds;
-    if (typeof parsed === 'string') {
-      parsed = JSON.parse(parsed); // Handles double-stringified JSON
+    parsed = parseJson(creds);
+  } catch (firstError) {
+    const quoted = (creds.startsWith('"') && creds.endsWith('"')) || (creds.startsWith("'") && creds.endsWith("'"));
+    if (!quoted) throw new Error(`Failed to parse Service Account JSON: ${firstError.message}`);
+    try {
+      parsed = parseJson(creds.slice(1, -1));
+    } catch (err) {
+      throw new Error(`Failed to parse Service Account JSON: ${err.message}`);
     }
-  } catch (err) {
-    throw new Error(`Failed to parse Service Account JSON: ${err.message}`);
   }
 
-  // 3. Normalize private key newlines (essential for OpenSSL / Google Auth)
+  // 2. Normalize private key newlines (essential for OpenSSL / Google Auth)
   if (parsed.private_key) {
     parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
   }
 
   return parsed;
+}
+
+function parseJson(text) {
+  const value = JSON.parse(text);
+  return typeof value === 'string' ? JSON.parse(value) : value;
 }

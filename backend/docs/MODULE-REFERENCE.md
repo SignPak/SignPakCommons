@@ -15,7 +15,8 @@ implementation layers.
 | Domain behavior | `src/services/` | Enforce permissions, visibility, retention, cooldown, and multi-step workflows here. |
 | MongoDB persistence | `src/models/`, `src/repositories/` | Schemas define serialization/indexes; repositories encapsulate queries. |
 | Video library | `src/models/Video.js`, `src/services/videoService.js`, `src/routes/videoRoutes.js` | Supports stored uploads and direct HTTPS video URLs; posters are stored files. |
-| File storage | `src/services/storage/`, `src/utils/sendFile.js` | Local and Google Drive drivers; `sendFile` handles byte ranges and headers. |
+| File storage | `src/services/storage/`, `src/utils/sendFile.js`, `src/utils/files.js` | Local and Google Drive drivers; temp files are deleted after every save and swept at startup; `sniffVideo` decides accepted video by bytes and brand; `sendFile` handles byte ranges and headers. Tests can route storage to `tests/support/fakeDriveDriver.js` with `routeStorageForTests()` (refuses outside `NODE_ENV=test`). |
+| Failure clean-up | `src/utils/cleanup.js` | `attemptCleanup()`: one clean-up step that logs and continues, so the original error is always the one rethrown. |
 | Redis cache | `src/services/cache/upstashRedis.js`, feature service | Optional Upstash Redis REST client. Feature services own key naming, TTL, validation, and fallback logging. |
 | Authentication and consent | `src/services/authService.js`, `src/controllers/authController.js`, auth validators | Signup does not activate until the current consent is accepted. |
 | Submissions and archive | `src/services/submissionService.js`, `src/repositories/submissionRepo.js` | Submission records are append-only; archive storage is selected independently. |

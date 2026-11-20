@@ -4,7 +4,9 @@ import { isStorageReady } from '../services/initialization.js'
 /**
  * What the health check reports. Booleans and counters only: no driver names, paths, hosts or
  * error text, because this endpoint is public. "storage" means the configured drivers
- * initialized; it does not prove a Google Drive token is still valid.
+ * initialized. For Google Drive that includes reading the root folder through the API, so the
+ * OAuth token worked at startup; a token revoked later shows up on the next upload instead
+ * (logged as invalid_grant, D3).
  */
 export function buildHealth({ database, storage, uptimeSeconds }) {
   const healthy = database && storage

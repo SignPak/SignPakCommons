@@ -248,6 +248,13 @@ Cloud Console → **APIs & Services → OAuth consent screen**, the app must be 
 In "Testing" mode refresh tokens expire after **7 days** and every upload starts failing. After
 switching to production, create a new refresh token and put it in `GOOGLE_OAUTH_REFRESH_TOKEN`.
 
+If the token stops working, `pm2 logs signpakcommons-api` shows this line, naming the driver and
+the variable to replace, and the health check reports `"storage":false`:
+
+```text
+Google Drive refresh token expired or revoked; make sure the OAuth app is In production and create a new token
+```
+
 ## 14. Every later deploy
 
 ```sh

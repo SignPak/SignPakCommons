@@ -2,6 +2,7 @@ import { POSTER_MAX_BYTES, ROLES, VIDEO_STATUS } from '../config/constants.js'
 import { categoryRepo } from '../repositories/categoryRepo.js'
 import { videoRepo } from '../repositories/videoRepo.js'
 import { notFound, validationError } from '../utils/AppError.js'
+import { attemptCleanup } from '../utils/cleanup.js'
 import { safeName, sniffImage, sniffVideo } from '../utils/files.js'
 import { logger } from '../utils/logger.js'
 import { upstashRedis } from './cache/upstashRedis.js'
@@ -88,7 +89,9 @@ export const videoService = {
         category: input.categoryId, order, videoFile, externalVideoUrl, posterFile, createdBy: admin._id,
       })
     } catch (error) {
-      await Promise.all(stored.map((ref) => storageService.remove(ref))) // no orphaned files if the database write fails
+      // No orphaned files if a later step fails (B1: one failed removal must not skip the
+      // others or replace the original error).
+      await Promise.all(stored.map((ref) => attemptCleanup('remove stored video file', () => storageService.remove(ref), { key: ref.key })))
       throw error
     }
   },

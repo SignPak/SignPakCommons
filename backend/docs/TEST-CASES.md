@@ -20,21 +20,21 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 1** (backend 1.0.7, frontend 1.0.10):
+Counts as of **Phase 2** (backend 1.0.8, frontend 1.0.10):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 14 | 61 |
-| Integration (backend) | `backend/tests/integration/` | 11 | 49 |
-| Security (backend) | `backend/tests/security/` | 4 | 56 |
+| Unit (backend) | `backend/tests/unit/` | 18 | 89 |
+| Integration (backend) | `backend/tests/integration/` | 12 | 56 |
+| Security (backend) | `backend/tests/security/` | 5 | 59 |
 | Unit (frontend) | `frontend/test/unit/` | 7 | 23 |
 | Integration (frontend) | `frontend/test/integration/` | 1 | 4 |
 | End-to-end | `e2e/tests/` | 3 | 12 (4 tests × 3 browsers) |
-| **Total** | | **40** | **205** |
+| **Total** | | **46** | **243** |
 
 The backend security count is per-route: the access matrix produces one case per route (47
 today) plus the completeness check; the hook suite adds three, the production-error suite
-three and the listen-address suite two.
+three, the listen-address suite two and the upload-type suite three.
 
 ## 1. Backend unit tests — `backend/tests/unit/`
 
@@ -101,6 +101,34 @@ three and the listen-address suite two.
 | U-59 | `listenHost.test.js` | S3: development and test listen on 0.0.0.0 by default | FR13.12 | S3 | unit |
 | U-60 | `listenHost.test.js` | S3: an explicit HOST wins in every environment | FR13.12 | S3 | unit |
 | U-61 | `listenHost.test.js` | S3: a blank HOST is rejected instead of silently meaning "all interfaces" | FR13.12 | S3 | unit |
+| U-62 | `sniffVideo.test.js` | B6: accepts every listed video major brand | FR13.8, SE-10 | B6 | unit |
+| U-63 | `sniffVideo.test.js` | B6: rejects audio, image and 3GP major brands even when they list video brands | FR13.8, SE-10 | B6 | unit |
+| U-64 | `sniffVideo.test.js` | B6: an unknown major brand is accepted only through a listed compatible brand | FR13.8, SE-10 | B6 | unit |
+| U-65 | `sniffVideo.test.js` | B6: a rejected compatible brand vetoes an unknown major brand | FR13.8, SE-10 | B6 | unit |
+| U-66 | `sniffVideo.test.js` | B6: compatible brands past the end of the ftyp box are ignored | FR13.8, SE-10 | B6 | unit |
+| U-67 | `sniffVideo.test.js` | B6: box size 0 (box runs to end of file) and short files are handled | FR13.8, SE-10 | B6 | unit |
+| U-68 | `sniffVideo.test.js` | B6: WebM is still recognised and other content is still rejected | FR13.8, SE-10 | B6 | unit |
+| U-69 | `storageService.test.js` | C5: removes the temp file after a Drive upload | FR13.8 | C5 | unit |
+| U-70 | `storageService.test.js` | C5: removes the temp file after a Drive archive (contributor recording) | FR13.8 | C5 | unit |
+| U-71 | `storageService.test.js` | C5: removes the temp file when the Drive upload fails, too | FR13.8 | C5 | unit |
+| U-72 | `storageService.test.js` | D3: an invalid_grant from Drive logs the clear refresh-token message | FR13.8 | — | unit |
+| U-73 | `storageService.test.js` | D3: an invalid_grant while initializing storage logs the message and still fails startup | FR13.8 | — | unit |
+| U-74 | `storageService.test.js` | D3: other storage failures do not mention the refresh token | FR13.8 | — | unit |
+| U-75 | `storageService.test.js` | D3: invalid_grant is recognised in the shapes googleapis produces | FR13.8 | — | unit |
+| U-76 | `storageService.test.js` | the storage test seam refuses to run outside NODE_ENV=test | — (deployment safety, no SRS requirement) | — | unit |
+| U-77 | `googleDriveDriver.test.js` | B8: concurrent uploads to the same folder path create each Drive folder exactly once | FR13.8 | B8 | unit |
+| U-78 | `googleDriveDriver.test.js` | B8: sibling paths share their common parent folders | FR13.8 | B8 | unit |
+| U-79 | `googleDriveDriver.test.js` | B8: a failed folder lookup is retried by the next upload, not cached | FR13.8 | B8 | unit |
+| U-80 | `googleDriveDriver.test.js` | the Drive driver reads service-account JSON through utils/parseCredentials.js | FR13.8 | — | unit |
+| U-81 | `googleDriveDriver.test.js` | the Drive driver still names itself when no credentials are configured | FR13.8 | — | unit |
+| U-82 | `googleDriveDriver.test.js` | parseServiceAccountCredentials accepts quoted and double-encoded JSON and fixes key newlines | FR13.8 | — | unit |
+| U-83 | `cleanupOrder.test.js` | B1: a failing file removal still releases the submission cooldown and rethrows the original error | FR13.8, FR13.9 | B1 | unit |
+| U-84 | `cleanupOrder.test.js` | B1: a failing cooldown release is logged and does not hide the original error | FR13.8, FR13.9 | B1 | unit |
+| U-85 | `cleanupOrder.test.js` | B1: one failing removal does not stop the others, and video create rethrows the original error | FR13.11 | B1 | unit |
+| U-86 | `cleanupOrder.test.js` | B1: a failing rollback of the new demo video rethrows the original error | FR13.11 | B1 | unit |
+| U-87 | `cleanupOrder.test.js` | B1: a failed removal of the previous demo file keeps the new demo video | FR13.11 | B1 | unit |
+| U-88 | `localStorage.test.js` | C5: startup removes temp files older than an hour and keeps newer files and subfolders | FR13.8 | C5 | unit |
+| U-89 | `localStorage.test.js` | C5: the startup sweep is a no-op on an empty or missing temp folder | FR13.8 | C5 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -158,6 +186,13 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-47 | `api-basics.test.js` | S3: without TRUST_PROXY a forged X-Forwarded-For is ignored | FR13.12 | S3 | integration |
 | I-48 | `api-basics.test.js` | C4: the session cookie is host-only, HttpOnly and SameSite=Lax | SE-2 | C4 | integration |
 | I-49 | `api-proxy.test.js` | S3: with TRUST_PROXY=true the client IP comes from X-Forwarded-For | FR13.12 | S3 | integration |
+| I-50 | `api-storage-drive.test.js` | C5: removes the temp file after a Drive upload of a reference video and its poster | FR13.8, FR13.11 | C5 | integration |
+| I-51 | `api-storage-drive.test.js` | C5: removes the temp file after a Drive upload of a contributor recording | FR13.8 | C5 | integration |
+| I-52 | `api-storage-drive.test.js` | C5: removes the temp file after a Drive upload of the demo video | FR13.11 | C5 | integration |
+| I-53 | `api-storage-drive.test.js` | B1: when the database write and the Drive clean-up both fail, the original error is returned and the cooldown is released | FR13.8, FR13.9 | B1 | integration |
+| I-54 | `api-storage-drive.test.js` | B1: a failed removal of the previous demo video keeps the new one playable | FR13.11 | B1 | integration |
+| I-55 | `api-storage-drive.test.js` | B6: .m4a and .3gp recordings are rejected with 422 and nothing is stored | FR13.8, SE-10 | B6 | integration |
+| I-56 | `api-storage-drive.test.js` | C5: old temp files are cleared when storage initializes at startup | FR13.8 | C5 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -173,6 +208,9 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | S-08 | `production-errors.test.js` | C1: the production health check reports the failure as booleans only | QA-3 | C1, S5 | security |
 | S-09 | `listen-address.test.js` | S3: the production server answers on loopback, where Nginx connects | FR13.12 | S3 | security |
 | S-10 | `listen-address.test.js` | S3: the production server refuses connections on the machine's network addresses | FR13.12 | S3 | security |
+| S-11 | `upload-types.test.js` | B6: disguised files are rejected on the contributor recording route | FR13.8, SE-10 | B6 | security |
+| S-12 | `upload-types.test.js` | B6: disguised files are rejected on the reference video route | FR13.11, SE-10 | B6 | security |
+| S-13 | `upload-types.test.js` | B6: disguised files are rejected on the demo video route | FR13.11, SE-10 | B6 | security |
 
 The matrix in S-01 calls every route as an anonymous visitor, a contributor, a suspended
 contributor and an admin. A denied caller must get the exact status (401 or 403); an allowed
@@ -239,7 +277,7 @@ Drive upload`) and a row here.
 | Checklist | Planned coverage | Phase |
 | --- | --- | --- |
 | C1, C4, S3, S5 | **Covered in Phase 1** (U-38–U-61, I-46–I-49, S-06–S-10, FU-21–FU-23, E-04). The real-server checks are still pending: see `docs/phase-reports/PHASE-1.md`. | 1 |
-| C5, B1, B6, B8 | temp-file cleanup, cooldown release on cleanup failure, video brand sniffing, single Drive folder per path | 2 |
+| C5, B1, B6, B8 | **Covered in Phase 2** (U-62–U-89, I-50–I-56, S-11–S-13). Real-server check pending: a production upload leaves `uploads/tmp` empty. | 2 |
 | S1 | the whole suite re-run on updated dependencies; the audit job becomes required | 3 |
 | C2, S4 | contact form sends, deletion request with an emailed code, per-sender quotas | 4 |
 | C3 | recording deletion for one contributor, deletion log, admin messages page | 5 |

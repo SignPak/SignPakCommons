@@ -28,7 +28,9 @@ before processing a request, and returns `503 SERVICE_UNAVAILABLE` if it fails. 
 that body is generic; the underlying error is only included as `detail` outside production,
 because it can contain hosts or credentials (checklist S5). `GET /api/v1/health` is let
 through even when initialization fails, so it can report `database` and `storage` status
-(booleans only) instead of the generic 503.
+(booleans only) instead of the generic 503. For Google Drive, "storage initialized" includes
+reading the root folder through the API, so `storage: true` means the OAuth token worked at
+startup; a token revoked afterwards shows up on the next upload (logged as `invalid_grant`).
 
 ## Request flow
 
@@ -111,10 +113,25 @@ recording/data deletion request before or after account deletion, at any time;
 requests made after account deletion may require the team to verify and manually
 match the former contributor. Deleting a base video does not remove submissions.
 
-Uploads first land in a temporary directory. Multer limits file size and count;
-services then inspect file signatures before moving valid assets into the selected
-storage driver. Failure paths remove temporary files and clean up files already
-stored during a failed multi-step operation.
+Uploads first land in a temporary directory (`UPLOAD_DIR/tmp`). Multer limits file size and
+count; services then inspect file signatures before handing valid assets to the selected
+storage driver. `storageService.save()` and `archive()` delete the temp file afterwards,
+whether the save succeeded or not. The local driver moves the file, but the Google Drive
+driver only reads it, so without this every Drive upload would stay on disk (checklist C5).
+At startup the local driver also deletes temp files more than an hour old, left by a crash
+mid-request.
+
+When a multi-step operation fails part-way (stored the file, then the database write failed),
+each clean-up step runs on its own through `src/utils/cleanup.js`: a failed clean-up is logged
+and the next step still runs, and the caller gets the original error, not the clean-up's
+(checklist B1). For a submission this means the cooldown is always released. When the demo
+video is replaced, the old file is removed only after the database points at the new one, and a
+failure there is logged rather than rolled back.
+
+The Google Drive driver shares one folder lookup between concurrent uploads to the same new
+folder, so it never creates duplicate folders (B8). If Google answers `invalid_grant` (the
+OAuth refresh token expired or was revoked, usually because the consent screen was left in
+"Testing"), the log says so in plain words, with the variable to replace (D3).
 
 ## Security and operational controls
 
@@ -125,7 +142,9 @@ stored during a failed multi-step operation.
   have bounded attempts and resend intervals.
 - Zod validates bodies, query parameters, and route IDs.
 - File signatures, rather than supplied MIME types, determine accepted video and
-  image formats.
+  image formats. MP4-family files are accepted by brand (B6): audio (M4A), image (HEIC,
+  AVIF) and 3GP/3G2 major brands are refused; listed video brands are accepted; an unknown
+  major brand only passes if it declares a listed video brand as compatible.
 - Access restrictions store hashed identifiers and expose only short hints.
 - Contact requires a signed-in account email match and enforces per-account and
   global daily quotas; abusive attempts may create a temporary device/IP block.
