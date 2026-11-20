@@ -222,6 +222,19 @@ Run on this branch, Windows 11, Node v24.13.1, 20 Nov 2026, pasted from real out
 | `src/utils` | 82.67% / 89.36% | **86.43% / 89.29%** | 80 / 75 | 80 / 75 |
 | Frontend overall | 18.90% lines | **18.90%** (unchanged: `src/seo/**` is excluded from coverage) | 18 | 70 |
 
+### CI
+
+Run [44792032562](https://github.com/SignPak/SignPakCommons/actions/runs/44792032562) on the
+Phase 1 commit, overall conclusion **success**:
+
+| Job | Result |
+| --- | --- |
+| Backend (unit, integration, security, coverage) | success |
+| Frontend (lint, test, coverage, build) | success — Tests 27 passed (27) |
+| End-to-end (Playwright) | success — "12 passed (35.8s)", including the C4 cross-host test in Linux WebKit with the negative control |
+| Deploy files (shellcheck, nginx -t) | success — `nginx -t` "test is successful" on 1.24-alpine and 1.27-alpine |
+| Dependency audit | failure, tolerated until Phase 3 |
+
 ## Real-server "done when" — all pending
 
 **Blocked on: the domain and the server (D1/D2).** The steps are in `deploy/README.md`; its
@@ -281,15 +294,15 @@ Spot checks:
 
 1. **Nothing has run on a real server.** C1, C4, S3 and the `SITE_URL` leftover stay unticked
    until the four checks above pass.
-2. **WebKit's SameSite proof comes from CI, not from this machine.** Playwright's *Windows*
-   WebKit build does not implement SameSite: it received `SameSite=Lax` in the header, stored
-   the cookie as `None`, and sent it cross-site in the negative control. Chromium and Firefox
-   withheld it correctly. Real Safari enforces SameSite, and so should the Linux WebKit build
-   that CI runs. The negative control is therefore skipped only for WebKit on Windows, with a
-   visible test annotation. The positive steps (sign up, reload, log out, log in, reload across
-   the two hosts) still run in WebKit everywhere. **If CI's Linux WebKit also fails the
-   negative control, Playwright's WebKit can't stand in for Safari on this point, and the iOS
-   check on the real domain becomes the only proof.** I'll check this in the CI run for this PR.
+2. **WebKit's SameSite proof comes from CI, not from this machine — and CI confirmed it.**
+   Playwright's *Windows* WebKit build does not implement SameSite: it received `SameSite=Lax`
+   in the header, stored the cookie as `None`, and sent it cross-site in the negative control.
+   Chromium and Firefox withheld it correctly. So the negative control is skipped only for
+   WebKit on Windows, with a visible test annotation. **CI run 44792032562 (Ubuntu, Linux
+   WebKit) ran the full test including the negative control, and it passed**: Linux WebKit
+   withholds the `Lax` cookie from another site and sends it from `commons.` to `api.`.
+   Playwright's WebKit is a valid stand-in for Safari here; the real-iOS check on the deployed
+   domain remains as the final confirmation.
 3. **Health `storage: true` doesn't prove the Drive token works.** The Drive driver has no
    `init()`, so an expired refresh token only shows on the first upload. Phase 2's D3 work adds
    the `invalid_grant` log.
