@@ -531,6 +531,9 @@ Tests:
    - Change `AdminDashboard.jsx` to use `GET /admin/stats?days=`. Add optional `userId` and `categoryId` filters to that endpoint so the page's current filters keep working.
    - For admins, stop `LibraryProvider` from loading every submission.
    - Paginate `GET /admin/users` and the admin `GET /submissions`.
+6. **Fix carried over from Phase 7 verification: `deleteAccount()` must not leave a `DeletedAccount` record for a live account.**
+   - Today `deleteAccount()` in `userService` writes `DeletedAccount` *before* `userRepo.remove()`. If the removal fails, a `DeletedAccount` record exists for an account that still exists, and the deletion lookup lists it as both current and deleted.
+   - Fix: remove the user first, then write `DeletedAccount`. If that write fails, log it with `attemptCleanup`-style logging (the account is already gone).
 
 Tests:
 - Unit:
@@ -541,6 +544,7 @@ Tests:
   - Export columns and filters, with no emails or names anywhere in the output.
   - Cursor pagination.
   - The `/admin/stats` filters.
+  - Item 6: make `userRepo.remove` throw → no `DeletedAccount` record, and the deletion lookup shows only the current account; the success path is unchanged.
 - Frontend integration (MSW): the Submissions page and download buttons; the dashboard renders from `/admin/stats` without calling the submissions list.
 - E2E: an admin downloads the CSV, and the test checks its rows against the submissions made in the test.
 
