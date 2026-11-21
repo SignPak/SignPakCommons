@@ -346,6 +346,9 @@ export const api = {
 
   contact: {
     async send(payload) { return request(apiRoutes.contact.send(), json('POST', payload)) },
+    // D4: confirm a signed-out deletion request with the emailed code, or ask for a new one.
+    async verify(id, code) { return request(apiRoutes.contact.verify(id), json('POST', { code })) },
+    async resend(id) { return request(apiRoutes.contact.resend(id), { method: 'POST' }) },
   },
 
   notifications,

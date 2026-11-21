@@ -67,6 +67,8 @@ export const apiRoutes = {
 
   contact: {
     send: () => `${API_BASE}/contact`,
+    verify: (id) => `${API_BASE}/contact/${encodeURIComponent(id)}/verify`,
+    resend: (id) => `${API_BASE}/contact/${encodeURIComponent(id)}/resend`,
   },
 
   admin: {

@@ -562,6 +562,13 @@ Tests:
 3. **S10:** in `app.js`, accept an incoming `X-Request-Id` only if it matches `^[A-Za-z0-9-]{1,64}$`; otherwise generate a new one.
 4. **Bundle size:** load the admin pages and `RecordingEditor` with `React.lazy`/`Suspense` in `App.jsx`. Aim for a main chunk under 300 KB.
 5. Remove the unused `src/utils/blobStore.js`. Add a note to the frontend docs that notifications are kept per browser.
+   - **Remove react-snap** (decided after Phase 3: it is unmaintained and carries every remaining high and critical dev-only advisory). Remove:
+     - the `react-snap` devDependency (then regenerate the lockfile with npm 10);
+     - the `snap` script in `frontend/package.json`;
+     - `frontend/scripts/runReactSnap.js`;
+     - the `react-snap-routes.json` output: its write in `scripts/generateSeoAssets.js` (and the mentions in that file's header and in `src/seo/seoCatalog.mjs`) and its line in `.gitignore`;
+     - its docs in `frontend/docs/architecture.md` (the prerendering paragraph and the `runReactSnap.js` line in the file tree).
+   - Done when `npm audit` (dev dependencies included) no longer reports react-snap, `mkdirp` 0.5.1 or `minimist` 0.0.8, and the build, sitemap and robots.txt are unchanged.
 6. **Accessibility** (SRS C.3 / QA-20): run axe (`@axe-core/react` in dev or a Vitest axe check) on the landing, library, record, editor and admin pages, and fix the serious contrast and label problems.
 
 Tests:

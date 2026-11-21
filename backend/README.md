@@ -85,6 +85,7 @@ All paths are under `/api/v1`.
 | `GET /demo-video[/file]`; `POST/DELETE /demo-video` | Public read; admin write | Singleton public walkthrough media. |
 | `GET/POST /submissions` | Authenticated user | Contributors list their own; admins list all. New submissions are append-only. |
 | `POST /contact` | Signed-in account or recording-deletion request | Other topics require the account email; deletion requests can be submitted without signing in at any time. |
+| `POST /contact/:id/verify`, `POST /contact/:id/resend` | Anyone | Confirm a signed-out deletion request with the emailed six-digit code, or ask for a new one (once a minute). |
 | `/admin/users*`, `/admin/restrictions*`, `/admin/stats`, `/admin/messages` | Admin | Account moderation, access restrictions, statistics, and inbox. |
 
 See [API.md](docs/API.md) for the complete route table, limits, visibility, and
@@ -121,8 +122,12 @@ mounted outside production.
   prevents simultaneous duplicate submissions; failed processing releases the
   claim.
 - Contact delivery uses Web3Forms. A signed-in account can send from its own
-  email; quotas are one per account per UTC day and 25 per UTC day globally by
-  default. Abusive attempts can temporarily restrict a device or IP.
+  email; quotas are one general/partnership message per account per UTC day and
+  25 such messages per UTC day site-wide by default. Deletion requests are exempt
+  from both. Signed-out visitors may send only deletion requests, two per IP and per
+  device per UTC day, confirmed with a code emailed to the account (at most 5 codes
+  per request and 5 code emails per address per day). Quotas answer 403, 409 or 429;
+  they never restrict a device or IP.
 
 ## Testing
 

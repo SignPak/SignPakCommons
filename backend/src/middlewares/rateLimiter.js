@@ -17,4 +17,6 @@ export const apiLimiter = limiter({ windowMs: 15 * MINUTE, limit: 1000 })
 // Slows down password guessing and account spam.
 export const authLimiter = limiter({ windowMs: 15 * MINUTE, limit: 20, message: 'Too many attempts. Wait 15 minutes and try again.' })
 export const contactLimiter = limiter({ windowMs: 60 * MINUTE, limit: 5, message: 'You have sent a few messages already. Try again later.' })
+// D4: slows down guessing deletion-request codes (each code also dies after AUTH_OTP_MAX_ATTEMPTS).
+export const contactCodeLimiter = limiter({ windowMs: 15 * MINUTE, limit: 20, message: 'Too many attempts. Wait 15 minutes and try again.' })
 export const uploadLimiter = limiter({ windowMs: 15 * MINUTE, limit: 60, message: 'Too many uploads. Wait a few minutes and try again.' })

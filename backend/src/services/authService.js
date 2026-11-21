@@ -1,11 +1,11 @@
 import bcrypt from 'bcrypt'
-import { createHmac, randomInt, timingSafeEqual } from 'node:crypto'
 import { CONSENT_VERSION, ROLES } from '../config/constants.js'
 import { env } from '../config/env.js'
 import { userRepo } from '../repositories/userRepo.js'
 import { badRequest, conflict, unauthorized } from '../utils/AppError.js'
 import { logger } from '../utils/logger.js'
 import { isDuplicateKeyError } from '../utils/mongoose.js'
+import { generateOtp, hashOtp as otpHash, matchesOtp } from '../utils/otp.js'
 import { signConsentToken, signToken, verifyConsentToken } from '../utils/tokens.js'
 import { emailService } from './email/index.js'
 
@@ -14,18 +14,11 @@ const DUMMY_HASH = bcrypt.hashSync('signpak-timing-guard', env.BCRYPT_ROUNDS)
 
 const emailTaken = () => conflict('An account with this email already exists. Log in instead.', { email: 'An account with this email already exists.' })
 const invalidCode = () => badRequest('That code is invalid or has expired. Request a new code and try again.')
-const otpHash = (purpose, userId, otp) => createHmac('sha256', env.JWT_SECRET).update(`${purpose}:${userId}:${otp}`).digest('hex')
 const clearOtp = (user, purpose) => {
   const prefix = purpose === 'email-verification' ? 'emailVerification' : 'passwordReset'
   user[`${prefix}CodeHash`] = null
   user[`${prefix}ExpiresAt`] = null
   user[`${prefix}Attempts`] = 0
-}
-const matchesOtp = (stored, supplied, purpose, userId) => {
-  if (!stored) return false
-  const expected = Buffer.from(stored, 'hex')
-  const actual = Buffer.from(otpHash(purpose, userId, supplied), 'hex')
-  return expected.length === actual.length && timingSafeEqual(expected, actual)
 }
 
 export const authService = {
@@ -44,7 +37,7 @@ export const authService = {
 
   async issueOtp(user, purpose) {
     const prefix = purpose === 'email-verification' ? 'emailVerification' : 'passwordReset'
-    const otp = String(100000 + randomInt(900000))
+    const otp = generateOtp()
     user[`${prefix}CodeHash`] = otpHash(purpose, user._id, otp)
     user[`${prefix}ExpiresAt`] = new Date(Date.now() + env.AUTH_OTP_TTL_MINUTES * 60_000)
     user[`${prefix}Attempts`] = 0

@@ -52,6 +52,7 @@
   .contact-card { @apply rounded-3xl border border-line bg-surface p-6 shadow-lift sm:p-10; }
   .contact-card > .field:first-child { @apply mt-0; }
   .contact-card > .btn-block { @apply mt-8; }
+  .contact-note { @apply mt-3 text-sm leading-relaxed text-muted; }
   .contact-done { @apply grid min-h-[380px] place-content-center justify-items-center text-center; }
   .contact-done p { @apply mx-auto mb-6 mt-3 max-w-xs text-base leading-relaxed text-muted; }
   .contact-check { @apply mb-6 grid h-16 w-16 place-items-center rounded-full bg-secondary-soft text-2xl text-secondary-ink; }

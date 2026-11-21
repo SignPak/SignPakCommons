@@ -30,6 +30,7 @@ backend separately, or set `VITE_API_ORIGIN` to another API origin.
 | `/` | Public | Landing page; about, contact, and policy are in-page sections. |
 | `/demo` | Public | Walkthrough video. |
 | `/faq` | Public | Frequently asked questions. |
+| `/contact/verify?id=` | Public | Confirm a signed-out recording/data deletion request with the emailed six-digit code. |
 | `/login`, `/signup` | Signed out | Sign in or register; redirects signed-in users. |
 | `/verify-email`, `/signup/consent`, `/forgot-password` | Signed out | Email verification, consent before account creation, and password recovery. |
 | `/consent` | Signed in | Accept the current contributor notice; required for older accounts without current consent. |
@@ -62,8 +63,9 @@ current password. Account deletion removes sign-in access, but submitted
 recordings and related contribution data remain stored. A separate
 “Request recording/data deletion” topic on the home page contact form can be
 used at any time before or after account deletion; it is available without
-sign-in and asks for the account email. Requests made after account deletion
-may require the team to verify and manually match the former contributor.
+sign-in and asks for the account email. When sent signed out, the request is
+confirmed with a six-digit code emailed to that account. Requests for an email
+with no account any more are checked by the team by hand.
 Recordings already used in a released model cannot be removed from that model.
 
 When adding a base video, admins can upload a video file or provide a direct

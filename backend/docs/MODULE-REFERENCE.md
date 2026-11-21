@@ -21,6 +21,7 @@ implementation layers.
 | Authentication and consent | `src/services/authService.js`, `src/controllers/authController.js`, auth validators | Signup does not activate until the current consent is accepted. |
 | Submissions and archive | `src/services/submissionService.js`, `src/repositories/submissionRepo.js` | Submission records are append-only; archive storage is selected independently. |
 | API specification | `src/docs/openapi.js`, `docs/API.md` | Update both with route, schema, or response changes. |
+| Contact form and deletion requests | `src/services/contactService.js`, `src/repositories/contactQuotaRepo.js`, `src/repositories/messageRepo.js`, `src/models/ContactMessage.js`, `src/models/ContactSenderQuota.js`, `src/utils/otp.js` | FR13.13. Quotas answer 403/409/429 and never restrict a device (S4). Signed-out deletion requests are confirmed with an emailed code sent after the response, so the answer never reveals whether an account exists (D4). `deliver` is the Web3Forms call; tests and the E2E server replace it. |
 | Email delivery | `src/services/email/`, `src/services/external/sendOTPBrevo.js` | `EMAIL_DRIVER` selects Brevo or the in-memory capture driver used by tests. |
 | Test-only hooks | `src/routes/testHooks.js` | `GET /__test/emails`, mounted only when `NODE_ENV=test` and `E2E_TEST_HOOKS=true`. |
 | Tests | `tests/unit/`, `tests/integration/`, `tests/security/` | One folder per level, with shared fixtures in `tests/support/`. |

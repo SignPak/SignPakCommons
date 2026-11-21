@@ -64,7 +64,10 @@ const schema = z.object({
   WEB3FORMS_ACCESS_KEY: z.string().optional(),
   CONTACT_DAILY_LIMIT: z.coerce.number().int().min(1).default(25),
   CONTACT_USER_DAILY_LIMIT: z.coerce.number().int().min(1).default(1),
-  CONTACT_ABUSE_BLOCK_MINUTES: z.coerce.number().int().min(1).max(1440).default(10),
+  // S4: signed-out deletion requests per IP and per device each UTC day.
+  CONTACT_SENDER_DAILY_LIMIT: z.coerce.number().int().min(1).default(2),
+  // S4: deletion-request code emails to one address each UTC day, across all requests.
+  CONTACT_CODE_EMAILS_PER_DAY: z.coerce.number().int().min(1).default(5),
 
   ADMIN_EMAIL: z.string().email('ADMIN_EMAIL must be a valid email'),
   ADMIN_PASSWORD: z.string().min(8, 'ADMIN_PASSWORD must be at least 8 characters').max(72),
