@@ -200,7 +200,10 @@ Run on this branch, Windows 11, Node v24.13.1, 21 Nov 2026. Pasted from real out
 
 ### CI
 
-Filled in below once the PR's run finishes.
+Run [44920642061](https://github.com/SignPak/SignPakCommons/actions/runs/44920642061) on
+`c235d42` (PR #36): overall **success**. All five jobs are green: Backend (unit, integration,
+security, coverage), Frontend (lint, test, coverage, build), End-to-end (Playwright),
+Dependency audit and Deploy files.
 
 ## How to verify by hand
 
