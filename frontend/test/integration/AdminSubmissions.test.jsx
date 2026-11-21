@@ -76,12 +76,16 @@ describe('Admin → Submissions against a mocked API', () => {
     await waitFor(() => expect(seen.at(-1)).toEqual({ limit: '25', categoryId: FOOD }))
     const videos = within(screen.getByLabelText('Video')).getAllByRole('option').map((option) => option.textContent)
     expect(videos).toEqual(['All videos', 'Bread'])
+    // Three quick changes start three requests that may reach the server in any order (the page
+    // ignores the answers it no longer wants), so check that the request with all of them was
+    // made, not that it happened to arrive last.
     fireEvent.change(screen.getByLabelText('Video'), { target: { value: BREAD } })
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-11-01' } })
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-11-30' } })
-    await waitFor(() => expect(seen.at(-1)).toEqual({ limit: '25', categoryId: FOOD, videoId: BREAD, from: '2026-11-01', to: '2026-11-30' }))
+    await waitFor(() => expect(seen).toContainEqual({ limit: '25', categoryId: FOOD, videoId: BREAD, from: '2026-11-01', to: '2026-11-30' }))
     fireEvent.change(screen.getByLabelText('Category'), { target: { value: GREET } })
-    await waitFor(() => expect(seen.at(-1)).toEqual({ limit: '25', categoryId: GREET, from: '2026-11-01', to: '2026-11-30' }))
+    await waitFor(() => expect(seen).toContainEqual({ limit: '25', categoryId: GREET, from: '2026-11-01', to: '2026-11-30' }))
+    expect(screen.getByLabelText('Video').value, 'a new category clears the video').toBe('')
   })
 
   it('B5: the contributor search filters by the chosen contributor', async () => {

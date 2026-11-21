@@ -198,6 +198,20 @@ user or category) than the tests reach. Both stay well above the floors.
 
 ### CI
 
+**First push, `5befc17`: red.** In both runs (push 44941945138, pull_request 44941963013) the
+Frontend job failed in one test: FI-39, "the category, video and date filters reach the API".
+Every other job passed, including E2E.
+
+- **Cause:** the test changes three filters in a row, which starts three requests at once. They
+  can reach the mock server in any order, but the test checked only the request that arrived
+  *last* (`seen.at(-1)`). On CI's slower runner an earlier one arrived last.
+- **The page wasn't wrong:** each superseded request's answer is dropped (the effect's `active`
+  flag), so the table always shows the latest filters.
+- **Fix:** the test now checks that a request with exactly those filters was made
+  (`toContainEqual`), the same fix as the Phase 5 AdminMessages flake. It also checks that a
+  new category clears the video. No retries or timeouts.
+- **Check:** the file passed 10 of 10 local runs, and the full frontend suite passes.
+
 The two runs on the last commit are given in the hand-off message and in a comment on the PR,
 since a commit can't contain its own CI result.
 
