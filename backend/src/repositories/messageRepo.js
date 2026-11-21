@@ -5,7 +5,9 @@ const WITH_VERIFICATION = '+verificationCodeHash +verificationExpiresAt +verific
 export const messageRepo = {
   create: (data) => ContactMessage.create(data),
   remove: (id) => ContactMessage.deleteOne({ _id: id }),
-  list: (limit) => ContactMessage.find().sort({ createdAt: -1 }).limit(limit),
+  /** Newest first; `filter` holds only validated topic / status / verified values. */
+  list: (filter, limit) => ContactMessage.find(filter).sort({ createdAt: -1 }).limit(limit),
+  findById: (id) => ContactMessage.findById(id),
   /** The message with its (normally hidden) verification fields, for the code check. */
   findForVerification: (id) => ContactMessage.findById(id).select(WITH_VERIFICATION),
   save: (message) => message.save(),

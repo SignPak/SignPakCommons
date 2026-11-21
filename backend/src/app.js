@@ -16,7 +16,7 @@ import { verifyOrigin } from './middlewares/verifyOrigin.js'
 import routes from './routes/index.js'
 import testHookRoutes from './routes/testHooks.js'
 import { logger } from './utils/logger.js'
-import { requestLogProps } from './utils/requestLog.js'
+import { requestLogProps, requestLogSerializer } from './utils/requestLog.js'
 import swaggerUi from 'swagger-ui-express'
 
 const app = express()
@@ -34,6 +34,7 @@ app.use(pinoHttp({
   genReqId: (req, res) => { const id = req.headers['x-request-id'] || randomUUID(); res.setHeader('X-Request-Id', id); return id },
   autoLogging: { ignore: (req) => req.url.endsWith('/health') },
   customProps: requestLogProps, // the visitor's IP (req.ip), not the proxy's socket address
+  serializers: { req: requestLogSerializer }, // no email address in logged URLs (C3)
   customLogLevel: (req, res, error) => (error || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),
 }))
 

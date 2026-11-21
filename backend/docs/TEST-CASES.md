@@ -20,22 +20,22 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 4** (backend 1.0.10, frontend 1.0.12):
+Counts as of **Phase 5** (backend 1.0.11, frontend 1.0.13):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 22 | 123 |
-| Integration (backend) | `backend/tests/integration/` | 13 | 72 |
-| Security (backend) | `backend/tests/security/` | 6 | 65 |
-| Unit (frontend) | `frontend/test/unit/` | 9 | 28 |
-| Integration (frontend) | `frontend/test/integration/` | 3 | 21 |
-| End-to-end | `e2e/tests/` | 4 | 18 (6 tests × 3 browsers) |
-| **Total** | | **57** | **327** |
+| Unit (backend) | `backend/tests/unit/` | 25 | 140 |
+| Integration (backend) | `backend/tests/integration/` | 14 | 85 |
+| Security (backend) | `backend/tests/security/` | 7 | 71 |
+| Unit (frontend) | `frontend/test/unit/` | 10 | 34 |
+| Integration (frontend) | `frontend/test/integration/` | 4 | 26 |
+| End-to-end | `e2e/tests/` | 5 | 21 (7 tests × 3 browsers) |
+| **Total** | | **65** | **377** |
 
-The backend security count is per-route: the access matrix produces one case per route (49
+The backend security count is per-route: the access matrix produces one case per route (53
 today) plus the completeness check; the hook suite adds three, the production-error suite
-three, the listen-address suite two, the upload-type suite three and the contact-verification
-suite four. Frontend cases count each `it.each` row separately.
+three, the listen-address suite two, the upload-type suite three, the contact-verification
+suite four and the admin-deletion suite two. Frontend cases count each `it.each` row separately.
 
 ## 1. Backend unit tests — `backend/tests/unit/`
 
@@ -164,6 +164,23 @@ suite four. Frontend cases count each `it.each` row separately.
 | U-121 | `contactRules.test.js` | S4: a resend that loses the race for the send time answers "wait a minute" | FR13.13 | S4 | unit |
 | U-122 | `contactRules.test.js` | S4: at most CONTACT_CODE_EMAILS_PER_DAY code emails go to one address a day, across requests | FR13.13 | S4 | unit |
 | U-123 | `contactRules.test.js` | S4: a failed code email gives its place in the daily cap back | FR13.13 | S4 | unit |
+| U-124 | `emailHash.test.js` | C3: the email hash ignores case and surrounding spaces | FR13.13 | C3 | unit |
+| U-125 | `emailHash.test.js` | C3: different addresses get different hashes | FR13.13 | C3 | unit |
+| U-126 | `emailHash.test.js` | C3: the hash is keyed, not a plain SHA-256 that an address list could reverse | FR13.13 | C3 | unit |
+| U-127 | `emailHash.test.js` | C3: an empty or missing address is refused rather than hashed | FR13.13 | C3 | unit |
+| U-128 | `removeAllForUser.test.js` | C3: every file and document is removed, and the counts are returned | FR13.13 | C3 | unit |
+| U-129 | `removeAllForUser.test.js` | C3: keeps going after one failed file, and keeps that file's document for a retry | FR13.13 | C3 | unit |
+| U-130 | `removeAllForUser.test.js` | C3: writes a deletion log with the counts and the email hash, never the email | FR13.13 | C3 | unit |
+| U-131 | `removeAllForUser.test.js` | C3: for an account already deleted, the hash comes from its DeletedAccount record | FR13.13 | C3 | unit |
+| U-132 | `removeAllForUser.test.js` | C3: with no submissions, no account and no deleted-account record, the user is not found | FR13.13 | C3 | unit |
+| U-133 | `removeAllForUser.test.js` | C3: accountDeleted is logged only when the account deletion will go ahead | FR13.13 | C3 | unit |
+| U-134 | `adminDeletionSchemas.test.js` | C3: the submissions page takes a limit of 1-100 (default 20) and an object-id cursor | FR13.13, SE-10 | C3 | unit |
+| U-135 | `adminDeletionSchemas.test.js` | C3: withRecordings accepts only "true" or "false" and defaults to false | FR13.13, SE-10 | C3 | unit |
+| U-136 | `adminDeletionSchemas.test.js` | C3: message filters accept only known topics, statuses and true/false | FR13.13, SE-10 | C3 | unit |
+| U-137 | `adminDeletionSchemas.test.js` | C3: the deletion lookup needs exactly one of email or message id | FR13.13, SE-10 | C3 | unit |
+| U-138 | `env-guards.test.js` | C3: production refuses to start without EMAIL_HASH_SECRET, or with a short one | — (deployment safety, no SRS requirement) | C3 | unit |
+| U-139 | `env-guards.test.js` | C3: outside production an empty EMAIL_HASH_SECRET falls back to the development key | — (deployment safety, no SRS requirement) | C3 | unit |
+| U-140 | `requestLog.test.js` | C3: an email in the query string is redacted from the logged URL | FR13.13 | C3 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -244,6 +261,19 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-70 | `api-contact.test.js` | S4: the sixth code for one request is refused and no sixth email is sent | FR13.13 | S4 | integration |
 | I-71 | `api-contact.test.js` | S4: requests from different IPs for the same address stop at five code emails a day | FR13.13 | S4 | integration |
 | I-72 | `api-contact.test.js` | S4: two simultaneous resends of one request send one email | FR13.13 | S4 | integration |
+| I-73 | `api-admin-deletion.test.js` | C3: deleting recordings removes the Drive files and the documents, and logs it without the email | FR13.13 | C3 | integration |
+| I-74 | `api-admin-deletion.test.js` | C3: a partial failure is reported, the failed document is kept, and a retry finishes | FR13.13 | C3 | integration |
+| I-75 | `api-admin-deletion.test.js` | C3: deleting an account with withRecordings=true removes the recordings too | FR13.13 | C3 | integration |
+| I-76 | `api-admin-deletion.test.js` | C3: the account is kept (409) when a recording cannot be deleted | FR13.13 | C3 | integration |
+| I-77 | `api-admin-deletion.test.js` | C3: plain account deletion still keeps the recordings, and records the account | FR13.13 | C3 | integration |
+| I-78 | `api-admin-deletion.test.js` | C3: a contributor deleting their own account is recorded too | FR13.13 | C3 | integration |
+| I-79 | `api-admin-deletion.test.js` | C3: an unknown contributor id gives 404 | FR13.13 | C3 | integration |
+| I-80 | `api-admin-deletion.test.js` | C3: the lookup finds a deleted account by email, and by message id, with its recordings | FR13.13 | C3 | integration |
+| I-81 | `api-admin-deletion.test.js` | C3: the lookup finds a current account, and both kinds after a re-signup | FR13.13 | C3 | integration |
+| I-82 | `api-admin-deletion.test.js` | C3: the lookup needs exactly one of email or message id | FR13.13 | C3 | integration |
+| I-83 | `api-admin-deletion.test.js` | C3: a contributor's submissions are listed a page at a time | FR13.13 | C3 | integration |
+| I-84 | `api-admin-deletion.test.js` | C3: messages can be filtered by topic, status and verified | FR13.13, SE-1 | C3 | integration |
+| I-85 | `api-admin-deletion.test.js` | C3: marking a message done or rejected records who and when; reopening clears it | FR13.13 | C3 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -266,6 +296,8 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | S-15 | `contact-verification.test.js` | D4: a wrong code and a resend answer the same with and without an account | FR13.13 | S4 | security |
 | S-16 | `contact-verification.test.js` | D4: a NoSQL operator in place of the code is rejected as invalid input | FR13.13, SE-10 | S4 | security |
 | S-17 | `contact-verification.test.js` | D4: the code routes are rate limited separately from the contact form | FR13.13 | S4 | security |
+| S-18 | `admin-deletion.test.js` | C3: no DeletionLog or DeletedAccount document contains the email, in any field | FR13.13 | C3 | security |
+| S-19 | `admin-deletion.test.js` | C3: query operators are refused in place of an email, an id or a cursor | FR13.13, SE-10 | C3 | security |
 
 The matrix in S-01 calls every route as an anonymous visitor, a contributor, a suspended
 contributor and an admin. A denied caller must get the exact status (401 or 403); an allowed
@@ -304,6 +336,12 @@ a new route cannot be added without an access decision.
 | FU-26 | `ContactForm.test.jsx` | C2: a signed-in contributor sees all three topics, general first, with name and email filled in | FR13.13 | C2 | unit |
 | FU-27 | `ContactForm.test.jsx` | C2: sending waits until the session check has finished | FR13.13 | C2 | unit |
 | FU-28 | `ContactForm.test.jsx` | C2: choosing the deletion topic when signed in explains it is confirmed straight away | FR13.13 | C2 | unit |
+| FU-29 | `AdminUsers.test.jsx` | C3: "Delete recordings" confirms with the right count, then deletes them | FR13.12, FR13.13 | C3 | unit |
+| FU-30 | `AdminUsers.test.jsx` | C3: nothing is deleted when the admin cancels the confirmation | FR13.12, FR13.13 | C3 | unit |
+| FU-31 | `AdminUsers.test.jsx` | C3: "Delete account and recordings" names the count and sends withRecordings | FR13.12, FR13.13 | C3 | unit |
+| FU-32 | `AdminUsers.test.jsx` | C3: plain "Delete" says the recordings are kept, and keeps them | FR13.12, FR13.13 | C3 | unit |
+| FU-33 | `AdminUsers.test.jsx` | C3: a partial failure is shown, with the number that failed | FR13.12, FR13.13 | C3 | unit |
+| FU-34 | `ContactForm.test.jsx` | C2: no field can be filled in until the session check has finished, so nothing typed is lost | FR13.13 | C2 | unit |
 
 ## 5. Frontend integration tests — `frontend/test/integration/`
 
@@ -327,6 +365,11 @@ Rendered with the real router, providers and API client; only the network is moc
 | FI-14 | `ContactVerify.test.jsx` | D4: the resend button waits a minute, then asks for a new code and waits again | FR13.13 | S4 | integration |
 | FI-15 | `ContactVerify.test.jsx` | D4: a 429 on resend shows the server message | FR13.13 | S4 | integration |
 | FI-16 | `ContactVerify.test.jsx` | D4: a missing or malformed id (%s) shows an invalid-link message | FR13.13 | S4 | integration |
+| FI-17 | `AdminMessages.test.jsx` | C3: lists messages with their verification badge, open messages first by default | FR13.13 | C3 | integration |
+| FI-18 | `AdminMessages.test.jsx` | C3: the filters reach the API | FR13.13 | C3 | integration |
+| FI-19 | `AdminMessages.test.jsx` | C3: find contributor → delete recordings with the confirmed count → mark done | FR13.13 | C3 | integration |
+| FI-20 | `AdminMessages.test.jsx` | C3: an unverified request with no current account is flagged for a manual check | FR13.13 | C3 | integration |
+| FI-21 | `AdminMessages.test.jsx` | C3: a partial failure is shown and the remaining count is kept | FR13.13 | C3 | integration |
 
 ## 6. End-to-end tests — `e2e/tests/`
 
@@ -341,6 +384,7 @@ API with an in-memory database.
 | E-04 | `cross-host-cookie.spec.js` | C4: login cookie set by api.localtest.me works on commons.localtest.me | FR13.1, SE-2 | C4 | E2E |
 | E-05 | `contact.spec.js` | C2: a signed-in contributor sends a contact message from the landing page | FR13.13 | C2 | E2E |
 | E-06 | `contact.spec.js` | D4: a signed-out deletion request is confirmed with the emailed code | FR13.13 | S4 | E2E |
+| E-07 | `admin-deletion.spec.js` | C3: a deletion request ends with 0 recordings left for that contributor | FR13.13 | C3 | E2E |
 
 ## 7. Gaps to close in later phases
 
@@ -354,7 +398,7 @@ Drive upload`) and a row here.
 | C5, B1, B6, B8 | **Covered in Phase 2** (U-62–U-89, I-50–I-56, S-11–S-13). Real-server check pending: a production upload leaves `uploads/tmp` empty. | 2 |
 | S1 | **Covered in Phase 3** (U-90, U-91, FU-24; the whole suite re-run on the patched versions). The CI audit job is now required. | 3 |
 | C2, S4 | **Covered in Phase 4** (U-92–U-123, I-39 adjusted, I-57–I-72, S-14–S-17, the two new access-matrix routes, FU-25–FU-28, FI-05–FI-16, E-05, E-06). | 4 |
-| C3 | recording deletion for one contributor, deletion log, admin messages page | 5 |
+| C3 | **Covered in Phase 5** (U-124–U-140, I-73–I-85, S-18, S-19, the four new access-matrix routes, FU-29–FU-34, FI-17–FI-21, E-07). | 5 |
 | S2, S6, S9, B2, B3, B4 | login lockout, logout invalidating the JWT, unverified-signup expiry, verified-only counts, re-signup, consent token in sessionStorage | 6 |
 | S7 | admin list promotion/demotion and the activity log | 7 |
 | B5, B7 | submissions export (CSV/JSON) and paginated admin data | 8 |

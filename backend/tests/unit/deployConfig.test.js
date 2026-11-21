@@ -116,6 +116,7 @@ test('C1: the production env template is a valid production configuration once f
     JWT_SECRET: 'a'.repeat(48),
     BREVO_API_KEY: 'key',
     WEB3FORMS_ACCESS_KEY: 'key',
+    EMAIL_HASH_SECRET: 'production-email-hash-secret-production-email-hash',
     ADMIN_EMAIL: 'admin@example.test',
     ADMIN_PASSWORD: 'Admin@12345',
     GOOGLE_OAUTH_CLIENT_ID: 'id',

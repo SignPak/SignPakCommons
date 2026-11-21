@@ -6,6 +6,7 @@ import { paths } from './routes/appRoutes'
 import AdminCategories from './pages/admin/AdminCategories'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminLayout from './pages/admin/AdminLayout'
+import AdminMessages from './pages/admin/AdminMessages'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminVideos from './pages/admin/AdminVideos'
 import CategoryBrowser from './pages/CategoryBrowser'
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="users" element={<AdminUsers />} />
             <Route path="videos" element={<AdminVideos />} />
             <Route path="categories" element={<AdminCategories />} />
+            <Route path="messages" element={<AdminMessages />} />
           </Route>
         </Route>
       </Route>

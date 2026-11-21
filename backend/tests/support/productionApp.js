@@ -20,6 +20,7 @@ Object.assign(process.env, {
   BREVO_API_KEY: 'brevo-placeholder',
   BREVO_SENDER_EMAIL: 'auth@signpak.test',
   WEB3FORMS_ACCESS_KEY: 'web3forms-placeholder',
+  EMAIL_HASH_SECRET: 'production-email-hash-secret-production-email-hash',
   TRUST_PROXY: 'true',
   CLIENT_ORIGIN: 'https://commons.example.test',
   STORAGE_DRIVER: 'local',

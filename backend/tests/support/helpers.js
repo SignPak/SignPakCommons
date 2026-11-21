@@ -8,6 +8,7 @@ Object.assign(process.env, {
   NODE_ENV: 'test',
   MONGODB_URI: process.env.MONGODB_URI_TEST || 'mongodb://placeholder/unused',
   JWT_SECRET: 'test-secret-test-secret-test-secret-123456',
+  EMAIL_HASH_SECRET: 'test-email-hash-secret-test-email-hash-secret',
   ADMIN_EMAIL: 'admin@signpak.test',
   ADMIN_PASSWORD: 'Admin@12345',
   BCRYPT_ROUNDS: '4',

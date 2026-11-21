@@ -45,6 +45,9 @@ const schema = z.object({
 
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters.'),
   JWT_EXPIRES_DAYS: z.coerce.number().positive().default(7),
+  // C3: key for the email hashes in DeletionLog and DeletedAccount. Never change it once set:
+  // old rows could no longer be matched. Required in production; see the default below.
+  EMAIL_HASH_SECRET: z.preprocess((value) => (value === '' ? undefined : value), z.string().min(32, 'EMAIL_HASH_SECRET must be at least 32 characters.').optional()),
   COOKIE_SECURE: bool.optional(),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
@@ -115,6 +118,9 @@ const schema = z.object({
     }
     if (!data.BREVO_SENDER_EMAIL) {
       context.addIssue({ code: 'custom', path: ['BREVO_SENDER_EMAIL'], message: 'Required in production; use a verified Brevo sender address.' })
+    }
+    if (!data.EMAIL_HASH_SECRET) {
+      context.addIssue({ code: 'custom', path: ['EMAIL_HASH_SECRET'], message: 'Required in production for deletion records. Generate it once with `openssl rand -hex 32` and never change it.' })
     }
     if (!data.WEB3FORMS_ACCESS_KEY) {
       context.addIssue({ code: 'custom', path: ['WEB3FORMS_ACCESS_KEY'], message: 'Required in production to deliver contact messages.' })
@@ -197,6 +203,8 @@ export const env = Object.freeze({
   isProduction: data.NODE_ENV === 'production',
   isTest: data.NODE_ENV === 'test',
   HOST: data.HOST ?? (data.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0'),
+  // Outside production a fixed value keeps existing development .env files working.
+  EMAIL_HASH_SECRET: data.EMAIL_HASH_SECRET ?? 'development-only-email-hash-secret-not-for-production',
   COOKIE_SECURE: data.COOKIE_SECURE ?? data.NODE_ENV === 'production',
   clientOrigins: data.CLIENT_ORIGIN.split(',').map((item) => item.trim().replace(/\/$/, '')).filter(Boolean),
 })

@@ -86,7 +86,7 @@ All paths are under `/api/v1`.
 | `GET/POST /submissions` | Authenticated user | Contributors list their own; admins list all. New submissions are append-only. |
 | `POST /contact` | Signed-in account or recording-deletion request | Other topics require the account email; deletion requests can be submitted without signing in at any time. |
 | `POST /contact/:id/verify`, `POST /contact/:id/resend` | Anyone | Confirm a signed-out deletion request with the emailed six-digit code, or ask for a new one (once a minute). |
-| `/admin/users*`, `/admin/restrictions*`, `/admin/stats`, `/admin/messages` | Admin | Account moderation, access restrictions, statistics, and inbox. |
+| `/admin/users*`, `/admin/restrictions*`, `/admin/stats`, `/admin/messages*`, `/admin/deletion-lookup` | Admin | Account moderation, access restrictions, statistics, the inbox, and acting on deletion requests (find the contributor, delete their recordings, mark the request done). |
 
 See [API.md](docs/API.md) for the complete route table, limits, visibility, and
 request behavior. The OpenAPI JSON is available at `/api/v1/docs.json` in every

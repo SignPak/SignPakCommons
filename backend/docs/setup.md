@@ -106,6 +106,7 @@ URL-encode special characters in the database username or password.
 | --- | --- | --- |
 | `JWT_SECRET` | Generate locally with the command below, or use a secret manager | Signs authentication tokens. Use a unique value of at least 32 characters. |
 | `JWT_EXPIRES_DAYS` | Set manually; default `7` | Token lifetime in days. |
+| `EMAIL_HASH_SECRET` | Generate **once** with `openssl rand -hex 32`; required in production | Keys the email hashes in `DeletionLog` and `DeletedAccount` (C3), so a stored hash can't be reversed with a list of addresses. **Never change it and back it up with the other secrets**: with a new value, old deletion records can no longer be matched to a new deletion request. Outside production an empty value falls back to a fixed development key. |
 | `COOKIE_SECURE` | Usually leave unset; production defaults to `true` | Sends cookies only over HTTPS when true. Use false only for local HTTP development. |
 | `COOKIE_SAMESITE` | Usually `lax`; use `none` only for cross-site HTTPS deployment | Controls cross-site cookie behavior. `none` requires `COOKIE_SECURE=true`. |
 | `BCRYPT_ROUNDS` | Set manually from `4` to `15`; default `12` | Password hashing cost. Increase only when deployment CPU allows it. |

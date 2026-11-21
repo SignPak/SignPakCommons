@@ -55,3 +55,17 @@ describe('contact form topics', () => {
     expect(explainer).not.toMatch(/six-digit code/)
   })
 })
+
+describe('contact form while the session is being checked', () => {
+  it('C2: no field can be filled in until the session check has finished, so nothing typed is lost', () => {
+    renderForm(null, { sessionChecked: false })
+    for (const label of ['Contact topic', 'Your name', 'Email address', 'Your message']) {
+      expect(screen.getByLabelText(label).disabled, label).toBe(true)
+    }
+    cleanup()
+    renderForm(USER)
+    for (const label of ['Contact topic', 'Your name', 'Your message']) {
+      expect(screen.getByLabelText(label).disabled, label).toBe(false)
+    }
+  })
+})

@@ -1,8 +1,21 @@
 import bcrypt from 'bcrypt'
 import { CONSENT_VERSION, ROLES } from '../config/constants.js'
+import { deletedAccountRepo } from '../repositories/deletionRepo.js'
 import { submissionRepo } from '../repositories/submissionRepo.js'
 import { userRepo } from '../repositories/userRepo.js'
 import { conflict, forbidden, notFound, unauthorized } from '../utils/AppError.js'
+import { hashEmail } from '../utils/emailHash.js'
+import { submissionService } from './submissionService.js'
+
+/**
+ * C3: account deletion keeps the recordings, so remember the account by its email hash. A later
+ * deletion request can then be matched to the recordings it left behind.
+ */
+async function deleteAccount(user, by) {
+  await deletedAccountRepo.create({ userId: user._id, emailHash: hashEmail(user.email), by })
+  await submissionRepo.clearCooldownsForUser(user._id)
+  await userRepo.remove(user._id)
+}
 
 export const userService = {
   /** Records the date and time the contributor accepted the consent notice (kept on the first acceptance of a version). */
@@ -39,15 +52,25 @@ export const userService = {
     return userRepo.save(user)
   },
 
-  async remove(id, actor) {
+  /**
+   * Admin deletion of an account. With `withRecordings` (C3) the contributor's recordings go
+   * first; if any file can't be deleted the account is kept (409), so it is never removed with
+   * recordings still in storage. Running it again retries what is left.
+   */
+  async remove(id, actor, { withRecordings = false } = {}) {
     const user = await userRepo.findById(id)
     if (!user) throw notFound('That user does not exist.')
     if (user.id === actor.id) throw forbidden('You cannot delete your own account.')
     if (user.role === ROLES.ADMIN && user.status === 'active' && await userRepo.countActiveAdmins() <= 1) {
       throw conflict('The last active administrator cannot be deleted.')
     }
-    await submissionRepo.clearCooldownsForUser(user._id)
-    await userRepo.remove(user._id)
+    if (withRecordings) {
+      const { deleted, failed } = await submissionService.removeAllForUser(user._id, actor, { accountDeletion: true })
+      if (failed.length) {
+        throw conflict(`${failed.length} recording(s) could not be deleted from storage (${deleted} deleted), so the account was kept. Try again.`)
+      }
+    }
+    await deleteAccount(user, 'admin')
   },
 
   async removeSelf(id, password) {
@@ -55,7 +78,6 @@ export const userService = {
     if (!user) throw notFound('That user does not exist.')
     if (user.role !== ROLES.USER) throw forbidden('Administrators cannot delete their own account here.')
     if (!await bcrypt.compare(password, user.passwordHash)) throw unauthorized('The password does not match this account.')
-    await submissionRepo.clearCooldownsForUser(user._id)
-    await userRepo.remove(user._id)
+    await deleteAccount(user, 'self')
   },
 }

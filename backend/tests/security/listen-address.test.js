@@ -62,6 +62,7 @@ before(async () => {
       BREVO_API_KEY: 'key',
       BREVO_SENDER_EMAIL: 'no-reply@signpak.tech',
       WEB3FORMS_ACCESS_KEY: 'key',
+      EMAIL_HASH_SECRET: 'production-email-hash-secret-production-email-hash',
       CLIENT_ORIGIN: 'https://commons.signpak.tech',
       UPLOAD_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'signpak-listen-')),
     },

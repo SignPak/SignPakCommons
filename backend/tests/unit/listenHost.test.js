@@ -22,6 +22,7 @@ const PRODUCTION = {
   BREVO_API_KEY: 'key',
   BREVO_SENDER_EMAIL: 'no-reply@signpak.tech',
   WEB3FORMS_ACCESS_KEY: 'key',
+  EMAIL_HASH_SECRET: 'production-email-hash-secret-production-email-hash',
 }
 
 function resolvedHost(overrides) {

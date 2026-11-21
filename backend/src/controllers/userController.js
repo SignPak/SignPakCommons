@@ -14,5 +14,5 @@ export const userController = {
   }),
   list: asyncHandler(async (req, res) => ok(res, await userService.listAll())),
   updateStatus: asyncHandler(async (req, res) => ok(res, await userService.updateStatus(req.params.id, req.user, req.body))),
-  remove: asyncHandler(async (req, res) => { await userService.remove(req.params.id, req.user); noContent(res) }),
+  remove: asyncHandler(async (req, res) => { await userService.remove(req.params.id, req.user, req.query); noContent(res) }),
 }

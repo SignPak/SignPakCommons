@@ -134,6 +134,23 @@ Signed-out requests are limited per IP and per device (`CONTACT_SENDER_DAILY_LIM
 keyed by an HMAC so neither is stored in the clear) and are exempt from the site-wide
 cap on general messages, so that cap cannot be used to block deletion requests.
 
+An admin acts on a deletion request from **Admin → Messages** (C3):
+
+1. **Find contributor** (`deletionLookupService`) matches the request's email to the
+   current account and, through `hashEmail()` (`src/utils/emailHash.js`, an HMAC with
+   `EMAIL_HASH_SECRET`), to any `DeletedAccount`. One of those is written whenever an
+   account is deleted, by an admin or by its owner, because account deletion keeps the
+   recordings.
+2. **Delete recordings** (`submissionService.removeAllForUser`) removes each recording
+   file through `storageService.remove`, then its Submission document, then the
+   cooldowns. A failed file keeps its document, so a retry finishes the job.
+3. A `DeletionLog` row records the user id, the email hash (never the email), the counts,
+   the request message and the admin. Both deletion collections are append-only.
+4. **Mark done** sets the message's `status`, `handledAt` and `handledBy`.
+
+`DELETE /admin/users/:id?withRecordings=true` runs step 2 before deleting the account,
+and keeps the account if any file can't be deleted.
+
 Uploads first land in a temporary directory (`UPLOAD_DIR/tmp`). Multer limits file size and
 count; services then inspect file signatures before handing valid assets to the selected
 storage driver. `storageService.save()` and `archive()` delete the temp file afterwards,

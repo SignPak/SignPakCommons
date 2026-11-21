@@ -230,13 +230,20 @@ export const api = {
     async removeMe(password) { await request(apiRoutes.users.removeMe(), json('DELETE', { password })) },
     async list() { return normalizeList(await request(apiRoutes.users.list())) },
     async setStatus(id, patch) { return normalize(await request(apiRoutes.users.update(id), json('PATCH', patch))) },
-    async remove(id) { await request(apiRoutes.users.remove(id), { method: 'DELETE' }) },
+    // C3: withRecordings also deletes the contributor's recordings (the account is kept if any fail).
+    async remove(id, { withRecordings = false } = {}) { await request(apiRoutes.users.remove(id, { withRecordings }), { method: 'DELETE' }) },
   },
 
   admin: {
     async restrictions() { return normalizeList(await request(apiRoutes.admin.restrictions())) },
     async createRestriction(values) { return normalize(await request(apiRoutes.admin.createRestriction(), json('POST', values))) },
     async removeRestriction(id) { await request(apiRoutes.admin.removeRestriction(id), { method: 'DELETE' }) },
+    // Admin inbox and deletion requests (C3).
+    async messages(filters = {}) { return normalizeList(await request(apiRoutes.admin.messages(filters))) },
+    async setMessageStatus(id, status) { return normalize(await request(apiRoutes.admin.message(id), json('PATCH', { status }))) },
+    async userSubmissions(userId, page = {}) { return request(apiRoutes.admin.userSubmissions(userId, page)) },
+    async removeUserSubmissions(userId, options = {}) { return request(apiRoutes.admin.removeUserSubmissions(userId, options), { method: 'DELETE' }) },
+    async deletionLookup(query) { return request(apiRoutes.admin.deletionLookup(query)) },
   },
 
   categories: {
