@@ -1,3 +1,5 @@
+import { AUDIT_ACTIONS } from '../config/constants.js'
+
 const ref = (name) => ({ $ref: `#/components/schemas/${name}` })
 const envelope = (schema = {}) => ({
   type: 'object',
@@ -872,6 +874,33 @@ export const openapi = {
         security: adminSecurity,
         parameters: [{ name: 'days', in: 'query', schema: { type: 'integer', minimum: 7, maximum: 90, default: 14 } }],
         responses: { 200: jsonResponse('Statistics', { type: 'object' }), ...adminErrors },
+      },
+    },
+    '/admin/audit': {
+      get: {
+        tags: ['Admin'],
+        summary: 'List the activity log (S7)',
+        description: 'Every admin action, newest first. actor is an admin id, or "system" for the startup admin sync. Each entry: { id, actor: { id, name }, action, targetType, targetId, meta, at }.',
+        security: adminSecurity,
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 50 } },
+          { name: 'actor', in: 'query', schema: { type: 'string', description: 'An admin user id, or "system".' } },
+          { name: 'action', in: 'query', schema: { type: 'string', enum: AUDIT_ACTIONS } },
+        ],
+        responses: {
+          200: jsonResponse('One page of the activity log', {
+            type: 'object',
+            properties: {
+              entries: { type: 'array', items: { type: 'object' } },
+              page: { type: 'integer' },
+              limit: { type: 'integer' },
+              total: { type: 'integer' },
+            },
+          }),
+          ...adminErrors,
+          422: errorResponse,
+        },
       },
     },
     '/admin/messages': {

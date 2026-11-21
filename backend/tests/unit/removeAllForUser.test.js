@@ -83,9 +83,12 @@ describe('C3: removing every recording of one contributor', () => {
     assert.equal(logs.length, 0)
   })
 
-  test('C3: accountDeleted is logged only when the account deletion will go ahead', async () => {
+  // Phase 7 item 5 changed this rule. It used to log accountDeleted: true here, before the
+  // account deletion had run; now the log is always written false and userService.remove marks
+  // it once the account is really gone (see accountDeletionLog.test.js).
+  test('C3: accountDeleted is never logged before the account deletion has happened', async () => {
     await submissionService.removeAllForUser(USER_ID, ADMIN, { accountDeletion: true })
-    assert.equal(logs[0].accountDeleted, true)
+    assert.equal(logs[0].accountDeleted, false, 'all files went, but the account is not deleted yet')
     storageService.remove.mock.mockImplementation(async () => { throw new Error('down') })
     await submissionService.removeAllForUser(USER_ID, ADMIN, { accountDeletion: true })
     assert.equal(logs[1].accountDeleted, false, 'files failed, so the account is kept')

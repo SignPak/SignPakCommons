@@ -30,6 +30,7 @@ export const paths = {
   adminVideos: '/admin/videos',
   adminCategories: '/admin/categories',
   adminMessages: '/admin/messages',
+  adminActivity: '/admin/activity',
 }
 
 export const categoryUrl = (categoryId) => `/library/${encodeURIComponent(categoryId)}`

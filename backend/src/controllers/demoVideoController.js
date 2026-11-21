@@ -5,7 +5,7 @@ import { sendFile } from '../utils/sendFile.js'
 
 export const demoVideoController = {
   get: asyncHandler(async (req, res) => ok(res, await demoVideoService.get())),
-  upload: asyncHandler(async (req, res) => created(res, await demoVideoService.upload(req.body, req.file))),
-  remove: asyncHandler(async (req, res) => { await demoVideoService.remove(); noContent(res) }),
+  upload: asyncHandler(async (req, res) => created(res, await demoVideoService.upload(req.body, req.file, req.user))),
+  remove: asyncHandler(async (req, res) => { await demoVideoService.remove(req.user); noContent(res) }),
   file: asyncHandler(async (req, res) => sendFile(req, res, await demoVideoService.getFile(), { cache: 'no-cache' })),
 }

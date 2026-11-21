@@ -131,8 +131,23 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 | `ADMIN_PASSWORD` | Choose a strong password, at least 8 characters and at most 72 | Sets the initial administrator password. |
 | `ADMIN_FIRST_NAME` | Set manually; default `Admin` | Initial admin profile first name. |
 | `ADMIN_SURNAME` | Set manually; default `Signpak` | Initial admin profile surname. |
+| `ADMIN_EMAILS` | Optional; the team members' emails, comma-separated | More admin accounts (S7). Each must be a finished sign-up. |
 
 The admin is ensured on every startup. Changing `ADMIN_PASSWORD` later does not reset an existing admin password.
+
+**More admins (S7).** Each team member gets their own admin account, so nobody shares a
+password and the activity log (Admin → Activity) shows who did what:
+
+1. The team member signs up on the site in the normal way (email code and consent).
+2. Add their email to `ADMIN_EMAILS` in `backend/.env`, for example
+   `ADMIN_EMAILS=nida@example.com,omar@example.com`.
+3. Restart the API (`pm2 reload deploy/ecosystem.config.cjs`). At startup every verified account on
+   `ADMIN_EMAIL` or `ADMIN_EMAILS` becomes an admin.
+
+To remove an admin, delete their email from the list and restart: at startup an admin who is
+not on either list goes back to a normal account. The `ADMIN_EMAIL` account always stays an
+admin, and the last active admin is never demoted. Each promotion and demotion is in the
+activity log, by "System". An email that has not finished signing up is skipped until it has.
 
 ### Storage
 

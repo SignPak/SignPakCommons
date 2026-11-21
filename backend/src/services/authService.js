@@ -4,10 +4,12 @@ import { env } from '../config/env.js'
 import { SIGNUP_TTL_MS } from '../models/User.js'
 import { userRepo } from '../repositories/userRepo.js'
 import { AppError, badRequest, conflict, unauthorized, validationError } from '../utils/AppError.js'
+import { hashEmail } from '../utils/emailHash.js'
 import { logger } from '../utils/logger.js'
 import { isDuplicateKeyError } from '../utils/mongoose.js'
 import { generateOtp, hashOtp as otpHash, matchesOtp } from '../utils/otp.js'
 import { signConsentToken, signToken, verifyConsentToken } from '../utils/tokens.js'
+import { auditService } from './auditService.js'
 import { emailService } from './email/index.js'
 
 // Compared against when the email is unknown, so "no such user" takes as long as "wrong password".
@@ -19,6 +21,13 @@ const invalidCode = () => badRequest('That code is invalid or has expired. Reque
 const wrongCredentials = () => unauthorized('That email and password do not match. Check them and try again.')
 // S2 / SE-4. 429 with its own code, so a client can tell a lockout from a wrong password.
 const accountLocked = () => new AppError(429, 'ACCOUNT_LOCKED', `Too many failed attempts. Try again in ${env.AUTH_LOCKOUT_MINUTES} minutes.`)
+// S7 (FIX-PLAN Phase 7 item 4): one info line per login attempt, with the email's keyed hash
+// and never the password or the email itself.
+const logLogin = (email, ip, outcome, extra = {}) => {
+  let emailHash = null
+  try { emailHash = hashEmail(email) } catch { /* no usable email: logged without a hash */ }
+  logger.info({ event: 'login', emailHash, outcome, ip: ip ?? null, ...extra }, 'Login attempt')
+}
 const clearOtp = (user, purpose) => {
   const prefix = purpose === 'email-verification' ? 'emailVerification' : 'passwordReset'
   user[`${prefix}CodeHash`] = null
@@ -232,18 +241,20 @@ export const authService = {
    * bcrypt always runs (DUMMY_HASH for an unknown email), so timing does not show whether the
    * email exists. While locked, even the right password is refused.
    */
-  async login({ email, password }) {
+  async login({ email, password }, { ip } = {}) {
     const user = await userRepo.findByEmail(email, { withPassword: true, withLockout: true })
     const matches = await bcrypt.compare(password, user?.passwordHash || DUMMY_HASH)
-    if (!user) throw wrongCredentials()
-    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) throw accountLocked()
+    const refuse = (outcome, error, extra) => { logLogin(email, ip, outcome, extra); throw error }
+    if (!user) refuse('unknown-email', wrongCredentials())
+    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) refuse('locked', accountLocked())
     if (!matches) {
       const { locked } = await userRepo.recordFailedLogin(user._id, { attempts: env.AUTH_LOCKOUT_ATTEMPTS, lockMs: env.AUTH_LOCKOUT_MINUTES * 60_000 })
-      throw locked ? accountLocked() : wrongCredentials()
+      refuse('wrong-password', locked ? accountLocked() : wrongCredentials(), { locked })
     }
-    if (user.status === 'suspended') throw unauthorized('This account is suspended.')
-    if (!user.emailVerified) throw unauthorized('Verify your email address before logging in.')
+    if (user.status === 'suspended') refuse('suspended', unauthorized('This account is suspended.'))
+    if (!user.emailVerified) refuse('unverified', unauthorized('Verify your email address before logging in.'))
     if (user.failedLoginCount || user.lockedUntil) await userRepo.clearLoginFailures(user._id)
+    logLogin(email, ip, 'success')
     return { user, token: signToken(user.id, user.authVersion || 0) }
   },
 
@@ -267,5 +278,44 @@ export const authService = {
       logger.info({ email: env.ADMIN_EMAIL }, 'Existing account promoted or verified as admin from environment')
     }
     // An existing admin's password is intentionally left alone; changing ADMIN_PASSWORD later does not reset it.
+    await this.syncAdmins()
+  },
+
+  /**
+   * S7 / D5: the admin list is ADMIN_EMAIL plus ADMIN_EMAILS. Verified accounts on it become
+   * admins; admins not on it go back to normal users, one at a time and never the last active
+   * admin. Each change is logged and written to the activity log with the system as actor.
+   * Runs at startup, so a team member is promoted on the first restart after finishing sign-up.
+   */
+  async syncAdmins({ primary = env.ADMIN_EMAIL, emails = env.adminEmails } = {}) {
+    const listed = new Set([primary, ...emails].map((email) => email.trim().toLowerCase()))
+    const result = { promoted: [], demoted: [], kept: [] }
+
+    for (const user of await userRepo.findByEmails([...listed])) {
+      if (user.role !== ROLES.USER || !user.emailVerified) continue
+      user.role = ROLES.ADMIN
+      await userRepo.save(user)
+      result.promoted.push(user.id)
+      logger.info({ userId: user.id }, 'Account promoted to admin from the admin list')
+      await auditService.record({ actor: null, action: 'admin.promote', targetType: 'user', targetId: user.id })
+    }
+
+    const admins = await userRepo.listAdmins()
+    let active = admins.filter((admin) => admin.status === 'active').length
+    for (const admin of admins) {
+      if (listed.has(admin.email)) continue
+      if (admin.status === 'active' && active <= 1) {
+        result.kept.push(admin.id)
+        logger.warn({ userId: admin.id }, 'Admin not on the admin list was kept: it is the last active admin')
+        continue
+      }
+      admin.role = ROLES.USER
+      await userRepo.save(admin)
+      if (admin.status === 'active') active -= 1
+      result.demoted.push(admin.id)
+      logger.info({ userId: admin.id }, 'Admin not on the admin list went back to a normal account')
+      await auditService.record({ actor: null, action: 'admin.demote', targetType: 'user', targetId: admin.id })
+    }
+    return result
   },
 }

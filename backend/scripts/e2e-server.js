@@ -38,6 +38,9 @@ Object.assign(process.env, {
   JWT_SECRET: process.env.JWT_SECRET || 'e2e-secret-e2e-secret-e2e-secret-123456',
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@signpak.test',
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'Admin@12345',
+  // S7: a second admin from the list. The account is seeded below as a normal, verified user,
+  // as if a team member had signed up, so the real startup sync is what promotes it.
+  ADMIN_EMAILS: process.env.ADMIN_EMAILS || 'admin2@signpak.test',
   // Short enough that an E2E test can wait out a per-video cooldown.
   SUBMISSION_COOLDOWN_MS: process.env.SUBMISSION_COOLDOWN_MS || '2000',
   // Every browser in the suite connects from 127.0.0.1, so the per-sender deletion-request
@@ -69,6 +72,11 @@ await connectDb(process.env.MONGODB_URI)
 await mongoose.connection.dropDatabase()
 await Promise.all(Object.values(mongoose.models).map((model) => model.init()))
 await storageService.init()
+const { default: bcrypt } = await import('bcrypt')
+await mongoose.models.User.create({
+  email: 'admin2@signpak.test', firstName: 'Nida', surname: 'Second', role: 'user', emailVerified: true,
+  passwordHash: await bcrypt.hash(process.env.E2E_ADMIN2_PASSWORD || 'Admin2@12345', 4),
+})
 await authService.ensureAdminFromEnv()
 
 const server = app.listen(PORT, HOST, () => {

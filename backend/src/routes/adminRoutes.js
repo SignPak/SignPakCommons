@@ -10,6 +10,7 @@ import { validate } from '../middlewares/validate.js'
 import { statsQuerySchema } from '../middlewares/validators/miscSchemas.js'
 import {
   accessRestrictionSchema,
+  auditQuerySchema,
   deletionLookupQuerySchema,
   messageStatusSchema,
   messagesQuerySchema,
@@ -34,6 +35,8 @@ router.get('/restrictions', accessRestrictionController.list)
 router.post('/restrictions', validate({ body: accessRestrictionSchema }), accessRestrictionController.create)
 router.delete('/restrictions/:id', validate({ params: idParams }), accessRestrictionController.remove)
 router.get('/stats', validate({ query: statsQuerySchema }), adminController.stats)
+// S7: who did what, and when.
+router.get('/audit', validate({ query: auditQuerySchema }), adminController.audit)
 router.get('/messages', validate({ query: messagesQuerySchema }), contactController.list)
 router.patch('/messages/:id', validate({ params: idParams, body: messageStatusSchema }), contactController.setStatus)
 

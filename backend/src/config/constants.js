@@ -14,3 +14,16 @@ export const MAX_RECORDING_SECONDS = 600
 export const CONSENT_VERSION = '2026-10-15'
 // Client-reported durations are rounded, so allow a little slack when checking trim ranges.
 export const TRIM_TOLERANCE_SECONDS = 0.5
+
+// S7: every admin action written to the activity log (AuditLog). The startup admin sync uses
+// admin.promote / admin.demote with the system as the actor.
+export const AUDIT_ACTIONS = [
+  'video.create', 'video.update', 'video.delete',
+  'category.create', 'category.update', 'category.delete',
+  'demo.upload', 'demo.delete',
+  'user.suspend', 'user.reactivate', 'user.delete',
+  'recordings.delete',
+  'restriction.create', 'restriction.delete',
+  'message.status',
+  'admin.promote', 'admin.demote',
+]

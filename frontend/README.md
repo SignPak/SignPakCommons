@@ -44,6 +44,7 @@ backend separately, or set `VITE_API_ORIGIN` to another API origin.
 | `/admin/videos` | Admin | Manage reference videos and the demo video. |
 | `/admin/categories` | Admin | Manage categories. |
 | `/admin/messages` | Admin | The contact inbox: filter messages, and act on a deletion request (find the contributor, delete their recordings, mark it done or rejected). |
+| `/admin/activity` | Admin | The activity log: who did what and when, filtered by admin and action (S7). |
 
 Route declarations live in `src/App.jsx`; shared path names and URL builders live
 in `src/routes/appRoutes.js`. Auth guards in `src/components/RouteGuards.jsx`

@@ -9,8 +9,8 @@ export const videoController = {
 
   create: asyncHandler(async (req, res) => created(res, await videoService.create(req.user, req.body, req.files))),
 
-  update: asyncHandler(async (req, res) => ok(res, await videoService.update(req.params.id, req.body))),
-  remove: asyncHandler(async (req, res) => { await videoService.remove(req.params.id); noContent(res) }),
+  update: asyncHandler(async (req, res) => ok(res, await videoService.update(req.params.id, req.body, req.user))),
+  remove: asyncHandler(async (req, res) => { await videoService.remove(req.params.id, req.user); noContent(res) }),
   file: asyncHandler(async (req, res) => sendFile(req, res, await videoService.getFile(req.params.id, req.user))),
   poster: asyncHandler(async (req, res) => sendFile(req, res, await videoService.getPoster(req.params.id, req.user), { cache: 'private, max-age=300' })),
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { after, before, beforeEach, describe, test } from 'node:test'
+import { after, before, beforeEach, describe, mock, test } from 'node:test'
 import { Client, recordingForm, videoForm } from '../support/helpers.js'
 import { useApiContext } from '../support/apiContext.js'
 import { createFakeDriveDriver } from '../support/fakeDriveDriver.js'
@@ -115,6 +115,24 @@ describe('C3: deleting a contributor\'s recordings', () => {
     assert.equal(await mongoose.models.User.countDocuments({ _id: id }), 1)
     assert.equal(await submissionsOf(id), 1)
     assert.equal(await mongoose.models.DeletedAccount.countDocuments({ userId: id }), 0)
+  })
+
+  test('Phase 7 item 5: when the account deletion itself fails, DeletionLog.accountDeleted stays false and the account is kept', async () => {
+    const { id } = await contributorWith('item5', 1)
+    const { userRepo } = await import('../../src/repositories/userRepo.js')
+    mock.method(userRepo, 'remove', async () => { throw new Error('database write failed') })
+    let res
+    try {
+      res = await admin.delete(`/admin/users/${id}?withRecordings=true`)
+    } finally {
+      mock.restoreAll()
+    }
+    assert.equal(res.status, 500)
+    assert.equal(await submissionsOf(id), 0, 'the recordings were deleted before the account step')
+    const [log] = await mongoose.models.DeletionLog.find({ userId: id }).lean()
+    assert.equal(log.deleted, 1)
+    assert.equal(log.accountDeleted, false, 'the log must not claim an account deletion that did not happen')
+    assert.equal(await mongoose.models.User.countDocuments({ _id: id }), 1, 'the account still exists')
   })
 
   test('C3: plain account deletion still keeps the recordings, and records the account', async () => {

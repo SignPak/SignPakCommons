@@ -23,7 +23,9 @@ before forcing it.
 
 Initialization is idempotent and shared between startup and requests:
 `src/services/initialization.js` connects MongoDB, initializes the selected storage drivers,
-and ensures the configured admin exists. The app-level initialization middleware awaits it
+and ensures the configured admin exists. It then syncs the admin list (S7): verified accounts
+on `ADMIN_EMAIL`/`ADMIN_EMAILS` become admins and other admins go back to normal accounts,
+never the last active one. The app-level initialization middleware awaits it
 before processing a request, and returns `503 SERVICE_UNAVAILABLE` if it fails. In production
 that body is generic; the underlying error is only included as `detail` outside production,
 because it can contain hosts or credentials (checklist S5). `GET /api/v1/health` is let
@@ -201,6 +203,10 @@ OAuth refresh token expired or was revoked, usually because the consent screen w
   AVIF) and 3GP/3G2 major brands are refused; listed video brands are accepted; an unknown
   major brand only passes if it declares a listed video brand as compatible.
 - Access restrictions store hashed identifiers and expose only short hints.
+- Every admin action is written to the activity log (`AuditLog`, S7) by the service that
+  performs it, through `auditService.record()`, which keeps secrets and email addresses out
+  of `meta`. Login attempts are logged at `info` with the email's keyed hash, the outcome and
+  the IP.
 - Contact requires a signed-in account email match and enforces per-account and
   global daily quotas; abusive attempts may create a temporary device/IP block.
 - `TRUST_PROXY` makes Express trust exactly one proxy hop (Nginx). With it, `req.ip`

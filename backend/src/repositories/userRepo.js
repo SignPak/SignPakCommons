@@ -23,6 +23,9 @@ export const userRepo = {
     return query
   },
   findManyByIds: (ids) => User.find({ _id: { $in: ids } }),
+  /** S7: the accounts with these (lowercased) emails. */
+  findByEmails: (emails) => User.find({ email: { $in: emails } }),
+  listAdmins: () => User.find({ role: 'admin' }).sort({ createdAt: 1 }),
   create: (data) => User.create(data),
   save: (doc) => doc.save(),
   list: ({ role, includeDeviceIds = false } = {}) => {

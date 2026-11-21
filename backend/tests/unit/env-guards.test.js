@@ -94,3 +94,37 @@ test('C3: outside production an empty EMAIL_HASH_SECRET falls back to the develo
   const result = loadEnv({ ...rest, NODE_ENV: 'development', EMAIL_HASH_SECRET: '' })
   assert.equal(result.status, 0, result.stderr)
 })
+
+/** env.adminEmails from a child process: ADMIN_EMAIL plus the parsed ADMIN_EMAILS. */
+function loadAdminEmails(overrides) {
+  const script = 'const { env } = await import("./src/config/env.js"); console.log(JSON.stringify(env.adminEmails))'
+  try {
+    const stdout = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...PRODUCTION_ENV, ...overrides },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    return { status: 0, emails: JSON.parse(stdout.trim()), stderr: '' }
+  } catch (error) {
+    return { status: error.status ?? 1, emails: null, stderr: error.stderr ?? '' }
+  }
+}
+
+test('S7: ADMIN_EMAILS is optional; ADMIN_EMAIL is always on the admin list', () => {
+  const result = loadAdminEmails({})
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(result.emails, ['admin@signpak.test'])
+})
+
+test('S7: ADMIN_EMAILS is split on commas, trimmed, lowercased and de-duplicated', () => {
+  const result = loadAdminEmails({ ADMIN_EMAILS: ' Nida@Example.com, omar@example.com,,ADMIN@signpak.test, nida@example.com ' })
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(result.emails, ['admin@signpak.test', 'nida@example.com', 'omar@example.com'])
+})
+
+test('S7: an entry in ADMIN_EMAILS that is not an email stops the server from starting', () => {
+  const result = loadAdminEmails({ ADMIN_EMAILS: 'nida@example.com, not-an-email' })
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /ADMIN_EMAILS/)
+})

@@ -9,7 +9,7 @@ export const authController = {
   }),
 
   login: asyncHandler(async (req, res) => {
-    const { user, token } = await authService.login(req.body)
+    const { user, token } = await authService.login(req.body, { ip: req.ip })
     await authService.recordDevice(user, req.get('X-Device-ID'))
     setAuthCookie(res, token)
     ok(res, user)

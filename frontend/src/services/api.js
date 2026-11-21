@@ -10,6 +10,7 @@ import {
   signupRequestSchema,
   verifyEmailSchema,
 } from '../utils/authSchemas'
+import { auditQuerySchema } from '../utils/auditLog'
 import { validateApiInput } from '../utils/validateApiInput'
 
 const PREFIX = 'signpak:v1:'
@@ -250,6 +251,8 @@ export const api = {
     async userSubmissions(userId, page = {}) { return request(apiRoutes.admin.userSubmissions(userId, page)) },
     async removeUserSubmissions(userId, options = {}) { return request(apiRoutes.admin.removeUserSubmissions(userId, options), { method: 'DELETE' }) },
     async deletionLookup(query) { return request(apiRoutes.admin.deletionLookup(query)) },
+    /** S7: one page of the activity log, `{ entries, page, limit, total }`, newest first. */
+    async audit(query = {}) { return request(apiRoutes.admin.audit(validateApiInput(auditQuerySchema, query))) },
   },
 
   categories: {

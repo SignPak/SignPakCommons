@@ -133,6 +133,7 @@ All paths below are relative to `/api/v1`.
 | POST | `/admin/restrictions` | Admin | Create a permanent device or IP restriction. |
 | DELETE | `/admin/restrictions/:id` | Admin | Remove a restriction. |
 | GET | `/admin/stats` | Admin | Read dashboard totals, activity, and recent submissions. |
+| GET | `/admin/audit` | Admin | The activity log (S7), newest first: `?page=` (default 1), `?limit=` (1–100, default 50), `?actor=` (an admin's id, or `system`), `?action=` (one of the actions below). Returns `{ entries, page, limit, total }`. |
 | GET | `/admin/messages` | Admin | List retained contact messages, newest first. Query: `limit` (1–200, default 50), `topic`, `status` (`open`, `done`, `rejected`), `verified` (`true`/`false`). |
 | PATCH | `/admin/messages/:id` | Admin | Set `{ status }`: `done` and `rejected` record `handledAt` and `handledBy`; `open` clears them. |
 
@@ -160,8 +161,44 @@ The only way submissions are deleted is an admin acting on such a request:
    **keeps its document**, so calling the route again finishes the job.
 3. Every call writes a `DeletionLog`: `userId`, the email hash (never the email), the
    numbers deleted and failed, `accountDeleted`, `requestMessageId`, the admin's id and
-   the time. It is append-only.
+   the time. It is append-only, with one exception: `accountDeleted` is written `false`
+   and set to `true` only once `DELETE /admin/users/:id?withRecordings=true` has really
+   deleted the account, so the log never claims a deletion that failed.
 4. `PATCH /admin/messages/:id { "status": "done" }` closes the request.
+
+### Admin accounts and the activity log (S7)
+
+Each team member has their own admin account. `ADMIN_EMAIL` and the optional
+`ADMIN_EMAILS` (comma-separated) list them; at startup every verified account on the list
+becomes an admin and every admin not on it goes back to a normal account, never the last
+active one (see `docs/setup.md`). The role is read on every request, so a change applies to
+open sessions at once.
+
+Every admin action writes one entry to the activity log (`AuditLog`): the admin's id (or
+none, for the system), the action, the target's type and id, a small `meta` object and the
+time. `meta` holds only plain values and never a password, token, code, hash or email
+address (`auditService.sanitizeMeta`). The actions:
+
+| Action | When |
+| --- | --- |
+| `video.create`, `video.update`, `video.delete` | A reference video is added, edited or deleted. |
+| `category.create`, `category.update`, `category.delete` | A category is added, edited or deleted. |
+| `demo.upload`, `demo.delete` | The demo video is uploaded or replaced, or removed. |
+| `user.suspend`, `user.reactivate`, `user.delete` | An account is suspended, reactivated or deleted (`meta.withRecordings`). |
+| `recordings.delete` | A contributor's recordings are deleted (`meta.deleted`, `meta.failed`, `meta.requestMessageId`). Deleting an account with `withRecordings=true` writes this and `user.delete`. |
+| `restriction.create`, `restriction.delete` | An IP or device restriction is added or removed (`meta.hint` only, never the IP or device id). |
+| `message.status` | A contact message is marked done, rejected or open. |
+| `admin.promote`, `admin.demote` | The startup sync changed an account's role (actor: system). |
+
+`GET /admin/audit` returns each entry as `{ id, actor: { id, name }, action, targetType,
+targetId, meta, at }`. The name is looked up when the log is read: "System" for the startup
+sync, and "Deleted account" for an admin who has since been deleted. Writing an entry never
+fails the admin's action; a failed write is logged at `error`.
+
+Login attempts go to the server log at `info` (not to the activity log): `event: "login"`,
+the email's keyed hash (`EMAIL_HASH_SECRET`), the outcome (`success`, `wrong-password`,
+`unknown-email`, `locked`, `suspended`, `unverified`) and the IP. Never the password or the
+email itself.
 
 ## Request bodies and uploads
 

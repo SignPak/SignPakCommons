@@ -94,6 +94,8 @@ const matrix = {
   'POST /api/v1/admin/restrictions': [401, 403, 401, OPEN],
   'DELETE /api/v1/admin/restrictions/:id': [401, 403, 401, OPEN],
   'GET /api/v1/admin/stats': [401, 403, 401, OPEN],
+  // S7: the activity log is for admins only.
+  'GET /api/v1/admin/audit': [401, 403, 401, OPEN],
   'GET /api/v1/admin/messages': [401, 403, 401, OPEN],
   'PATCH /api/v1/admin/messages/:id': [401, 403, 401, OPEN],
 }

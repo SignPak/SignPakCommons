@@ -7,6 +7,7 @@ import { attemptCleanup } from '../utils/cleanup.js'
 import { badRequest, conflict, forbidden, notFound, tooManyRequests } from '../utils/AppError.js'
 import { logger } from '../utils/logger.js'
 import { generateOtp, hashOtp, matchesOtp } from '../utils/otp.js'
+import { auditService } from './auditService.js'
 import { emailService } from './email/index.js'
 import { sendContactWeb3Forms } from './external/sendContactWeb3Forms.js'
 
@@ -203,6 +204,8 @@ export const contactService = {
     message.status = status
     message.handledAt = status === 'open' ? null : new Date()
     message.handledBy = status === 'open' ? null : admin._id
-    return messageRepo.save(message)
+    const saved = await messageRepo.save(message)
+    await auditService.record({ actor: admin, action: 'message.status', targetType: 'message', targetId: saved.id, meta: { status, topic: saved.topic } })
+    return saved
   },
 }

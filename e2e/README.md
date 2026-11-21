@@ -49,6 +49,7 @@ so it cannot reach the deployed API.
 | `tests/cross-host-cookie.spec.js` | the login cookie set by `api.localtest.me` works on `commons.localtest.me` (C4) |
 | `tests/account-security.spec.js` | five wrong passwords lock the account (S2); a password reset on another device logs the old session out (S6); reloading the consent page keeps the visitor on it (B4) |
 | `tests/admin-deletion.spec.js` | a contributor with 2 recordings sends a deletion request; the admin finds them in Messages, deletes the recordings and marks it done; the profile shows 0 (C3) |
+| `tests/admin-activity.spec.js` | a second admin (`admin2@signpak.test`, seeded as a normal account and promoted by the startup sync from `ADMIN_EMAILS`) and the first admin each add a category; Admin → Activity names the right admin for each, and shows the promotion by System (S7) |
 | `tests/contact.spec.js` | a signed-in contributor sends a contact message (C2); a signed-out deletion request is confirmed with the emailed code (D4) |
 
 The E2E API saves contact messages but never forwards them to Web3Forms, and raises the

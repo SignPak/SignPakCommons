@@ -4,12 +4,13 @@ import { notFound, validationError } from '../utils/AppError.js'
 import { attemptCleanup } from '../utils/cleanup.js'
 import { sniffVideo } from '../utils/files.js'
 import { logger } from '../utils/logger.js'
+import { auditService } from './auditService.js'
 import { storageService } from './storage/index.js'
 
 export const demoVideoService = {
   get: () => demoVideoRepo.find(),
 
-  async upload(input, upload) {
+  async upload(input, upload, actor) {
     if (!upload) throw validationError({ video: 'Choose a demo video to upload.' })
     const kind = await sniffVideo(upload.path)
     if (!kind) throw validationError({ video: 'That does not look like an MP4, WebM or MOV video.' })
@@ -36,11 +37,13 @@ export const demoVideoService = {
     // leftover: if removing it fails, log it rather than roll back (which would delete the file
     // the database now uses and break the demo video).
     await attemptCleanup('remove previous demo video', () => storageService.remove(previousFile), { key: previousFile?.key })
+    await auditService.record({ actor, action: 'demo.upload', targetType: 'demo', targetId: saved?.id ?? null, meta: { title: saved?.title ?? input.title } })
     return saved
   },
 
-  async remove() {
+  async remove(actor) {
     const current = await demoVideoRepo.remove()
+    if (current) await auditService.record({ actor, action: 'demo.delete', targetType: 'demo', targetId: current.id ?? null, meta: { title: current.title } })
     await storageService.remove(current?.videoFile)
   },
 

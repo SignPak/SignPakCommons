@@ -2,7 +2,9 @@ import mongoose from 'mongoose'
 import { jsonOptions } from '../utils/mongoose.js'
 
 /**
- * C3: the record that an admin deleted a contributor's recordings. Append-only. It never holds
+ * C3: the record that an admin deleted a contributor's recordings. Append-only, except that
+ * accountDeleted is set to true once the account itself has been deleted (Phase 7 item 5): it
+ * is written false and never claims a deletion that did not happen. It never holds
  * the email address, only its keyed hash (src/utils/emailHash.js), and null when the account
  * was already gone and no hash is known.
  */
