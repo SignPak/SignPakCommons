@@ -9,3 +9,14 @@
 export const requestLogProps = (req) => ({
   clientIp: req.ip ?? req.socket?.remoteAddress ?? null,
 })
+
+/**
+ * C3: the request-log serializer. pino-http applies its standard serializer first, so `url`
+ * is already the path with its query string. An `email=` value is replaced, so a direct
+ * `GET /admin/deletion-lookup?email=` call never writes the address to the logs. (The admin
+ * page looks up by message ID instead.)
+ */
+export function requestLogSerializer(req) {
+  if (typeof req.url === 'string') req.url = req.url.replace(/([?&]email=)[^&#]*/gi, '$1[redacted]')
+  return req
+}

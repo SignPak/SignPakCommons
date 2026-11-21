@@ -40,9 +40,10 @@ backend separately, or set `VITE_API_ORIGIN` to another API origin.
 | `/watch/edit?v=:videoId` | Signed in | Review, trim, and submit the current take. |
 | `/profile` | Signed in | Contribution history and profile connections. |
 | `/admin` | Admin | Admin dashboard. |
-| `/admin/users` | Admin | Account controls. |
+| `/admin/users` | Admin | Account controls, including deleting a contributor's recordings, or the account and its recordings together. |
 | `/admin/videos` | Admin | Manage reference videos and the demo video. |
 | `/admin/categories` | Admin | Manage categories. |
+| `/admin/messages` | Admin | The contact inbox: filter messages, and act on a deletion request (find the contributor, delete their recordings, mark it done or rejected). |
 
 Route declarations live in `src/App.jsx`; shared path names and URL builders live
 in `src/routes/appRoutes.js`. Auth guards in `src/components/RouteGuards.jsx`

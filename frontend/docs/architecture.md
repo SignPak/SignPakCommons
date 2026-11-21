@@ -54,8 +54,20 @@ page; they are not separate page screens.
 The route tree includes public landing, demo, and FAQ pages; signed-out login,
 signup, email verification, consent-before-account-creation, and password
 recovery pages; a signed-in consent page for existing accounts; signed-in home,
-library, watch, editor, and profile pages; and admin dashboard, user, video, and
-category pages.
+library, watch, editor, and profile pages; and admin dashboard, user, video,
+category and message pages.
+
+**Admin → Messages** (`src/pages/admin/AdminMessages.jsx`, C3) lists contact messages
+with filters for topic, status and verified. For a deletion request, **Find contributor**
+calls `GET /admin/deletion-lookup?messageId=` (by message id, so the email never appears
+in a URL) and lists the current account and any deleted account that used the email, each
+with its recording count. **Delete recordings** confirms with that count, then calls
+`DELETE /admin/users/:id/submissions?requestMessageId=`; a partial failure is shown and can
+be retried. **Mark done**, **Reject** and **Reopen** set the message status. The badge reads
+**Manual check** for an unverified request whose lookup finds no current account.
+**Admin → Users** has **Delete recordings** and **Delete account and recordings** next to
+**Delete**; every confirmation names the number of recordings, read from
+`GET /admin/users/:id/submissions?limit=1`.
 
 ## State and ownership
 

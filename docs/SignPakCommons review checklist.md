@@ -22,7 +22,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 | FR13.10 Coverage count, GitHub/LinkedIn | Done | |
 | FR13.11 Admin videos, posters, categories, demo video | Done | |
 | FR13.12 Stats, suspend/delete, IP/device restriction | Done | Dashboard stats are worked out in the browser (see B7). |
-| FR13.13 Deletion request through the contact form | **User side works (Phase 4)**; admin side pending | The form sends and deletion requests are verified (C2, S4). Acting on a request (deleting the recordings) is C3, Phase 5. |
+| FR13.13 Deletion request through the contact form | **Works (Phases 4 and 5)** | The form sends and deletion requests are verified (C2, S4). An admin finds the contributor from Admin → Messages, deletes their recordings from storage and MongoDB, and marks the request done (C3). |
 | OR-19 Consent notice | Done | Version `2026-10-15`, the same on frontend and backend. |
 
 ## Critical (fix first)
@@ -34,7 +34,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
   - Connect the call and handle success and errors.
   - Restore the topic `<select>`, which is commented out.
   - For signed-out visitors, default the topic to `recording-deletion`. Otherwise `contactService.send` treats a signed-out `general` message as abuse and blocks the device for 10 minutes.
-- [ ] **C3. Recordings can't be deleted (FR13.13).** No route deletes submissions. Admin delete (`userService.remove`) and self-delete (`removeSelf`) remove only the User document; the Drive files and Submission documents stay.
+- [x] **C3. Recordings can't be deleted (FR13.13).** *(Phase 5: `DELETE /admin/users/:id/submissions` deletes every recording file and its Submission document (a failed file keeps its document so a retry finishes), and `DELETE /admin/users/:id?withRecordings=true` does it with the account. Each deletion writes a `DeletionLog`, and every account deletion a `DeletedAccount`, both with an HMAC of the email (`EMAIL_HASH_SECRET`), never the address. Admin → Messages finds the contributor (current or deleted account) and runs the deletion; proven end to end in E2E.)* No route deletes submissions. Admin delete (`userService.remove`) and self-delete (`removeSelf`) remove only the User document; the Drive files and Submission documents stay.
   - Add an admin endpoint and UI that deletes one contributor's recordings: the Drive files (`storageService.remove`) and the Submission documents.
   - Add an option to do this when deleting a user.
   - Keep a record that the deletion happened.
@@ -76,7 +76,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 
 ## Unfinished parts and leftovers
 
-- [ ] There is no admin page for contact messages. The `GET /admin/messages` endpoint exists but nothing uses it.
+- [x] There is no admin page for contact messages. *(Phase 5: Admin → Messages, with topic/status/verified filters and done/rejected/reopen.)* The `GET /admin/messages` endpoint exists but nothing uses it.
 - [ ] There is no admin page to browse or export submissions (this ties in with B5).
 - [ ] There is no way to change the password while logged in; only reset by email works.
 - [x] `SITE_URL` in `frontend/src/seo/seoCatalog.mjs` is still `https://signpakcommons.example`, so the sitemap and robots file are wrong. *(Phase 1: defaults to `https://commons.signpak.tech` (D2), overridable with the `SITE_URL` env var; sitemap and robots.txt now name the real site.)*

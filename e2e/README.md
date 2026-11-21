@@ -47,6 +47,7 @@ so it cannot reach the deployed API.
 | `tests/landing.spec.js` | the landing page renders with no console or page errors; the API is reachable through the proxy |
 | `tests/signup.spec.js` | sign-up → emailed code → consent → library |
 | `tests/cross-host-cookie.spec.js` | the login cookie set by `api.localtest.me` works on `commons.localtest.me` (C4) |
+| `tests/admin-deletion.spec.js` | a contributor with 2 recordings sends a deletion request; the admin finds them in Messages, deletes the recordings and marks it done; the profile shows 0 (C3) |
 | `tests/contact.spec.js` | a signed-in contributor sends a contact message (C2); a signed-out deletion request is confirmed with the emailed code (D4) |
 
 The E2E API saves contact messages but never forwards them to Web3Forms, and raises the

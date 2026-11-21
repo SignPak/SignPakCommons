@@ -1,10 +1,14 @@
 import { CONSENT_VERSION, MAX_RECORDING_SECONDS, ROLES, TRIM_TOLERANCE_SECONDS, VIDEO_STATUS } from '../config/constants.js'
 import { env } from '../config/env.js'
+import { deletedAccountRepo, deletionLogRepo } from '../repositories/deletionRepo.js'
 import { submissionRepo } from '../repositories/submissionRepo.js'
+import { userRepo } from '../repositories/userRepo.js'
 import { categoryRepo } from '../repositories/categoryRepo.js'
 import { videoRepo } from '../repositories/videoRepo.js'
 import { AppError, conflict, notFound, validationError } from '../utils/AppError.js'
 import { attemptCleanup } from '../utils/cleanup.js'
+import { hashEmail } from '../utils/emailHash.js'
+import { logger } from '../utils/logger.js'
 import { sniffVideo } from '../utils/files.js'
 import { storageService } from './storage/index.js'
 
@@ -23,9 +27,10 @@ export const submissionService = {
    * more than once, since more varied takes make better training data. What is not allowed
    * is two submissions for the same (user, video) back to back — SUBMISSION_COOLDOWN_MS
    * apart, enforced by atomically claiming a cooldown window (repositories/submissionRepo.js
-   * #claimCooldown) before doing any of the expensive work (storage upload, DB write). There
-   * is still no update or delete for a submission once it exists: each individual recording,
-   * once in, stays exactly as submitted.
+   * #claimCooldown) before doing any of the expensive work (storage upload, DB write). A
+   * submission is never updated: each recording, once in, stays exactly as submitted. The only
+   * deletion is removeAllForUser below, an admin acting on a recording/data deletion request
+   * (FR13.13, C3); it removes all of one contributor's recordings and logs that it did.
    */
   async create(user, input, upload) {
     if (user.role === ROLES.USER && user.consent?.version !== CONSENT_VERSION) {
@@ -76,6 +81,50 @@ export const submissionService = {
       if (!isAdmin) delete result.archivePath
       return result
     })
+  },
+
+  /** Admin: one page of a contributor's submissions (C3: what a deletion would remove). */
+  async pageForUser(userId, { limit, cursor }) {
+    const page = await submissionRepo.pageForUser(userId, { limit, cursor })
+    return { ...page, items: page.items.map((submission) => submission.toJSON()) }
+  },
+
+  /**
+   * C3: deletes every recording of one contributor (a deletion request, FR13.13): each stored
+   * file, then its Submission document, then the contributor's cooldowns, and writes a
+   * DeletionLog. A file that can't be removed is reported and its document is kept, so the
+   * pointer to it is never lost and running this again finishes the job. Works for an account
+   * that no longer exists, because account deletion keeps the recordings.
+   */
+  async removeAllForUser(userId, admin, { requestMessageId = null, accountDeletion = false } = {}) {
+    const [submissions, user] = await Promise.all([submissionRepo.allForUser(userId), userRepo.findById(userId)])
+    const deletedAccount = user ? null : await deletedAccountRepo.latestForUser(userId)
+    if (!submissions.length && !user && !deletedAccount) throw notFound('There is no contributor with that ID.')
+
+    const removed = []
+    const failed = []
+    for (const submission of submissions) {
+      try {
+        await storageService.remove(submission.recording)
+        removed.push(submission._id)
+      } catch (error) {
+        logger.error({ err: error, submissionId: String(submission._id) }, 'Could not delete a recording file')
+        failed.push({ id: String(submission._id), reason: 'The file could not be deleted from storage. Try again.' })
+      }
+    }
+    if (removed.length) await submissionRepo.removeMany(removed)
+    await attemptCleanup('clear cooldowns of a deleted contributor', () => submissionRepo.clearCooldownsForUser(userId))
+
+    await deletionLogRepo.create({
+      userId,
+      emailHash: user ? hashEmail(user.email) : deletedAccount?.emailHash ?? null,
+      deleted: removed.length,
+      failed: failed.length,
+      accountDeleted: accountDeletion && failed.length === 0,
+      requestMessageId,
+      adminId: admin._id,
+    })
+    return { deleted: removed.length, failed }
   },
 
 }

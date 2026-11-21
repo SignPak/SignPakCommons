@@ -13,5 +13,6 @@ export const contactController = {
   }),
   verify: asyncHandler(async (req, res) => ok(res, await contactService.verify(req.params.id, req.body.code))),
   resend: asyncHandler(async (req, res) => ok(res, await contactService.resend(req.params.id), 202)),
-  list: asyncHandler(async (req, res) => ok(res, await contactService.list(req.query.limit))),
+  list: asyncHandler(async (req, res) => ok(res, await contactService.list(req.query))),
+  setStatus: asyncHandler(async (req, res) => ok(res, await contactService.setStatus(req.params.id, req.body.status, req.user))),
 }

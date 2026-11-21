@@ -12,6 +12,15 @@
   .admin-alert { @apply mb-4; }
   .admin-access-grid { @apply lg:grid-cols-2; }
   .admin-user-table { min-width: 58rem; }
+  /* Admin -> Messages (C3). */
+  .admin-message-table { min-width: 62rem; }
+  .admin-message-table td { @apply align-top; }
+  .admin-message-text { @apply mt-1 block max-w-md whitespace-pre-wrap text-sm text-muted; }
+  .admin-filters { @apply mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3; }
+  .admin-filters .field { @apply mt-0; }
+  .admin-lookup { @apply rounded-2xl border border-line bg-panel p-4; }
+  .admin-lookup ul { @apply mt-2 space-y-2; }
+  .admin-lookup li { @apply flex flex-wrap items-center justify-between gap-3; }
   .admin-row-actions { @apply flex flex-wrap gap-2; }
   .admin-row-actions .btn, .restriction-list .btn { @apply min-h-9 px-3 py-1.5 text-xs; }
   .admin-row-actions .is-danger { @apply bg-danger-soft text-danger shadow-soft; }

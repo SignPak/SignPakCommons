@@ -4,7 +4,7 @@ import { contactQuotaRepo } from '../repositories/contactQuotaRepo.js'
 import { messageRepo } from '../repositories/messageRepo.js'
 import { userRepo } from '../repositories/userRepo.js'
 import { attemptCleanup } from '../utils/cleanup.js'
-import { badRequest, conflict, forbidden, tooManyRequests } from '../utils/AppError.js'
+import { badRequest, conflict, forbidden, notFound, tooManyRequests } from '../utils/AppError.js'
 import { logger } from '../utils/logger.js'
 import { generateOtp, hashOtp, matchesOtp } from '../utils/otp.js'
 import { emailService } from './email/index.js'
@@ -187,5 +187,22 @@ export const contactService = {
     return { message: 'If an account uses this email, a new code is on its way.' }
   },
 
-  list: (limit) => messageRepo.list(limit),
+  /** Admin inbox, newest first, optionally filtered by topic, status and verified (C3). */
+  list({ limit, topic, status, verified } = {}) {
+    const filter = {}
+    if (topic) filter.topic = topic
+    if (status) filter.status = status
+    if (typeof verified === 'boolean') filter.verified = verified
+    return messageRepo.list(filter, limit)
+  },
+
+  /** Admin: marks a message done or rejected (recording who and when), or reopens it. */
+  async setStatus(id, status, admin) {
+    const message = await messageRepo.findById(id)
+    if (!message) throw notFound('That message does not exist.')
+    message.status = status
+    message.handledAt = status === 'open' ? null : new Date()
+    message.handledBy = status === 'open' ? null : admin._id
+    return messageRepo.save(message)
+  },
 }

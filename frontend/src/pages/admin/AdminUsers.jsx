@@ -44,16 +44,41 @@ export default function AdminUsers() {
     finally { setBusyId('') }
   }
 
-  async function deleteUser(target) {
-    if (!window.confirm(`Delete ${target.firstName} ${target.surname}'s account? This removes their sign-in access but leaves submitted recordings and contribution data stored. A separate recording/data deletion request is required to remove that data.`)) return
+  /** How many recordings a contributor has, so every confirmation can name the number (C3). */
+  const recordingCount = async (target) => (await api.admin.userSubmissions(target.id, { limit: 1 })).total
+  const recordings = (count) => `${count} recording${count === 1 ? '' : 's'}`
+
+  async function deleteUser(target, { withRecordings = false } = {}) {
+    const name = `${target.firstName} ${target.surname}`
     setBusyId(target.id)
     setError('')
     setNotice('')
     try {
-      await api.users.remove(target.id)
+      const count = await recordingCount(target)
+      const question = withRecordings
+        ? `Delete ${name}'s account and their ${recordings(count)}? The recording files are removed from storage and this can't be undone. If any file can't be deleted, the account is kept so you can try again.`
+        : `Delete ${name}'s account? This removes their sign-in access but keeps their ${recordings(count)} and contribution data. Use "Delete account and recordings", or answer their deletion request, to remove those.`
+      if (!window.confirm(question)) return
+      await api.users.remove(target.id, { withRecordings })
       setUsers((items) => items.filter((item) => item.id !== target.id))
-      setNotice(`${target.firstName} ${target.surname} was deleted.`)
+      setNotice(withRecordings ? `${name} and their ${recordings(count)} were deleted.` : `${name} was deleted. Their recordings are kept.`)
     } catch (cause) { setError(cause.message || 'Unable to delete this account.') }
+    finally { setBusyId('') }
+  }
+
+  async function deleteRecordings(target) {
+    const name = `${target.firstName} ${target.surname}`
+    setBusyId(target.id)
+    setError('')
+    setNotice('')
+    try {
+      const count = await recordingCount(target)
+      if (!count) { setNotice(`${name} has no recordings.`); return }
+      if (!window.confirm(`Delete ${name}'s ${recordings(count)}? The files are removed from storage and this can't be undone. The account stays.`)) return
+      const { deleted, failed } = await api.admin.removeUserSubmissions(target.id)
+      if (failed.length) setError(`Deleted ${deleted}, but ${failed.length} could not be deleted from storage. Try again.`)
+      else setNotice(`Deleted ${recordings(deleted)} for ${name}.`)
+    } catch (cause) { setError(cause.message || 'Unable to delete these recordings.') }
     finally { setBusyId('') }
   }
 
@@ -100,7 +125,9 @@ export default function AdminUsers() {
             <td><div className="admin-row-actions">
               {item.lastDeviceId && <Button variant="outline" disabled={busyId === item.id} onClick={() => setForm({ type: 'device', value: item.lastDeviceId, reason: '' })}>Block device</Button>}
               <Button variant="outline" disabled={busyId === item.id || item.id === currentUser.id} onClick={() => changeStatus(item)}>{item.status === 'suspended' ? 'Reactivate' : 'Suspend'}</Button>
+              <Button variant="outline" className="is-danger" disabled={busyId === item.id} onClick={() => deleteRecordings(item)}>Delete recordings</Button>
               <Button variant="outline" className="is-danger" disabled={busyId === item.id || item.id === currentUser.id} onClick={() => deleteUser(item)}>Delete</Button>
+              <Button variant="outline" className="is-danger" disabled={busyId === item.id || item.id === currentUser.id} onClick={() => deleteUser(item, { withRecordings: true })}>Delete account and recordings</Button>
             </div></td>
           </tr>)}</tbody>
         </table>

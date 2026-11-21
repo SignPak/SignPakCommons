@@ -84,11 +84,16 @@ const matrix = {
   'GET /api/v1/admin/users': [401, 403, 401, OPEN],
   'PATCH /api/v1/admin/users/:id': [401, 403, 401, OPEN],
   'DELETE /api/v1/admin/users/:id': [401, 403, 401, OPEN],
+  // C3: a contributor's recordings and deleting them, and finding whose they are.
+  'GET /api/v1/admin/users/:id/submissions': [401, 403, 401, OPEN],
+  'DELETE /api/v1/admin/users/:id/submissions': [401, 403, 401, OPEN],
+  'GET /api/v1/admin/deletion-lookup': [401, 403, 401, OPEN],
   'GET /api/v1/admin/restrictions': [401, 403, 401, OPEN],
   'POST /api/v1/admin/restrictions': [401, 403, 401, OPEN],
   'DELETE /api/v1/admin/restrictions/:id': [401, 403, 401, OPEN],
   'GET /api/v1/admin/stats': [401, 403, 401, OPEN],
   'GET /api/v1/admin/messages': [401, 403, 401, OPEN],
+  'PATCH /api/v1/admin/messages/:id': [401, 403, 401, OPEN],
 }
 
 const ROLE_NAMES = ['anonymous', 'contributor', 'suspended contributor', 'admin']

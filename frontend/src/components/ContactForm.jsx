@@ -22,7 +22,8 @@ const FIELDS = ['topic', 'name', 'email', 'message']
  * deletion request, which they then confirm with the code emailed to the account (D4).
  */
 export default function ContactForm() {
-  // Until the session is known the topics may be wrong, so sending waits for it.
+  // Until the session is known the topics may be wrong, and the form re-mounts once it is
+  // (Landing keys it by user), so nothing can be chosen, typed or sent before then.
   const { user, sessionChecked } = useAuth()
   const navigate = useNavigate()
   const topics = TOPICS.filter((topic) => user || !topic.signedInOnly)
@@ -90,6 +91,7 @@ export default function ContactForm() {
         value={values.topic}
         onChange={change}
         error={fieldErrors.topic}
+        disabled={!sessionChecked}
         hint={user ? undefined : 'Log in to send a general or partnership message.'}
       >
         {topics.map((topic) => <option key={topic.value} value={topic.value}>{topic.label}</option>)}
@@ -111,6 +113,7 @@ export default function ContactForm() {
         value={values.name}
         onChange={change}
         error={fieldErrors.name}
+        disabled={!sessionChecked}
         placeholder="e.g. Ali Imran"
         required
         autoComplete="name"
@@ -122,6 +125,7 @@ export default function ContactForm() {
         value={values.email}
         onChange={change}
         error={fieldErrors.email}
+        disabled={!sessionChecked}
         readOnly={Boolean(user)}
         placeholder="you@example.com"
         required
@@ -134,6 +138,7 @@ export default function ContactForm() {
         value={values.message}
         onChange={change}
         error={fieldErrors.message}
+        disabled={!sessionChecked}
         placeholder={isDeletion
           ? 'Tell us which data you would like deleted.'
           : 'Ask a question, share feedback, or inquire about contributing datasets…'}

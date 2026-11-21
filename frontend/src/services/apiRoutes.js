@@ -32,7 +32,7 @@ export const apiRoutes = {
     consent: () => `${API_BASE}/users/me/consent`,
     list: () => `${API_BASE}/admin/users`,
     update: (id) => `${API_BASE}/admin/users/${id}`,
-    remove: (id) => `${API_BASE}/admin/users/${id}`,
+    remove: (id, { withRecordings } = {}) => `${API_BASE}/admin/users/${id}${qs({ withRecordings: withRecordings ? 'true' : undefined })}`,
   },
 
   categories: {
@@ -77,6 +77,11 @@ export const apiRoutes = {
     createRestriction: () => `${API_BASE}/admin/restrictions`,
     removeRestriction: (id) => `${API_BASE}/admin/restrictions/${id}`,
     stats: (days) => `${API_BASE}/admin/stats${qs({ days })}`,
-    messages: (limit) => `${API_BASE}/admin/messages${qs({ limit })}`,
+    messages: ({ limit, topic, status, verified } = {}) => `${API_BASE}/admin/messages${qs({ limit, topic, status, verified })}`,
+    message: (id) => `${API_BASE}/admin/messages/${encodeURIComponent(id)}`,
+    // C3: deletion requests.
+    userSubmissions: (userId, { limit, cursor } = {}) => `${API_BASE}/admin/users/${encodeURIComponent(userId)}/submissions${qs({ limit, cursor })}`,
+    removeUserSubmissions: (userId, { requestMessageId } = {}) => `${API_BASE}/admin/users/${encodeURIComponent(userId)}/submissions${qs({ requestMessageId })}`,
+    deletionLookup: ({ messageId, email } = {}) => `${API_BASE}/admin/deletion-lookup${qs({ messageId, email })}`,
   },
 }

@@ -70,6 +70,8 @@
   .badge { @apply inline-block rounded-full px-3 py-1 font-ui text-xs font-bold uppercase tracking-wider; }
   .badge-neutral { @apply bg-panel text-muted; }
   .badge-success { @apply bg-success-soft text-success; }
+  .badge-danger { @apply bg-danger-soft text-danger; }
+  .badge-warning { @apply bg-accent-soft text-accent-ink; }
   .chip-link { @apply flex items-center gap-3 rounded-full border border-line bg-surface py-1.5 pl-1.5 pr-5 text-sm font-semibold transition hover:border-accent-ink hover:shadow-soft; }
   .field-password-wrap { @apply relative; }
   .field-password-input { padding-right: 3.25rem; }

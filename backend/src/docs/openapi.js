@@ -700,9 +700,95 @@ export const openapi = {
       },
       delete: {
         tags: ['Admin'],
-        summary: 'Delete a user account while retaining submitted recordings',
+        summary: 'Delete a user account; recordings are kept unless withRecordings=true',
+        description: 'Without withRecordings the submitted recordings stay stored. With withRecordings=true (C3) they are deleted first; if any file cannot be deleted the account is kept and the answer is 409. A DeletedAccount record (the keyed email hash) is written either way.',
         security: adminSecurity,
+        parameters: [{ name: 'withRecordings', in: 'query', schema: { type: 'string', enum: ['true', 'false'], default: 'false' } }],
         responses: { 204: { description: 'Deleted' }, ...adminErrors, 404: errorResponse, 409: errorResponse },
+      },
+    },
+    '/admin/users/{id}/submissions': {
+      parameters: [idParameter],
+      get: {
+        tags: ['Admin'],
+        summary: "One page of a contributor's submissions, newest first",
+        description: 'Works for the id of a deleted account too, since account deletion keeps recordings.',
+        security: adminSecurity,
+        parameters: [
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'cursor', in: 'query', description: 'nextCursor from the previous page.', schema: { type: 'string', pattern: '^[a-f\\d]{24}$' } },
+        ],
+        responses: {
+          200: jsonResponse('A page of submissions', {
+            type: 'object',
+            required: ['items', 'total', 'nextCursor'],
+            properties: {
+              items: { type: 'array', items: ref('Submission') },
+              total: { type: 'integer', minimum: 0 },
+              nextCursor: { type: 'string', nullable: true },
+            },
+          }),
+          ...adminErrors,
+        },
+      },
+      delete: {
+        tags: ['Admin'],
+        summary: "Delete all of a contributor's recordings (a deletion request, C3)",
+        description: 'Removes each file from storage, then its Submission document, then the cooldowns, and writes a DeletionLog (email hash only). A file that cannot be removed is listed in failed and keeps its document, so calling again finishes the job.',
+        security: adminSecurity,
+        parameters: [{ name: 'requestMessageId', in: 'query', description: 'The contact message this answers.', schema: { type: 'string', pattern: '^[a-f\\d]{24}$' } }],
+        responses: {
+          200: jsonResponse('Result', {
+            type: 'object',
+            required: ['deleted', 'failed'],
+            properties: {
+              deleted: { type: 'integer', minimum: 0 },
+              failed: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, reason: { type: 'string' } } } },
+            },
+          }),
+          ...adminErrors,
+          404: errorResponse,
+        },
+      },
+    },
+    '/admin/deletion-lookup': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Find whose recordings a deletion request is about',
+        description: 'Give exactly one of messageId (uses the email of that contact message) or email. Matches the current account and, by keyed email hash, deleted accounts.',
+        security: adminSecurity,
+        parameters: [
+          { name: 'messageId', in: 'query', schema: { type: 'string', pattern: '^[a-f\\d]{24}$' } },
+          { name: 'email', in: 'query', schema: { type: 'string', format: 'email' } },
+        ],
+        responses: {
+          200: jsonResponse('Matches', {
+            type: 'object',
+            required: ['matches'],
+            properties: {
+              matches: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['kind', 'userId', 'submissionCount'],
+                  properties: {
+                    kind: { type: 'string', enum: ['user', 'deleted'] },
+                    userId: { type: 'string' },
+                    submissionCount: { type: 'integer', minimum: 0 },
+                    name: { type: 'string' },
+                    email: { type: 'string', format: 'email' },
+                    role: { type: 'string' },
+                    status: { type: 'string' },
+                    deletedAt: { type: 'string', format: 'date-time' },
+                    deletedBy: { type: 'string', enum: ['self', 'admin'] },
+                  },
+                },
+              },
+            },
+          }),
+          ...adminErrors,
+          404: errorResponse,
+        },
       },
     },
     '/admin/restrictions': {
@@ -758,8 +844,27 @@ export const openapi = {
         tags: ['Admin'],
         summary: 'List contact messages',
         security: adminSecurity,
-        parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } }],
+        parameters: [
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } },
+          { name: 'topic', in: 'query', schema: { type: 'string', enum: ['general', 'partnership', 'recording-deletion'] } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['open', 'done', 'rejected'] } },
+          { name: 'verified', in: 'query', schema: { type: 'string', enum: ['true', 'false'] } },
+        ],
         responses: { 200: jsonResponse('Messages', { type: 'array', items: ref('ContactMessage') }), ...adminErrors },
+      },
+    },
+    '/admin/messages/{id}': {
+      parameters: [idParameter],
+      patch: {
+        tags: ['Admin'],
+        summary: 'Mark a message done or rejected, or reopen it',
+        description: 'done and rejected record handledAt and handledBy; open clears them.',
+        security: adminSecurity,
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'string', enum: ['open', 'done', 'rejected'] } } } } },
+        },
+        responses: { 200: jsonResponse('Updated message', ref('ContactMessage')), ...adminErrors, 404: errorResponse },
       },
     },
   },

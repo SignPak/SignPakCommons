@@ -17,6 +17,7 @@ const PRODUCTION_ENV = {
   BREVO_API_KEY: 'brevo-key',
   BREVO_SENDER_EMAIL: 'auth@signpak.test',
   WEB3FORMS_ACCESS_KEY: 'web3forms-key',
+  EMAIL_HASH_SECRET: 'production-email-hash-secret-production-email-hash',
   TRUST_PROXY: 'true',
   COOKIE_SECURE: 'true',
 }
@@ -76,4 +77,20 @@ test('test environments may enable the hooks and the capture driver', () => {
   })
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout.trim()), { emailDriver: 'capture', hooks: true })
+})
+
+test('C3: production refuses to start without EMAIL_HASH_SECRET, or with a short one', () => {
+  const { EMAIL_HASH_SECRET: _omitted, ...withoutSecret } = PRODUCTION_ENV
+  const missing = loadEnv(withoutSecret)
+  assert.equal(missing.status, 1)
+  assert.match(missing.stderr, /EMAIL_HASH_SECRET/)
+  assert.match(missing.stderr, /never change it/)
+  assert.equal(loadEnv({ ...withoutSecret, EMAIL_HASH_SECRET: '' }).status, 1, 'an empty value counts as missing')
+  assert.equal(loadEnv({ ...withoutSecret, EMAIL_HASH_SECRET: 'too-short' }).status, 1)
+})
+
+test('C3: outside production an empty EMAIL_HASH_SECRET falls back to the development key', () => {
+  const { EMAIL_HASH_SECRET: _omitted, ...rest } = PRODUCTION_ENV
+  const result = loadEnv({ ...rest, NODE_ENV: 'development', EMAIL_HASH_SECRET: '' })
+  assert.equal(result.status, 0, result.stderr)
 })

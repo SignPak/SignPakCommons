@@ -12,3 +12,12 @@ test('S3: request logs fall back to the socket address when req.ip is unavailabl
   assert.deepEqual(requestLogProps({ socket: { remoteAddress: '198.51.100.4' } }), { clientIp: '198.51.100.4' })
   assert.deepEqual(requestLogProps({}), { clientIp: null })
 })
+
+test('C3: an email in the query string is redacted from the logged URL', async () => {
+  const { requestLogSerializer } = await import('../../src/utils/requestLog.js')
+  const logged = requestLogSerializer({ method: 'GET', url: '/api/v1/admin/deletion-lookup?email=Sara%40Example.com&x=1' })
+  assert.equal(logged.url, '/api/v1/admin/deletion-lookup?email=[redacted]&x=1')
+  assert.equal(requestLogSerializer({ url: '/a?x=1&email=b%40c.d' }).url, '/a?x=1&email=[redacted]')
+  assert.equal(requestLogSerializer({ url: '/api/v1/videos?limit=5' }).url, '/api/v1/videos?limit=5', 'other URLs unchanged')
+  assert.equal(requestLogSerializer({ url: '/a?myemail=keep' }).url, '/a?myemail=keep', 'only the email parameter')
+})

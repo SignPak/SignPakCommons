@@ -94,20 +94,43 @@ All paths below are relative to `/api/v1`.
 | POST | `/contact` | Signed-in account or recording-deletion request | Other topics require the account email; deletion requests can be submitted without signing in before or after account deletion, at any time. |
 | GET | `/admin/users` | Admin | List accounts. |
 | PATCH | `/admin/users/:id` | Admin | Change an account's active/suspended status. |
-| DELETE | `/admin/users/:id` | Admin | Delete an account and its cooldown claims; submitted recordings and contribution data remain stored. |
+| DELETE | `/admin/users/:id` | Admin | Delete an account and its cooldown claims; submitted recordings and contribution data remain stored. With `?withRecordings=true` the recordings are deleted first (C3), and the account is kept (409) if any file can't be deleted. |
+| GET | `/admin/users/:id/submissions` | Admin | One page of a contributor's submissions, newest first: `?limit=` (1–100, default 20) and `?cursor=` (the previous page's `nextCursor`). Returns `{ items, total, nextCursor }`. Works for a deleted account's id. |
+| DELETE | `/admin/users/:id/submissions` | Admin | Delete all of a contributor's recordings (C3); optional `?requestMessageId=`. Returns `{ deleted, failed: [{ id, reason }] }`. |
+| GET | `/admin/deletion-lookup` | Admin | Find whose recordings a deletion request is about: `?messageId=` or `?email=` (exactly one). Returns `{ matches }`. |
 | GET | `/admin/restrictions` | Admin | List active device and IP restrictions. |
 | POST | `/admin/restrictions` | Admin | Create a permanent device or IP restriction. |
 | DELETE | `/admin/restrictions/:id` | Admin | Remove a restriction. |
 | GET | `/admin/stats` | Admin | Read dashboard totals, activity, and recent submissions. |
-| GET | `/admin/messages` | Admin | List retained contact messages; accepts the validated `limit` query. |
+| GET | `/admin/messages` | Admin | List retained contact messages, newest first. Query: `limit` (1–200, default 50), `topic`, `status` (`open`, `done`, `rejected`), `verified` (`true`/`false`). |
+| PATCH | `/admin/messages/:id` | Admin | Set `{ status }`: `done` and `rejected` record `handledAt` and `handledBy`; `open` clears them. |
 
-There is intentionally no submission read, update, or delete endpoint, including
-for admins. The archive is append-only and archived media is not streamed through
-the API. Account deletion leaves submissions intact; a separate contact request
-is required to ask the team to review stored-recording and contribution-data
-deletion. Requests may be sent before or after account deletion, without a
-deadline. Recordings already used in a released model cannot be removed from
-that model.
+A submission is never updated, and archived media is not streamed through the API.
+Account deletion leaves submissions intact; a separate recording/data deletion
+request (the contact form) asks the team to remove them. Requests may be sent before
+or after account deletion, without a deadline. Recordings already used in a released
+model cannot be removed from that model.
+
+### Acting on a deletion request (C3)
+
+The only way submissions are deleted is an admin acting on such a request:
+
+1. `GET /admin/deletion-lookup?messageId=<message id>` takes the email from the
+   message and returns every match: the current account using it (`kind: "user"`,
+   with name, email, role and status) and any deleted account it used to belong to
+   (`kind: "deleted"`, with `deletedAt` and `deletedBy`). Each has `userId` and
+   `submissionCount`. Deleted accounts are found through a keyed hash of the email
+   (`EMAIL_HASH_SECRET`), kept in a `DeletedAccount` record whenever an account is
+   deleted; the address itself is not kept. `?email=` works too for a direct call, and
+   the request log redacts it.
+2. `DELETE /admin/users/:userId/submissions?requestMessageId=<message id>` removes
+   each recording file from storage, then its Submission document, then the
+   contributor's cooldowns. A file that can't be removed is listed in `failed` and
+   **keeps its document**, so calling the route again finishes the job.
+3. Every call writes a `DeletionLog`: `userId`, the email hash (never the email), the
+   numbers deleted and failed, `accountDeleted`, `requestMessageId`, the admin's id and
+   the time. It is append-only.
+4. `PATCH /admin/messages/:id { "status": "done" }` closes the request.
 
 ## Request bodies and uploads
 

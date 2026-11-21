@@ -10,6 +10,24 @@ export const submissionRepo = {
   countForPair: (userId, videoId) => Submission.countDocuments({ user: userId, video: videoId }),
   count: () => Submission.countDocuments(),
   clearCooldownsForUser: (userId) => SubmissionCooldown.deleteMany({ user: userId }),
+  countForUser: (userId) => Submission.countDocuments({ user: userId }),
+  /** Every submission of one contributor, with the stored-file pointer (C3 deletion). */
+  allForUser: (userId) => Submission.find({ user: userId }),
+  removeMany: (ids) => Submission.deleteMany({ _id: { $in: ids } }),
+
+  /**
+   * One page of a contributor's submissions, newest first. The cursor is the last `_id` of the
+   * previous page (ObjectIds grow with time), so pages stay stable while rows are deleted.
+   */
+  async pageForUser(userId, { limit, cursor }) {
+    const filter = { user: userId, ...(cursor ? { _id: { $lt: cursor } } : {}) }
+    const [rows, total] = await Promise.all([
+      Submission.find(filter).sort({ _id: -1 }).limit(limit + 1),
+      Submission.countDocuments({ user: userId }),
+    ])
+    const items = rows.slice(0, limit)
+    return { items, total, nextCursor: rows.length > limit ? String(items.at(-1)._id) : null }
+  },
   // Just the timestamps, for bucketing into days.
   createdSince: (date) => Submission.find({ createdAt: { $gte: date } }).select('createdAt').lean(),
   countsByVideo: () => Submission.aggregate([{ $group: { _id: '$video', count: { $sum: 1 } } }]),
