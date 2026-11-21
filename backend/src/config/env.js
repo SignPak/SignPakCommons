@@ -80,6 +80,11 @@ const schema = z.object({
   ADMIN_PASSWORD: z.string().min(8, 'ADMIN_PASSWORD must be at least 8 characters').max(72),
   ADMIN_FIRST_NAME: z.string().min(1).default('Admin'),
   ADMIN_SURNAME: z.string().min(1).default('Signpak'),
+  // S7 / D5: more admin accounts, comma-separated. Each must already be a finished sign-up;
+  // they are promoted (and admins not listed are demoted) when the server starts.
+  ADMIN_EMAILS: z.string().optional().default('')
+    .transform((value) => [...new Set(value.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean))])
+    .pipe(z.array(z.email('Each ADMIN_EMAILS entry must be a valid email address.'))),
 
   STORAGE_DRIVER: z.enum(['local', 'gdrive']).default('local'),
   ARCHIVE_STORAGE_DRIVER: z.enum(['local', 'gdrive']).default('local'),
@@ -211,4 +216,6 @@ export const env = Object.freeze({
   EMAIL_HASH_SECRET: data.EMAIL_HASH_SECRET ?? 'development-only-email-hash-secret-not-for-production',
   COOKIE_SECURE: data.COOKIE_SECURE ?? data.NODE_ENV === 'production',
   clientOrigins: data.CLIENT_ORIGIN.split(',').map((item) => item.trim().replace(/\/$/, '')).filter(Boolean),
+  // S7: everyone who should be an admin: ADMIN_EMAIL first, then ADMIN_EMAILS.
+  adminEmails: [...new Set([data.ADMIN_EMAIL.trim().toLowerCase(), ...data.ADMIN_EMAILS])],
 })

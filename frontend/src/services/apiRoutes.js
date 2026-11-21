@@ -84,5 +84,7 @@ export const apiRoutes = {
     userSubmissions: (userId, { limit, cursor } = {}) => `${API_BASE}/admin/users/${encodeURIComponent(userId)}/submissions${qs({ limit, cursor })}`,
     removeUserSubmissions: (userId, { requestMessageId } = {}) => `${API_BASE}/admin/users/${encodeURIComponent(userId)}/submissions${qs({ requestMessageId })}`,
     deletionLookup: ({ messageId, email } = {}) => `${API_BASE}/admin/deletion-lookup${qs({ messageId, email })}`,
+    // S7: the activity log.
+    audit: ({ page, limit, actor, action } = {}) => `${API_BASE}/admin/audit${qs({ page, limit, actor, action })}`,
   },
 }

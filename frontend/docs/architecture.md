@@ -69,6 +69,13 @@ be retried. **Mark done**, **Reject** and **Reopen** set the message status. The
 **Delete**; every confirmation names the number of recordings, read from
 `GET /admin/users/:id/submissions?limit=1`.
 
+**Admin → Activity** (`src/pages/admin/AdminActivity.jsx`, S7) shows the activity log from
+`GET /admin/audit`, 25 entries a page, newest first: when, which admin (or "System" for the
+startup admin sync), the action as a readable label, what it was done to and the details.
+It filters by admin (the admins from `GET /admin/users`, plus System) and by action, and
+pages with **Previous** and **Next**. The action labels, the query schema (checked before
+the request is sent) and the details formatting live in `src/utils/auditLog.js`.
+
 ## State and ownership
 
 React context providers coordinate shared state without an external state

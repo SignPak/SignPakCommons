@@ -20,19 +20,19 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 6** (backend 1.0.12, frontend 1.0.14):
+Counts as of **Phase 7** (backend 1.0.13, frontend 1.0.15):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 29 | 161 |
-| Integration (backend) | `backend/tests/integration/` | 15 | 110 |
-| Security (backend) | `backend/tests/security/` | 8 | 78 |
+| Unit (backend) | `backend/tests/unit/` | 33 | 182 |
+| Integration (backend) | `backend/tests/integration/` | 16 | 125 |
+| Security (backend) | `backend/tests/security/` | 8 | 79 |
 | Unit (frontend) | `frontend/test/unit/` | 12 | 42 |
-| Integration (frontend) | `frontend/test/integration/` | 6 | 37 |
-| End-to-end | `e2e/tests/` | 6 | 30 (10 tests × 3 browsers) |
-| **Total** | | **76** | **458** |
+| Integration (frontend) | `frontend/test/integration/` | 7 | 42 |
+| End-to-end | `e2e/tests/` | 7 | 33 (11 tests × 3 browsers) |
+| **Total** | | **83** | **503** |
 
-The backend security count is per-route: the access matrix produces one case per route (54
+The backend security count is per-route: the access matrix produces one case per route (55
 today) plus the completeness check; the hook suite adds three, the production-error suite
 three, the listen-address suite two, the upload-type suite three, the contact-verification
 suite four, the admin-deletion suite two and the JWT suite six. Frontend cases count each `it.each` row separately.
@@ -173,7 +173,7 @@ suite four, the admin-deletion suite two and the JWT suite six. Frontend cases c
 | U-130 | `removeAllForUser.test.js` | C3: writes a deletion log with the counts and the email hash, never the email | FR13.13 | C3 | unit |
 | U-131 | `removeAllForUser.test.js` | C3: for an account already deleted, the hash comes from its DeletedAccount record | FR13.13 | C3 | unit |
 | U-132 | `removeAllForUser.test.js` | C3: with no submissions, no account and no deleted-account record, the user is not found | FR13.13 | C3 | unit |
-| U-133 | `removeAllForUser.test.js` | C3: accountDeleted is logged only when the account deletion will go ahead | FR13.13 | C3 | unit |
+| U-133 | `removeAllForUser.test.js` | C3: accountDeleted is never logged before the account deletion has happened | FR13.13 | C3 | unit |
 | U-134 | `adminDeletionSchemas.test.js` | C3: the submissions page takes a limit of 1-100 (default 20) and an object-id cursor | FR13.13, SE-10 | C3 | unit |
 | U-135 | `adminDeletionSchemas.test.js` | C3: withRecordings accepts only "true" or "false" and defaults to false | FR13.13, SE-10 | C3 | unit |
 | U-136 | `adminDeletionSchemas.test.js` | C3: message filters accept only known topics, statuses and true/false | FR13.13, SE-10 | C3 | unit |
@@ -202,6 +202,27 @@ suite four, the admin-deletion suite two and the JWT suite six. Frontend cases c
 | U-159 | `pendingSignupRepo.test.js` | B3: updatePendingSignup only updates an unfinished user sign-up at the expected version, bumps the version and selects the code fields | FR13.1, SE-9 | B3 | unit |
 | U-160 | `pendingSignupRepo.test.js` | B3: completePendingSignup only finishes an unfinished user sign-up at the token's version | FR13.1, SE-9 | B3 | unit |
 | U-161 | `pendingSignupRepo.test.js` | B3: removePendingSignup deletes only an unfinished user sign-up at the token's version | FR13.1, SE-9 | B3 | unit |
+| U-162 | `adminSync.test.js` | S7: verified accounts on the list become admins; an unverified one does not | FR13.12, SE-1 | S7 | unit |
+| U-163 | `adminSync.test.js` | S7: admins not on the list go back to normal users | FR13.12, SE-1 | S7 | unit |
+| U-164 | `adminSync.test.js` | S7: the ADMIN_EMAIL account is never demoted, even when ADMIN_EMAILS leaves it out | FR13.12, SE-1 | S7 | unit |
+| U-165 | `adminSync.test.js` | S7: the last active admin is never demoted | FR13.12, SE-1 | S7 | unit |
+| U-166 | `adminSync.test.js` | S7: a suspended admin off the list is demoted even when it is not the last | FR13.12, SE-1 | S7 | unit |
+| U-167 | `adminSync.test.js` | S7: each promotion and demotion writes one audit entry with the system as actor | FR13.12, SE-1 | S7 | unit |
+| U-168 | `adminSync.test.js` | S7: nothing changes when the accounts already match the list | FR13.12, SE-1 | S7 | unit |
+| U-169 | `auditService.test.js` | S7: meta drops password, token, secret, hash, code, email, cookie and OTP keys | FR13.12, SE-1 | S7 | unit |
+| U-170 | `auditService.test.js` | S7: meta keeps only primitive values, cuts long strings and keeps at most 10 keys | FR13.12, SE-1 | S7 | unit |
+| U-171 | `auditService.test.js` | S7: record writes the actor, action, target and cleaned meta | FR13.12, SE-1 | S7 | unit |
+| U-172 | `auditService.test.js` | S7: a failed write is logged and does not fail the admin action | FR13.12, SE-1 | S7 | unit |
+| U-173 | `loginLog.test.js` | S7: a successful login is logged with the email hash, the IP and outcome success | SE-2 | S7 | unit |
+| U-174 | `loginLog.test.js` | S7: a wrong password is logged as wrong-password | SE-2 | S7 | unit |
+| U-175 | `loginLog.test.js` | S7: an unknown email is logged as unknown-email | SE-2 | S7 | unit |
+| U-176 | `loginLog.test.js` | S7: a locked, suspended or unverified account is logged with that outcome | SE-2 | S7 | unit |
+| U-177 | `env-guards.test.js` | S7: ADMIN_EMAILS is optional; ADMIN_EMAIL is always on the admin list | FR13.12, SE-1 | S7 | unit |
+| U-178 | `env-guards.test.js` | S7: ADMIN_EMAILS is split on commas, trimmed, lowercased and de-duplicated | FR13.12, SE-1 | S7 | unit |
+| U-179 | `env-guards.test.js` | S7: an entry in ADMIN_EMAILS that is not an email stops the server from starting | FR13.12, SE-1 | S7 | unit |
+| U-180 | `accountDeletionLog.test.js` | Phase 7 item 5: the log is marked accountDeleted only after the account is deleted | FR13.13 | C3 | unit |
+| U-181 | `accountDeletionLog.test.js` | Phase 7 item 5: when the account deletion fails, the log is never marked | FR13.13 | C3 | unit |
+| U-182 | `accountDeletionLog.test.js` | Phase 7 item 5: a plain account deletion writes no deletion log | FR13.13 | C3 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -320,6 +341,21 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-108 | `api-account-security.test.js` | B3: a re-signup that commits between decline's check and its delete wins; decline gets 400 and the sign-up is kept | FR13.1, SE-9 | B3 | integration |
 | I-109 | `api-account-security.test.js` | B3: stress, 10 re-signups racing consent: exactly one wins every time and the other person never logs in | FR13.1, SE-9 | B3 | integration |
 | I-110 | `api-account-security.test.js` | B3: the conditional writes treat an account with no authVersion field as version 0 | FR13.1, SE-9 | B3 | integration |
+| I-111 | `api-admin-audit.test.js` | S7: category create, update and delete | FR13.12, SE-1 | S7 | integration |
+| I-112 | `api-admin-audit.test.js` | S7: video create, update and delete | FR13.12, SE-1 | S7 | integration |
+| I-113 | `api-admin-audit.test.js` | S7: demo video upload and delete | FR13.12, SE-1 | S7 | integration |
+| I-114 | `api-admin-audit.test.js` | S7: user suspend, reactivate and delete | FR13.12, SE-1 | S7 | integration |
+| I-115 | `api-admin-audit.test.js` | S7: deleting recordings writes one entry; deleting an account with its recordings writes two | FR13.12, SE-1 | S7 | integration |
+| I-116 | `api-admin-audit.test.js` | S7: restriction create and remove, with only the hint and never the raw IP | FR13.12, SE-1 | S7 | integration |
+| I-117 | `api-admin-audit.test.js` | S7: changing a message status | FR13.12, SE-1 | S7 | integration |
+| I-118 | `api-admin-audit.test.js` | S7: a refused action (404) writes nothing | FR13.12, SE-1 | S7 | integration |
+| I-119 | `api-admin-audit.test.js` | S7: the startup sync promotes a listed account, which then acts under its own name, and demotes it when removed from the list | FR13.12, SE-1 | S7 | integration |
+| I-120 | `api-admin-audit.test.js` | S7: the log is listed newest first, a page at a time | FR13.12, SE-1 | S7 | integration |
+| I-121 | `api-admin-audit.test.js` | S7: the log filters by admin, by the system and by action | FR13.12, SE-1 | S7 | integration |
+| I-122 | `api-admin-audit.test.js` | S7: bad filters and page values are refused with 422 | FR13.12, SE-1 | S7 | integration |
+| I-123 | `api-admin-audit.test.js` | S7: an admin who has since been deleted is shown as a deleted account | FR13.12, SE-1 | S7 | integration |
+| I-124 | `api-admin-audit.test.js` | S7: no entry holds an email address | FR13.12, SE-1 | S7 | integration |
+| I-125 | `api-admin-deletion.test.js` | Phase 7 item 5: when the account deletion itself fails, DeletionLog.accountDeleted stays false and the account is kept | FR13.13 | C3 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -441,6 +477,11 @@ Rendered with the real router, providers and API client; only the network is moc
 | FI-30 | `AccountSecurity.test.jsx` | S6: explains that it ends every session, this one included | SE-2, SE-9 | S6 | integration |
 | FI-31 | `ConsentReload.test.jsx` | B3: an expired sign-up step clears the saved token and offers a fresh sign-up | FR13.1, SE-9 | B3 | integration |
 | FI-32 | `ConsentReload.test.jsx` | B3: declining with an expired step also clears the saved token | FR13.1, SE-9 | B3 | integration |
+| FI-33 | `AdminActivity.test.jsx` | S7: lists entries with the admin name, a readable action, the target and the details | FR13.12, SE-1 | S7 | integration |
+| FI-34 | `AdminActivity.test.jsx` | S7: the admin filter offers the admins and System, and sends the chosen one | FR13.12, SE-1 | S7 | integration |
+| FI-35 | `AdminActivity.test.jsx` | S7: the action filter sends the chosen action and goes back to page 1 | FR13.12, SE-1 | S7 | integration |
+| FI-36 | `AdminActivity.test.jsx` | S7: Previous and Next page through the log | FR13.12, SE-1 | S7 | integration |
+| FI-37 | `AdminActivity.test.jsx` | S7: an empty log and a failed request each show a message | FR13.12, SE-1 | S7 | integration |
 
 ## 6. End-to-end tests — `e2e/tests/`
 
@@ -459,6 +500,7 @@ API with an in-memory database.
 | E-08 | `account-security.spec.js` | S2: five wrong passwords lock the account, and the right one is refused until the lock passes | SE-4 | S2 | E2E |
 | E-09 | `account-security.spec.js` | S6: resetting the password on another device logs out the old session | SE-2, SE-9 | S6 | E2E |
 | E-10 | `account-security.spec.js` | B4: reloading the consent page keeps the visitor on it, and accepting still works | FR13.1, OR-19 | B4 | E2E |
+| E-11 | `admin-activity.spec.js` | S7: two admins each make a change, and Activity shows the right name for each | FR13.12, SE-1 | S7 | E2E |
 
 ## 7. Gaps to close in later phases
 
@@ -474,7 +516,7 @@ Drive upload`) and a row here.
 | C2, S4 | **Covered in Phase 4** (U-92–U-123, I-39 adjusted, I-57–I-72, S-14–S-17, the two new access-matrix routes, FU-25–FU-28, FI-05–FI-16, E-05, E-06). | 4 |
 | C3 | **Covered in Phase 5** (U-124–U-140, I-73–I-85, S-18, S-19, the four new access-matrix routes, FU-29–FU-34, FI-17–FI-21, E-07). | 5 |
 | S2, S6, S9, B2, B3, B4 | **Covered in Phase 6** (U-141–U-161, I-86–I-110, S-20–S-25, the new access-matrix route, FU-35–FU-42, FI-22–FI-32, E-08–E-10). | 6 |
-| S7 | admin list promotion/demotion and the activity log | 7 |
+| S7 | **Covered in Phase 7** (U-162–U-182, U-133 changed for item 5, I-111–I-125, the new access-matrix route, FI-33–FI-37, E-11). | 7 |
 | B5, B7 | submissions export (CSV/JSON) and paginated admin data | 8 |
 | S8, S10 | CSP and security headers, `X-Request-Id` validation, axe checks | 9 |
 | all | final traceability check: every FR13.x and checklist ID has a test | 10 |

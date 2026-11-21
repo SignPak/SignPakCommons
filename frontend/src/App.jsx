@@ -3,6 +3,7 @@ import { AppLayout } from './components/Layouts'
 import { GuestOnly, RequireAdmin, RequireAuth } from './components/RouteGuards'
 import { PageState, ButtonLink } from './components/ui'
 import { paths } from './routes/appRoutes'
+import AdminActivity from './pages/admin/AdminActivity'
 import AdminCategories from './pages/admin/AdminCategories'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminLayout from './pages/admin/AdminLayout'
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="videos" element={<AdminVideos />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="messages" element={<AdminMessages />} />
+            <Route path="activity" element={<AdminActivity />} />
           </Route>
         </Route>
       </Route>

@@ -88,6 +88,7 @@ All paths are under `/api/v1`.
 | `POST /contact` | Signed-in account or recording-deletion request | Other topics require the account email; deletion requests can be submitted without signing in at any time. |
 | `POST /contact/:id/verify`, `POST /contact/:id/resend` | Anyone | Confirm a signed-out deletion request with the emailed six-digit code, or ask for a new one (once a minute). |
 | `/admin/users*`, `/admin/restrictions*`, `/admin/stats`, `/admin/messages*`, `/admin/deletion-lookup` | Admin | Account moderation, access restrictions, statistics, the inbox, and acting on deletion requests (find the contributor, delete their recordings, mark the request done). |
+| `GET /admin/audit` | Admin | The activity log: who did what and when, a page at a time, filtered by admin or action (S7). |
 
 See [API.md](docs/API.md) for the complete route table, limits, visibility, and
 request behavior. The OpenAPI JSON is available at `/api/v1/docs.json` in every
@@ -105,6 +106,10 @@ mounted outside production.
   request can be sent through the contact form before or after account deletion,
   without a deadline. Recordings already used in a released model cannot be
   removed from that model.
+- Each team member has their own admin account (S7): they sign up normally, their email
+  goes in `ADMIN_EMAILS`, and the server is restarted. Admins not on `ADMIN_EMAIL` or
+  `ADMIN_EMAILS` go back to normal accounts at startup. Every admin action is in the
+  activity log (`GET /admin/audit`, Admin → Activity).
 - `CLIENT_ORIGIN` controls credentialed CORS and the check for browser
   state-changing requests that carry an `Origin` header.
 - The global, auth, contact, and upload rate limits can be disabled with

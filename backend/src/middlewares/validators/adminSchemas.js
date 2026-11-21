@@ -1,5 +1,6 @@
 import { isIP } from 'node:net'
 import { z } from 'zod'
+import { AUDIT_ACTIONS } from '../../config/constants.js'
 import { emailField, objectId } from './common.js'
 
 export const updateUserStatusSchema = z.object({
@@ -53,4 +54,12 @@ export const deletionLookupQuerySchema = z.object({
 }).refine((query) => Boolean(query.email) !== Boolean(query.messageId), {
   path: ['email'],
   message: 'Give either an email address or a message ID.',
+})
+
+// S7: the activity log, a page at a time, filtered by admin ("system" for the startup sync) and action.
+export const auditQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  actor: z.union([z.literal('system'), objectId('admin')]).optional(),
+  action: z.enum(AUDIT_ACTIONS, { error: 'That is not a known action.' }).optional(),
 })

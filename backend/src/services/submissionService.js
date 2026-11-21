@@ -10,6 +10,7 @@ import { attemptCleanup } from '../utils/cleanup.js'
 import { hashEmail } from '../utils/emailHash.js'
 import { logger } from '../utils/logger.js'
 import { sniffVideo } from '../utils/files.js'
+import { auditService } from './auditService.js'
 import { storageService } from './storage/index.js'
 
 const cooling = (remainingMs) => conflict(`Wait ${Math.ceil(remainingMs / 1000)}s before recording this video again.`)
@@ -96,7 +97,17 @@ export const submissionService = {
    * pointer to it is never lost and running this again finishes the job. Works for an account
    * that no longer exists, because account deletion keeps the recordings.
    */
-  async removeAllForUser(userId, admin, { requestMessageId = null, accountDeletion = false } = {}) {
+  async removeAllForUser(userId, admin, { requestMessageId = null } = {}) {
+    const { deleted, failed } = await this.removeRecordings(userId, admin, { requestMessageId })
+    return { deleted, failed }
+  },
+
+  /**
+   * removeAllForUser, also returning the DeletionLog it wrote, so an account deletion can mark
+   * it accountDeleted once the account is gone (userService.remove, Phase 7 item 5). The log is
+   * always written with accountDeleted false. S7: one activity entry, recordings.delete.
+   */
+  async removeRecordings(userId, admin, { requestMessageId = null } = {}) {
     const [submissions, user] = await Promise.all([submissionRepo.allForUser(userId), userRepo.findById(userId)])
     const deletedAccount = user ? null : await deletedAccountRepo.latestForUser(userId)
     if (!submissions.length && !user && !deletedAccount) throw notFound('There is no contributor with that ID.')
@@ -115,16 +126,20 @@ export const submissionService = {
     if (removed.length) await submissionRepo.removeMany(removed)
     await attemptCleanup('clear cooldowns of a deleted contributor', () => submissionRepo.clearCooldownsForUser(userId))
 
-    await deletionLogRepo.create({
+    const log = await deletionLogRepo.create({
       userId,
       emailHash: user ? hashEmail(user.email) : deletedAccount?.emailHash ?? null,
       deleted: removed.length,
       failed: failed.length,
-      accountDeleted: accountDeletion && failed.length === 0,
+      accountDeleted: false,
       requestMessageId,
       adminId: admin._id,
     })
-    return { deleted: removed.length, failed }
+    await auditService.record({
+      actor: admin, action: 'recordings.delete', targetType: 'user', targetId: String(userId),
+      meta: { deleted: removed.length, failed: failed.length, requestMessageId: requestMessageId ? String(requestMessageId) : null },
+    })
+    return { deleted: removed.length, failed, log }
   },
 
 }

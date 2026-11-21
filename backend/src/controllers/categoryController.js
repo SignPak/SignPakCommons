@@ -4,7 +4,7 @@ import { created, noContent, ok } from '../utils/response.js'
 
 export const categoryController = {
   list: asyncHandler(async (req, res) => ok(res, await categoryService.list())),
-  create: asyncHandler(async (req, res) => created(res, await categoryService.create(req.body))),
-  update: asyncHandler(async (req, res) => ok(res, await categoryService.update(req.params.id, req.body))),
-  remove: asyncHandler(async (req, res) => { await categoryService.remove(req.params.id); noContent(res) }),
+  create: asyncHandler(async (req, res) => created(res, await categoryService.create(req.body, req.user))),
+  update: asyncHandler(async (req, res) => ok(res, await categoryService.update(req.params.id, req.body, req.user))),
+  remove: asyncHandler(async (req, res) => { await categoryService.remove(req.params.id, req.user); noContent(res) }),
 }

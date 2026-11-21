@@ -1,10 +1,12 @@
 import bcrypt from 'bcrypt'
 import { CONSENT_VERSION, ROLES } from '../config/constants.js'
-import { deletedAccountRepo } from '../repositories/deletionRepo.js'
+import { deletedAccountRepo, deletionLogRepo } from '../repositories/deletionRepo.js'
 import { submissionRepo } from '../repositories/submissionRepo.js'
 import { userRepo } from '../repositories/userRepo.js'
 import { conflict, forbidden, notFound, unauthorized } from '../utils/AppError.js'
 import { hashEmail } from '../utils/emailHash.js'
+import { attemptCleanup } from '../utils/cleanup.js'
+import { auditService } from './auditService.js'
 import { submissionService } from './submissionService.js'
 
 /**
@@ -49,13 +51,19 @@ export const userService = {
     }
     user.status = status
     user.statusReason = status === 'suspended' ? reason : ''
-    return userRepo.save(user)
+    const saved = await userRepo.save(user)
+    const action = status === 'suspended' ? 'user.suspend' : 'user.reactivate'
+    await auditService.record({ actor, action, targetType: 'user', targetId: saved.id, meta: status === 'suspended' ? { reason } : {} })
+    return saved
   },
 
   /**
    * Admin deletion of an account. With `withRecordings` (C3) the contributor's recordings go
    * first; if any file can't be deleted the account is kept (409), so it is never removed with
    * recordings still in storage. Running it again retries what is left.
+   *
+   * Phase 7 item 5: the DeletionLog is written with accountDeleted false, and only marked true
+   * once deleteAccount() has succeeded, so it never claims a deletion that did not happen.
    */
   async remove(id, actor, { withRecordings = false } = {}) {
     const user = await userRepo.findById(id)
@@ -64,13 +72,18 @@ export const userService = {
     if (user.role === ROLES.ADMIN && user.status === 'active' && await userRepo.countActiveAdmins() <= 1) {
       throw conflict('The last active administrator cannot be deleted.')
     }
+    let log = null
     if (withRecordings) {
-      const { deleted, failed } = await submissionService.removeAllForUser(user._id, actor, { accountDeletion: true })
-      if (failed.length) {
-        throw conflict(`${failed.length} recording(s) could not be deleted from storage (${deleted} deleted), so the account was kept. Try again.`)
+      const result = await submissionService.removeRecordings(user._id, actor)
+      if (result.failed.length) {
+        throw conflict(`${result.failed.length} recording(s) could not be deleted from storage (${result.deleted} deleted), so the account was kept. Try again.`)
       }
+      log = result.log
     }
     await deleteAccount(user, 'admin')
+    // The account is gone; a failure to update the log must not turn that into an error.
+    if (log) await attemptCleanup('mark the deletion log as account deleted', () => deletionLogRepo.markAccountDeleted(log._id), { logId: String(log._id) })
+    await auditService.record({ actor, action: 'user.delete', targetType: 'user', targetId: user.id, meta: { withRecordings: Boolean(withRecordings) } })
   },
 
   async removeSelf(id, password) {

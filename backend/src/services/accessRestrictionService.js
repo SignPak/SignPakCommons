@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { AccessRestriction } from '../models/AccessRestriction.js'
 import { conflict, notFound } from '../utils/AppError.js'
+import { auditService } from './auditService.js'
 
 // Guarded against undefined/empty input: req.ip can be undefined if TRUST_PROXY is ever
 // misconfigured behind a host's proxy, and this used to throw (value.trim() on undefined),
@@ -21,24 +22,29 @@ function hint(type, value) {
 export const accessRestrictionService = {
   list: () => AccessRestriction.find({ $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }).sort({ createdAt: -1 }),
 
-  async create({ type, value, reason }, adminId) {
+  /** S7: the activity entry keeps the type and the hint, never the IP address or device ID itself. */
+  async create({ type, value, reason }, actor) {
+    let restriction
     try {
-      return await AccessRestriction.create({
+      restriction = await AccessRestriction.create({
         type,
         identifierHash: hash(value),
         identifierHint: hint(type, value),
         reason,
-        createdBy: adminId,
+        createdBy: actor?._id,
       })
     } catch (error) {
       if (error?.code === 11000) throw conflict('That identifier is already restricted.', { value: 'That identifier is already restricted.' })
       throw error
     }
+    await auditService.record({ actor, action: 'restriction.create', targetType: 'restriction', targetId: restriction.id, meta: { type, hint: restriction.identifierHint } })
+    return restriction
   },
 
-  async remove(id) {
-    const result = await AccessRestriction.deleteOne({ _id: id })
-    if (!result.deletedCount) throw notFound('That restriction does not exist.')
+  async remove(id, actor) {
+    const restriction = await AccessRestriction.findOneAndDelete({ _id: id })
+    if (!restriction) throw notFound('That restriction does not exist.')
+    await auditService.record({ actor, action: 'restriction.delete', targetType: 'restriction', targetId: restriction.id, meta: { type: restriction.type, hint: restriction.identifierHint } })
   },
 
   async isRequestRestricted(ip, deviceId) {

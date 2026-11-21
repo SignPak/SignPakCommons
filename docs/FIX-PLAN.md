@@ -498,7 +498,7 @@ Tests:
    - Add an `auditService.record()` helper and call it from the services, not the controllers.
 3. Add `GET /admin/audit` (paginated, filter by actor and action) and a simple **Admin → Activity** page.
 4. Log login attempts to the server log at `info` level: email hash, success or failure, IP. No passwords.
-5. **Fix carried over from Phase 5 verification: `DeletionLog.accountDeleted` must only be true for an account that was actually deleted.**
+5. **Fix carried over from Phase 5 verification: `DeletionLog.accountDeleted` must only be true for an account that was actually deleted.** *(Done in Phase 7: the log is written `false` and marked `true` after `deleteAccount()` succeeds; I-125, U-180–U-182.)*
    - Today `userService.remove(..., { withRecordings: true })` calls `removeAllForUser`, which writes the `DeletionLog` with `accountDeleted: true` *before* `deleteAccount()` runs. If `deleteAccount()` then throws, the log claims an account deletion that never happened.
    - When this phase adds the deletion-log view, write `accountDeleted` only after `deleteAccount()` succeeds: create the log with `accountDeleted: false` and update it afterwards, or write the log after `deleteAccount()`.
    - Test: an integration test that makes `deleteAccount()` fail and checks that the log says `accountDeleted: false` (and that the account still exists).

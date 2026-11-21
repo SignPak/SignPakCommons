@@ -5,6 +5,7 @@ import { notFound, validationError } from '../utils/AppError.js'
 import { attemptCleanup } from '../utils/cleanup.js'
 import { safeName, sniffImage, sniffVideo } from '../utils/files.js'
 import { logger } from '../utils/logger.js'
+import { auditService } from './auditService.js'
 import { upstashRedis } from './cache/upstashRedis.js'
 import { storageService } from './storage/index.js'
 
@@ -84,10 +85,12 @@ export const videoService = {
         stored.push(posterFile)
       }
       const order = input.categoryId ? (await videoRepo.maxOrder(input.categoryId)) + 1 : 1
-      return await videoRepo.create({
+      const video = await videoRepo.create({
         title: input.title, status: input.status, durationSec: input.durationSec, width: input.width, height: input.height,
         category: input.categoryId, order, videoFile, externalVideoUrl, posterFile, createdBy: admin._id,
       })
+      await auditService.record({ actor: admin, action: 'video.create', targetType: 'video', targetId: video.id, meta: { title: video.title, status: video.status } })
+      return video
     } catch (error) {
       // No orphaned files if a later step fails (B1: one failed removal must not skip the
       // others or replace the original error).
@@ -96,7 +99,7 @@ export const videoService = {
     }
   },
 
-  async update(id, patch) {
+  async update(id, patch, actor) {
     const video = await videoRepo.findById(id)
     if (!video) throw notFound('That video does not exist.')
 
@@ -110,13 +113,16 @@ export const videoService = {
     for (const key of ['title', 'status', 'order']) {
       if (patch[key] !== undefined) video[key] = patch[key]
     }
-    return videoRepo.save(video)
+    const saved = await videoRepo.save(video)
+    await auditService.record({ actor, action: 'video.update', targetType: 'video', targetId: saved.id, meta: { title: saved.title, changed: Object.keys(patch).join(',') } })
+    return saved
   },
 
-  async remove(id) {
+  async remove(id, actor) {
     const video = await videoRepo.findById(id)
     if (!video) throw notFound('That video does not exist.')
     await videoRepo.remove(video.id)
+    await auditService.record({ actor, action: 'video.delete', targetType: 'video', targetId: video.id, meta: { title: video.title } })
     // Contributors' past submissions are kept on record; only the base video's own files go.
     await Promise.all([storageService.remove(video.videoFile), storageService.remove(video.posterFile)])
   },
