@@ -224,7 +224,14 @@ Run on this branch, Windows 11, Node v24.13.1, 21 Nov 2026. Pasted from real out
 
 ### CI
 
-Filled in below once the PR's run finishes.
+Run [44882629999](https://github.com/SignPak/SignPakCommons/actions/runs/44882629999) on
+`aae4e6b` (PR #34): overall **success**, all five jobs green.
+- **Backend:** "pass 117 / 69 / 65", 251 under coverage, "Coverage gate passed.".
+- **Frontend:** lint, test, coverage and build pass.
+- **End-to-end:** "18 passed (51.5s)" on Linux, where WebKit runs the cross-host negative
+  control too.
+- **Dependency audit** (required): "found 0 vulnerabilities".
+- **Deploy files:** pass.
 
 ## How to verify by hand
 
