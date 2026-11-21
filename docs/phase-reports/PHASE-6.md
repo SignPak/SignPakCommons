@@ -363,4 +363,11 @@ cases, and the traceability test passes.
 
 ### CI after the fixes
 
-Filled in once the runs finish.
+The fixes are in `2266986`. Both of its runs are green on all five jobs (Backend, Frontend,
+End-to-end, Dependency audit, Deploy files):
+- [44926288161](https://github.com/SignPak/SignPakCommons/actions/runs/44926288161) (push)
+- [44926294659](https://github.com/SignPak/SignPakCommons/actions/runs/44926294659) (pull_request)
+
+This report is pushed in one more docs-only commit after that. Its own two runs, the final
+commit's result, are given in the hand-off message on the PR, since a commit can't contain its
+own CI result.
