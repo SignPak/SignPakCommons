@@ -209,7 +209,13 @@ failed on FI-18, "C3: the filters reach the API" (59 of 60 passed).
   Five local runs in a row pass. Nothing was skipped or loosened: every filter combination is
   still asserted, and the final check that the general message disappears is unchanged.
 
-The result on the fixed commit follows.
+**Result on the fixed commit:** run
+[44916483228](https://github.com/SignPak/SignPakCommons/actions/runs/44916483228) on `d7084f4`:
+overall **success**, all five jobs green.
+- **Backend:** "pass 140 / 85 / 71", 296 under coverage, "Coverage gate passed.".
+- **Frontend:** 60 tests pass.
+- **End-to-end:** "21 passed (1.0m)".
+- **Dependency audit:** "found 0 vulnerabilities".
 
 ## How to verify by hand
 
