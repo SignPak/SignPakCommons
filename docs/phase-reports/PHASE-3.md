@@ -139,6 +139,16 @@ Pasted from real output.
 
 This is the first phase in which **every row of the gate passes**, the audits included.
 
+### CI
+
+Run [44872292453](https://github.com/SignPak/SignPakCommons/actions/runs/44872292453) on
+`cf102ab`: overall **success**, every job green, **including `Dependency audit`, which ran as a
+required job for the first time**. It printed "found 0 vulnerabilities" for both the backend and
+the frontend. The backend job shows "pass 91 / 56 / 59", 206 under coverage, and "Coverage gate
+passed.". The "5 moderate severity vulnerabilities" line in that job comes from `npm ci`'s
+install summary for **all** dependencies: the dev-only `c8`/`nodemon` items listed below, not the
+production audit.
+
 ### Coverage
 
 | Scope | Phase 2 | Phase 3 | Floor |
