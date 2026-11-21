@@ -4,6 +4,7 @@ import { submissionRepo } from '../repositories/submissionRepo.js'
 import { categoryRepo } from '../repositories/categoryRepo.js'
 import { videoRepo } from '../repositories/videoRepo.js'
 import { AppError, conflict, notFound, validationError } from '../utils/AppError.js'
+import { attemptCleanup } from '../utils/cleanup.js'
 import { sniffVideo } from '../utils/files.js'
 import { storageService } from './storage/index.js'
 
@@ -58,8 +59,10 @@ export const submissionService = {
         mirrored: input.mirrored, duration: input.duration, recording, cooldownStartedAt,
       })
     } catch (error) {
-      await storageService.remove(recording)
-      await submissionRepo.releaseCooldown(user._id, video._id)
+      // B1: each step on its own, so a Drive failure here cannot leave the cooldown stuck,
+      // and the contributor sees what actually went wrong, not the clean-up's error.
+      await attemptCleanup('remove archived recording', () => storageService.remove(recording), { key: recording?.key })
+      await attemptCleanup('release submission cooldown', () => submissionRepo.releaseCooldown(user._id, video._id))
       throw error
     }
   },

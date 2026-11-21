@@ -113,3 +113,36 @@ test('storageService forwards named folder and file name to the local driver', a
   assert.equal(stored.size, 'named upload'.length)
   await storageService.remove(stored)
 })
+
+test('C5: startup removes temp files older than an hour and keeps newer files and subfolders', async (t) => {
+  const directory = await temporaryDirectory(t)
+  const root = path.join(directory, 'storage')
+  const tempDir = path.join(root, 'tmp')
+  await fs.mkdir(path.join(tempDir, 'nested'), { recursive: true })
+
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000)
+  const stale = path.join(tempDir, 'stale-upload')
+  const fresh = path.join(tempDir, 'upload-in-progress')
+  const nestedStale = path.join(tempDir, 'nested', 'stale-but-nested')
+  for (const file of [stale, fresh, nestedStale]) await fs.writeFile(file, 'bytes')
+  await fs.utimes(stale, twoHoursAgo, twoHoursAgo)
+  await fs.utimes(nestedStale, twoHoursAgo, twoHoursAgo)
+
+  const logged = []
+  const driver = createLocalDriver(root, { log: { info: (...args) => logged.push(args), warn: (...args) => logged.push(args) } })
+  await driver.init()
+
+  await assert.rejects(() => fs.stat(stale), { code: 'ENOENT' })
+  assert.equal(await fs.readFile(fresh, 'utf8'), 'bytes')
+  assert.equal(await fs.readFile(nestedStale, 'utf8'), 'bytes')
+  assert.equal(logged.length, 1)
+  assert.equal(logged[0][0].removed, 1)
+})
+
+test('C5: the startup sweep is a no-op on an empty or missing temp folder', async (t) => {
+  const directory = await temporaryDirectory(t)
+  const driver = createLocalDriver(path.join(directory, 'fresh-storage'))
+  await driver.init()
+  await driver.init()
+  assert.deepEqual(await fs.readdir(path.join(directory, 'fresh-storage', 'tmp')), [])
+})

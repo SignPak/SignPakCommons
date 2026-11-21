@@ -322,7 +322,7 @@ export const openapi = {
       get: {
         tags: ['Health'],
         summary: 'Check API, database and storage health',
-        description: 'Public. Booleans and counters only. Answers even when service initialization failed, so a deployment can see why the API is degraded. `storage` means the configured drivers initialized; it does not prove a Google Drive token is still valid.',
+        description: 'Public. Booleans and counters only. Answers even when service initialization failed, so a deployment can see why the API is degraded. `storage` means the configured drivers initialized; for Google Drive that includes reading the root folder, so the OAuth token worked at startup. A token revoked later shows up on the next upload (logged as invalid_grant).',
         responses: {
           200: jsonResponse('Healthy: database connected and storage initialized', healthSchema(['ok'])),
           503: jsonResponse('Degraded: the database is disconnected or storage failed to initialize', healthSchema(['degraded'])),

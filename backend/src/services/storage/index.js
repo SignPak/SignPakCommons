@@ -2,13 +2,14 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { env } from '../../config/env.js'
 import { AppError } from '../../utils/AppError.js'
+import { removeQuietly } from '../../utils/files.js'
 import { logger } from '../../utils/logger.js'
 import { createGoogleDriveDriver } from './googleDriveDriver.js'
 import { createLocalDriver } from './localDriver.js'
 
 // UPLOAD_DIR is resolved against the working directory (backend/ under PM2, see
 // deploy/ecosystem.config.cjs); an absolute UPLOAD_DIR is used as-is.
-const localDriver = createLocalDriver(path.resolve(process.cwd(), env.UPLOAD_DIR))
+const localDriver = createLocalDriver(path.resolve(process.cwd(), env.UPLOAD_DIR), { log: logger })
 
 /**
  * Builds a Google Drive driver instance with a explicit instance name
@@ -75,14 +76,64 @@ const driverFor = (name) => {
   return driver
 }
 
+// Test seam (NODE_ENV=test only): routes new files to substitute drivers, such as the in-memory
+// Google Drive stand-in in tests/support/fakeDriveDriver.js, without Google credentials.
+let testRouting = null
+
+/**
+ * Routes new uploads and archives to the given drivers (registered under their own `name`, so
+ * stored references resolve to them too). Returns a function that restores the real drivers.
+ * Throws outside NODE_ENV=test, so it can never change where production files go.
+ */
+export function routeStorageForTests({ primary, archive } = {}) {
+  if (!env.isTest) throw new Error('routeStorageForTests() is only available when NODE_ENV=test.')
+  const previous = { ...drivers }
+  if (primary) drivers[primary.name] = primary
+  if (archive) drivers[archive.name] = archive
+  testRouting = { primary: primary?.name, archive: archive?.name }
+  return () => {
+    testRouting = null
+    for (const name of Object.keys(drivers)) delete drivers[name]
+    Object.assign(drivers, previous)
+  }
+}
+
 // New files use the driver configured for their intent.
 // Stored records keep their recorded driver name ('gdrive' vs 'gdrive-archive')
 // so switching configuration never breaks or orphans existing uploads.
-const defaultDriver = () => driverFor(env.STORAGE_DRIVER)
+const defaultDriver = () => driverFor(testRouting?.primary ?? env.STORAGE_DRIVER)
 const archiveDriverName = () =>
-  env.ARCHIVE_STORAGE_DRIVER === 'gdrive' ? 'gdrive-archive' : env.ARCHIVE_STORAGE_DRIVER
+  testRouting?.archive ?? (env.ARCHIVE_STORAGE_DRIVER === 'gdrive' ? 'gdrive-archive' : env.ARCHIVE_STORAGE_DRIVER)
 
-const throwStorageError = (err, action) => {
+/**
+ * D3: Google answers `invalid_grant` when the OAuth refresh token has expired or been revoked,
+ * most often because the OAuth consent screen was left in "Testing" mode, where tokens last
+ * 7 days. Every upload then fails, so say exactly that in the log instead of a bare 502.
+ */
+export const INVALID_GRANT_MESSAGE =
+  'Google Drive refresh token expired or revoked; make sure the OAuth app is In production and create a new token'
+
+const TOKEN_VARIABLE = {
+  gdrive: 'GOOGLE_OAUTH_REFRESH_TOKEN',
+  'gdrive-archive': 'GOOGLE_ARCHIVE_OAUTH_REFRESH_TOKEN (or GOOGLE_OAUTH_REFRESH_TOKEN when the archive shares it)',
+}
+
+/** True for Google's invalid_grant, wherever googleapis/gaxios puts it (data, message or cause). */
+export function isInvalidGrant(err) {
+  for (let current = err, depth = 0; current && depth < 5; current = current.cause, depth += 1) {
+    if (current.response?.data?.error === 'invalid_grant') return true
+    if (typeof current.message === 'string' && current.message.includes('invalid_grant')) return true
+  }
+  return false
+}
+
+function reportInvalidGrant(err, driverName) {
+  if (!isInvalidGrant(err)) return
+  logger.error({ driver: driverName, replace: TOKEN_VARIABLE[driverName] ?? 'the Google OAuth refresh token' }, INVALID_GRANT_MESSAGE)
+}
+
+const throwStorageError = (err, action, driverName) => {
+  reportInvalidGrant(err, driverName)
   logger.error(
     {
       err,
@@ -98,9 +149,20 @@ const throwStorageError = (err, action) => {
 export const storageService = {
   tempDir: localDriver.tempDir,
 
-  init: () => Promise.all(Object.values(drivers).map((driver) => driver.init?.())),
+  init: () => Promise.all(Object.entries(drivers).map(async ([name, driver]) => {
+    try {
+      await driver.init?.()
+    } catch (err) {
+      reportInvalidGrant(err, name)
+      throw err
+    }
+  })),
 
-  /** Saves standard upload files to the primary storage driver. */
+  /**
+   * Saves standard upload files to the primary storage driver. The temp file is deleted
+   * afterwards whatever happened (C5): the local driver moves it, but the Drive driver only
+   * reads it, so without this every upload would stay in uploads/tmp.
+   */
   async save({ tempPath, originalName = '', mimeType, ext }, { folder, fileName }) {
     const driver = defaultDriver()
     try {
@@ -114,11 +176,13 @@ export const storageService = {
         originalName: originalName.slice(0, 200),
       }
     } catch (err) {
-      throwStorageError(err, 'save')
+      throwStorageError(err, 'save', driver.name)
+    } finally {
+      await removeQuietly(tempPath)
     }
   },
 
-  /** Saves archive recordings to the dedicated archive storage driver. */
+  /** Saves archive recordings to the dedicated archive storage driver; the temp file is deleted afterwards (C5). */
   async archive({ tempPath, originalName = '', mimeType, ext, folder, fileName }) {
     const driver = driverFor(archiveDriverName())
     try {
@@ -133,7 +197,9 @@ export const storageService = {
         archivePath: `${folder}/${fileName || key}`,
       }
     } catch (err) {
-      throwStorageError(err, 'save')
+      throwStorageError(err, 'save', driver.name)
+    } finally {
+      await removeQuietly(tempPath)
     }
   },
 
@@ -148,7 +214,7 @@ export const storageService = {
         createReadStream: (range) => driver.createReadStream(ref.key, range),
       }
     } catch (err) {
-      throwStorageError(err, 'stat')
+      throwStorageError(err, 'stat', ref.driver)
     }
   },
 
@@ -158,7 +224,7 @@ export const storageService = {
     try {
       await driverFor(ref.driver).remove(ref.key)
     } catch (err) {
-      throwStorageError(err, 'remove')
+      throwStorageError(err, 'remove', ref.driver)
     }
   },
 }

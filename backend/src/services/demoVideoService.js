@@ -1,6 +1,7 @@
 import { env } from '../config/env.js'
 import { demoVideoRepo } from '../repositories/demoVideoRepo.js'
 import { notFound, validationError } from '../utils/AppError.js'
+import { attemptCleanup } from '../utils/cleanup.js'
 import { sniffVideo } from '../utils/files.js'
 import { logger } from '../utils/logger.js'
 import { storageService } from './storage/index.js'
@@ -20,15 +21,22 @@ export const demoVideoService = {
       ext: kind.ext,
     }, { folder: 'demo' })
 
+    let saved
+    let previousFile
     try {
       const current = await demoVideoRepo.find()
-      const saved = await demoVideoRepo.replace({ title: input.title, durationSec: input.durationSec, width: input.width, height: input.height, videoFile })
-      await storageService.remove(current?.videoFile)
-      return saved
+      saved = await demoVideoRepo.replace({ title: input.title, durationSec: input.durationSec, width: input.width, height: input.height, videoFile })
+      previousFile = current?.videoFile
     } catch (error) {
-      await storageService.remove(videoFile)
+      await attemptCleanup('remove new demo video after a failed save', () => storageService.remove(videoFile), { key: videoFile.key })
       throw error
     }
+
+    // The database now points at the new file, so the upload has succeeded. The old file is a
+    // leftover: if removing it fails, log it rather than roll back (which would delete the file
+    // the database now uses and break the demo video).
+    await attemptCleanup('remove previous demo video', () => storageService.remove(previousFile), { key: previousFile?.key })
+    return saved
   },
 
   async remove() {

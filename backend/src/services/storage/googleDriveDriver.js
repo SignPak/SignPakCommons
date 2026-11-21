@@ -2,48 +2,12 @@ import { createReadStream } from 'node:fs'
 import { google } from 'googleapis'
 import { randomUUID } from 'node:crypto'
 import { logger } from '../../utils/logger.js'
+import { parseServiceAccountCredentials } from '../../utils/parseCredentials.js'
 
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
 
 const escapeQueryValue = (value) => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
-
-/**
- * Safely parses service account credentials from raw strings or env vars.
- * Handles double-escaped strings, trailing quotes, and formatted newlines.
- */
-function parseCredentials(raw) {
-  if (!raw) return null
-  if (typeof raw === 'object') return raw
-
-  let cleaned = String(raw).trim()
-
-  // Strip wrapping outer quotes if passed from stringified env configs
-  if (
-    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
-    (cleaned.startsWith("'") && cleaned.endsWith("'"))
-  ) {
-    cleaned = cleaned.slice(1, -1)
-  }
-
-  let credentials
-  try {
-    credentials = JSON.parse(cleaned)
-    // Handle double-encoded JSON strings
-    if (typeof credentials === 'string') {
-      credentials = JSON.parse(credentials)
-    }
-  } catch (err) {
-    throw new Error(`Failed to parse Service Account JSON: ${err.message}`)
-  }
-
-  // Fix escaped line breaks in private_key for OpenSSL compatibility
-  if (credentials?.private_key) {
-    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n')
-  }
-
-  return credentials
-}
 
 export function createGoogleDriveDriver({ serviceAccountJson, oauth, rootFolderId, driverName = 'gdrive' }) {
   if (!rootFolderId) throw new Error(`[${driverName}] Missing rootFolderId.`)
@@ -53,45 +17,50 @@ export function createGoogleDriveDriver({ serviceAccountJson, oauth, rootFolderI
     auth = new google.auth.OAuth2(oauth.clientId, oauth.clientSecret)
     auth.setCredentials({ refresh_token: oauth.refreshToken })
   } else {
-    const credentials = parseCredentials(serviceAccountJson)
-    if (!credentials) throw new Error(`[${driverName}] Missing Google credentials.`)
+    if (!serviceAccountJson) throw new Error(`[${driverName}] Missing Google credentials.`)
+    const credentials = parseServiceAccountCredentials(serviceAccountJson)
     auth = new google.auth.GoogleAuth({ credentials, scopes: [DRIVE_SCOPE] })
   }
   const drive = google.drive({ version: 'v3', auth })
+  // B8: path -> Promise<folder id>. The promise is stored before the lookup finishes, so two
+  // uploads to the same new folder at the same moment share one list-or-create instead of
+  // each creating their own copy. A failed lookup is evicted so the next upload retries it.
   const folderIds = new Map()
+
+  async function findOrCreateFolder(parentId, name) {
+    const listed = await drive.files.list({
+      q: `'${escapeQueryValue(parentId)}' in parents and name = '${escapeQueryValue(name)}' and mimeType = '${FOLDER_MIME}' and trashed = false`,
+      fields: 'files(id)',
+      pageSize: 1,
+      spaces: 'drive',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    })
+    const existing = listed.data.files?.[0]?.id
+    if (existing) return existing
+    const created = await drive.files.create({
+      requestBody: { name, mimeType: FOLDER_MIME, parents: [parentId] },
+      fields: 'id',
+      supportsAllDrives: true,
+    })
+    return created.data.id
+  }
 
   async function folderIdFor(folderPath) {
     if (!folderPath) return rootFolderId
 
     let parentId = rootFolderId
     let cacheKey = ''
-    const segments = String(folderPath).split('/').filter(Boolean)
-
-    for (const name of segments) {
+    for (const name of String(folderPath).split('/').filter(Boolean)) {
       cacheKey = `${cacheKey}/${name}`
-      if (folderIds.has(cacheKey)) {
-        parentId = folderIds.get(cacheKey)
-        continue
+      let pending = folderIds.get(cacheKey)
+      if (!pending) {
+        const key = cacheKey
+        pending = findOrCreateFolder(parentId, name)
+        folderIds.set(key, pending)
+        pending.catch(() => { if (folderIds.get(key) === pending) folderIds.delete(key) })
       }
-      const listed = await drive.files.list({
-        q: `'${escapeQueryValue(parentId)}' in parents and name = '${escapeQueryValue(name)}' and mimeType = '${FOLDER_MIME}' and trashed = false`,
-        fields: 'files(id)',
-        pageSize: 1,
-        spaces: 'drive',
-        supportsAllDrives: true,
-        includeItemsFromAllDrives: true,
-      })
-      let id = listed.data.files?.[0]?.id
-      if (!id) {
-        const created = await drive.files.create({
-          requestBody: { name, mimeType: FOLDER_MIME, parents: [parentId] },
-          fields: 'id',
-          supportsAllDrives: true,
-        })
-        id = created.data.id
-      }
-      folderIds.set(cacheKey, id)
-      parentId = id
+      parentId = await pending
     }
     return parentId
   }
@@ -124,7 +93,8 @@ export function createGoogleDriveDriver({ serviceAccountJson, oauth, rootFolderI
         'Google Drive upload session creation failed'
       )
       throw new Error(
-        `Google Drive upload session creation failed (${err?.code ?? err?.response?.status ?? 'unknown'}): ${responseText}`
+        `Google Drive upload session creation failed (${err?.code ?? err?.response?.status ?? 'unknown'}): ${responseText}`,
+        { cause: err },
       )
     }
 

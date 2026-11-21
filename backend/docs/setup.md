@@ -131,7 +131,7 @@ The admin is ensured on every startup. Changing `ADMIN_PASSWORD` later does not 
 | --- | --- | --- |
 | `STORAGE_DRIVER` | `local` or `gdrive` | Storage for readable base videos and posters. Use `local` for development. |
 | `ARCHIVE_STORAGE_DRIVER` | `local` or `gdrive` | Append-only storage for contributor recordings. Use `gdrive` for production archives. |
-| `UPLOAD_DIR` | Local filesystem path; default `uploads` | Local storage root; temporary uploads are kept in its `tmp` subdirectory. |
+| `UPLOAD_DIR` | Local filesystem path; default `uploads` | Local storage root. Uploads land in its `tmp` subdirectory and are deleted once stored (also with Google Drive storage); at startup, temp files more than an hour old are removed. |
 | `MAX_VIDEO_UPLOAD_MB` | Set manually; default `90` | Maximum reference-video or demo-video upload size, in MiB. |
 | `MAX_RECORDING_UPLOAD_MB` | Set manually; default `100` | Maximum contributor-recording upload size, in MiB. |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | Service-account JSON from Google Cloud | Shared Google Drive credentials, available as fallback for either driver. |
@@ -184,6 +184,21 @@ structure:
 ```
 
 A repeated submission receives the next sequence number instead of replacing an existing file. The API writes the file and stores its pointer and metadata in MongoDB. It does not expose a read, update, or delete route for archived recordings.
+
+### Keep the Google OAuth app "In production"
+
+With OAuth credentials, the Google Cloud **OAuth consent screen** must be published (**In
+production**). In "Testing" mode Google expires refresh tokens after **7 days** and every
+upload then fails. When that happens the API logs, at `error` level:
+
+```text
+Google Drive refresh token expired or revoked; make sure the OAuth app is In production and create a new token
+```
+
+with `driver` (`gdrive` or `gdrive-archive`) and `replace` (the env variable to update). It
+usually appears at startup, because storage initialization reads the root Drive folder; then
+`/api/v1/health` shows `"storage":false`. Fix: publish the app, create a new refresh token, put
+it in that variable, and restart.
 
 ### Configure Google credentials
 

@@ -41,7 +41,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 - [ ] **C4. The cookie is cross-site, so login breaks in Safari/iOS, Brave and incognito.** *(Phase 1: first option chosen (D2): `commons.signpak.tech` + `api.commons.signpak.tech`, host-only `SameSite=Lax` cookie, proven across two hostnames in E2E. **Pending:** the real-browser checks once `api.commons.signpak.tech` is live.)* The frontend (`*.vercel.app`) and API (`*.railway.app`) are on different sites, so the cookie must be `SameSite=None` and browsers that block third-party cookies drop it. Either:
   - put both on one domain (for example `commons.example.org` and `api.example.org`) with `COOKIE_SAMESITE=lax`, or
   - proxy `/api/*` through a rewrite in `frontend/vercel.json`, so requests stay on the same origin.
-- [ ] **C5. Temp files are never deleted when the storage is Drive.** In `backend/src/services/storage/googleDriveDriver.js`, `save()` uploads from the temp file but never deletes it (only `localDriver` moves it). Every upload, up to 100 MB, stays in `uploads/tmp`.
+- [x] **C5. Temp files are never deleted when the storage is Drive.** *(Phase 2: `storageService.save()`/`archive()` delete the temp file in a `finally`; startup removes temp files over an hour old. Go-live check pending: a production upload leaves `uploads/tmp` empty.)* In `backend/src/services/storage/googleDriveDriver.js`, `save()` uploads from the temp file but never deletes it (only `localDriver` moves it). Every upload, up to 100 MB, stays in `uploads/tmp`.
   - Call `removeQuietly(tempPath)` after a successful save in `storageService.save` and `storageService.archive`.
 
 ## Security
@@ -65,14 +65,14 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 
 ## Bugs
 
-- [ ] **B1. The cooldown stays stuck when clean-up fails.** In `submissionService.create`, if `storageService.remove()` throws inside the `catch`, the cooldown is never released and the original error is lost. `videoService.create` has the same pattern. Wrap the clean-up in its own try/catch and always rethrow the original error.
+- [x] **B1. The cooldown stays stuck when clean-up fails.** *(Phase 2: each clean-up step runs on its own via `src/utils/cleanup.js`; the original error is always rethrown and the cooldown always released. Also fixed: replacing the demo video no longer deletes the new file when removing the old one fails.)* In `submissionService.create`, if `storageService.remove()` throws inside the `catch`, the cooldown is never released and the original error is lost. `videoService.create` has the same pattern. Wrap the clean-up in its own try/catch and always rethrow the original error.
 - [ ] **B2. Contributor counts include unfinished sign-ups.** `countByRole(USER)` in `publicStatsService` and `statsService` also counts unverified accounts. Filter on `emailVerified: true`.
 - [ ] **B3. Signing up again with a pending email is a dead end.** It returns 409 "already exists, log in", and login then says "verify your email". Either resend the code and send the user to verification, or replace the old pending account.
 - [ ] **B4. Refreshing the consent page loses the token.** `Consent.jsx` keeps `consentToken` only in `location.state`. Keep it in `sessionStorage`.
 - [ ] **B5. Trim and mirror aren't applied to the files.** Drive holds the raw WebM (often without duration information), and trim and mirror exist only in MongoDB. Add an export (CSV/JSON) for the ML team: user, video, category, Drive file ID, trimStart, trimEnd, mirrored, duration, date. Optionally fix the WebM duration information.
-- [ ] **B6. The file check is too loose.** `sniffVideo` in `backend/src/utils/files.js` accepts any `ftyp` file (m4a, heic, 3gp) as MP4. Check the brand against a list of video brands.
+- [x] **B6. The file check is too loose.** *(Phase 2: brand allowlist; M4A/HEIC/AVIF/3GP refused; an unknown major brand passes only with a listed compatible brand.)* `sniffVideo` in `backend/src/utils/files.js` accepts any `ftyp` file (m4a, heic, 3gp) as MP4. Check the brand against a list of video brands.
 - [ ] **B7. The admin dashboard won't scale.** `AdminDashboard.jsx` downloads every submission and every user and calculates the stats in the browser; the `/admin/stats` endpoint exists but isn't used. Use the endpoint, and add pagination to `/admin/users` and `/submissions` (admin).
-- [ ] **B8. Duplicate Drive folders.** Two uploads at the same moment can create duplicate folders (the in-memory cache in `folderIdFor`). Low priority.
+- [x] **B8. Duplicate Drive folders.** *(Phase 2: `folderIdFor` shares the in-flight lookup; a failed lookup is retried.)* Two uploads at the same moment can create duplicate folders (the in-memory cache in `folderIdFor`). Low priority.
 
 ## Unfinished parts and leftovers
 
@@ -83,8 +83,8 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 - [ ] Remove the unused `frontend/src/utils/blobStore.js`. Notifications are only stored in the browser (`api.notifications`); decide whether that is enough.
 - [ ] The main bundle is 526 KB. Load the admin pages and the ffmpeg tool separately.
 - [x] The backend tests run only on pull requests (`.github/workflows`). Also run them on pushes to `main`. *(Phase 0: `.github/workflows/ci.yml` runs backend, frontend, e2e and audit jobs on every push and pull request; the two old workflows were folded into it.)*
-- [ ] If the Google sign-in (OAuth) app for Drive is still in "Testing" mode, its refresh token expires every 7 days and uploads break. Publish the app, or use a service account.
-- [ ] **Clean-up:** `console.error('UPLOAD ERROR…')` in `videoController.create`, and the duplicate credential parser (`utils/parseCredentials.js` and `parseCredentials` in `googleDriveDriver.js`).
+- [ ] *(Phase 2, D3: the API now logs "Google Drive refresh token expired or revoked…" with the variable to replace, and `deploy/README.md` §13 / `backend/docs/setup.md` explain the fix. **Pending (team action):** set the OAuth consent screen to In production and create a new token.)* If the Google sign-in (OAuth) app for Drive is still in "Testing" mode, its refresh token expires every 7 days and uploads break. Publish the app, or use a service account.
+- [x] **Clean-up:** *(Phase 2: the `console.error` is gone; the Drive driver uses `utils/parseCredentials.js`, whose double-encoded JSON path was also fixed.)* `console.error('UPLOAD ERROR…')` in `videoController.create`, and the duplicate credential parser (`utils/parseCredentials.js` and `parseCredentials` in `googleDriveDriver.js`).
 
 ## SRS mismatches (fix the code or the SRS)
 
