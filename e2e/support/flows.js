@@ -35,6 +35,8 @@ export async function signUpThroughUi(page, request, { email, password = 'passwo
   await expect(page.getByLabel('Email address')).toHaveValue(email)
 
   await page.getByLabel('Six-digit code').fill(await latestCode(request, email))
+  // B3 (Phase 6): the password chosen at sign-up goes with the code.
+  await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Verify email' }).click()
 
   // Consent is what actually creates the account and starts the session.

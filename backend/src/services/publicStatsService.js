@@ -18,7 +18,7 @@ function isValidStats(value) {
 
 async function loadStats() {
   const [contributors, publishedVideos, categories] = await Promise.all([
-    userRepo.countByRole(ROLES.USER),
+    userRepo.countVerified(ROLES.USER), // B2: finished sign-ups only
     videoRepo.count({ status: VIDEO_STATUS.PUBLISHED, category: { $ne: null } }),
     categoryRepo.count(),
   ])

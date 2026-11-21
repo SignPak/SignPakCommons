@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import AccountSecurity from '../components/AccountSecurity'
 import Field from '../components/Field'
 import { Alert, Arrow, Avatar, Badge, Button, ButtonLink, Eyebrow, ProgressBar, SectionHeading } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
@@ -124,6 +125,7 @@ export default function ProfileDashboard() {
 
         <aside className="profile-side">
           <ConnectForm />
+          <AccountSecurity />
           {!isAdmin && <section className="panel panel-outline account-delete-panel">
             <Eyebrow>Account</Eyebrow>
             <h2 className="display display-sm">Delete your account.</h2>

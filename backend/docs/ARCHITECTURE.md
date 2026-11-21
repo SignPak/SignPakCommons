@@ -91,6 +91,23 @@ reload the account from MongoDB, so role changes, suspensions, deletion, and
 session-version changes take effect promptly. See [API.md](./API.md) for route
 access and request behavior.
 
+Account security (Phase 6):
+
+- **Session version.** Each token carries the account's `authVersion`; `authenticate`
+  rejects a token whose version is not the current one. Logout, a password reset and a
+  password change bump it, so they end every session of the account (S6). A password
+  change then sets a fresh cookie for the device that made it.
+- **Lockout (S2, SE-4).** `authService.login` counts wrong passwords with an atomic
+  increment (`userRepo.recordFailedLogin`). The fifth locks the account for
+  `AUTH_LOCKOUT_MINUTES`; bcrypt always runs, against a dummy hash for unknown emails.
+- **Unfinished sign-ups (S9, B3).** A sign-up sets `signupExpiresAt` 24 h ahead; a TTL
+  index limited to `{ emailVerified: false, role: 'user' }` deletes it when that passes,
+  and finishing the sign-up clears it. Signing up again with the same unfinished email
+  updates the details and restarts the clock. The verify step checks the password with
+  the code, so a re-signup by someone else can never hand the owner a password they
+  didn't choose. Startup gives older pending accounts an expiry
+  (`userRepo.backfillSignupExpiry`).
+
 ## Persistence and storage
 
 MongoDB stores users, categories, reference videos, submissions, cooldown claims,

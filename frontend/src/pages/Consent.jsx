@@ -9,6 +9,7 @@ import { paths } from '../routes/appRoutes'
 import { CONSENT_VERSION, consentGiven, consentPoints } from '../utils/consent'
 import { consentFormSchema } from '../utils/authSchemas'
 import { applyAuthFieldErrors } from '../utils/authFormErrors'
+import { consentTokenStore } from '../utils/consentTokenStore'
 
 /**
  * mode="signup": shown right after a valid email code. The account does not exist yet; accepting creates it,
@@ -18,7 +19,8 @@ export default function Consent({ mode = 'existing' }) {
   const { user, acceptConsent, completeSignup, declineSignup, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const consentToken = location.state?.consentToken
+  // B4: the navigation state is lost on reload, so fall back to the copy VerifyEmail saved.
+  const [consentToken] = useState(() => (mode === 'signup' ? location.state?.consentToken ?? consentTokenStore.read() : null))
   const dialogRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -46,8 +48,10 @@ export default function Consent({ mode = 'existing' }) {
   const submit = async () => {
     setError('')
     try {
-      if (mode === 'signup') await completeSignup(consentToken, CONSENT_VERSION)
-      else await acceptConsent(CONSENT_VERSION)
+      if (mode === 'signup') {
+        await completeSignup(consentToken, CONSENT_VERSION)
+        consentTokenStore.clear()
+      } else await acceptConsent(CONSENT_VERSION)
       navigate(paths.library, { replace: true })
     } catch (cause) {
       if (!applyAuthFieldErrors(cause, setFieldError)) setError(cause.message || 'We could not save your consent. Try again.')
@@ -60,6 +64,7 @@ export default function Consent({ mode = 'existing' }) {
     try {
       if (mode === 'signup') {
         await declineSignup(consentToken)
+        consentTokenStore.clear()
         navigate(paths.signup, { replace: true })
       } else {
         await logout()

@@ -1,6 +1,7 @@
 import { apiRoutes } from './apiRoutes'
 import {
   acceptConsentRequestSchema,
+  changePasswordSchema,
   consentRequestSchema,
   declineConsentRequestSchema,
   emailOnlySchema,
@@ -194,8 +195,8 @@ export const api = {
       return normalize(await request(apiRoutes.auth.login(), json('POST', input)))
     },
     // A valid code returns { consentToken }; the account is only created by completeSignup.
-    async verifyEmail(email, code) {
-      const input = validateApiInput(verifyEmailSchema, { email, code })
+    async verifyEmail(email, code, password) {
+      const input = validateApiInput(verifyEmailSchema, { email, code, password })
       return request(apiRoutes.auth.verifyEmail(), json('POST', input))
     },
     async completeSignup(consentToken, version) {
@@ -228,6 +229,11 @@ export const api = {
 
   users: {
     async removeMe(password) { await request(apiRoutes.users.removeMe(), json('DELETE', { password })) },
+    // Ends every other session; the API sets a fresh cookie for this one.
+    async changePassword(values) {
+      const input = validateApiInput(changePasswordSchema, values)
+      await request(apiRoutes.users.password(), json('POST', input))
+    },
     async list() { return normalizeList(await request(apiRoutes.users.list())) },
     async setStatus(id, patch) { return normalize(await request(apiRoutes.users.update(id), json('PATCH', patch))) },
     // C3: withRecordings also deletes the contributor's recordings (the account is kept if any fail).

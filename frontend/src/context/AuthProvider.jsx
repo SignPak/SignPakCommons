@@ -42,7 +42,7 @@ export default function AuthProvider({ children }) {
   }, [])
   const signup = useCallback((values) => api.auth.register(values), [])
   // A valid code only returns a consent token; the account is created (and logged in) by completeSignup.
-  const verifyEmail = useCallback((email, code) => api.auth.verifyEmail(email, code), [])
+  const verifyEmail = useCallback((email, code, password) => api.auth.verifyEmail(email, code, password), [])
   const completeSignup = useCallback(async (consentToken, version) => {
     const nextUser = await api.auth.completeSignup(consentToken, version)
     setUser(nextUser)

@@ -45,7 +45,19 @@ export const signupRequestSchema = z.object({
   if (values.confirmPassword !== undefined) matchingPasswords(values, context)
 })
 
-export const verifyEmailSchema = z.object({ email, code })
+// B3: the password chosen at sign-up is entered again with the code.
+export const verifyEmailSchema = z.object({
+  email,
+  code,
+  password: z.string({ error: 'Enter the password you chose when signing up.' }).min(1, 'Enter the password you chose when signing up.').max(200),
+})
+
+// Password change while logged in.
+export const changePasswordSchema = z.object({
+  currentPassword: z.string({ error: 'Enter your current password.' }).min(1, 'Enter your current password.').max(200),
+  password,
+  confirmPassword: z.string().min(1, 'Confirm your new password.'),
+}).superRefine(matchingPasswords)
 export const emailOnlySchema = z.object({ email })
 
 export const resetPasswordSchema = z.object({

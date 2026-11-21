@@ -77,8 +77,9 @@ All paths are under `/api/v1`.
 | Method + path | Access | Notes |
 | --- | --- | --- |
 | `GET /health` | Public | Reports database readiness. |
-| `/auth/*` | Public | Signup, login, email verification, password reset, logout, and session. |
+| `/auth/*` | Public | Signup, login (5 wrong passwords lock the account for 15 minutes), email verification (code plus the sign-up password), password reset, logout (ends every session of the account), and session. |
 | `GET/PATCH/DELETE /users/me` | Authenticated user | Read or update profile; contributors can delete their account after confirming their password. Submitted recordings remain stored. |
+| `POST /users/me/password` | Authenticated user | Change the password; every other session ends. |
 | `GET /categories`; `POST/PATCH/DELETE /categories/:id` | Public read; admin write | Deleting a category unassigns its videos. |
 | `GET /videos`, `GET /videos/:id[/file/poster]` | Public or admin | Public visibility is published and categorised only; file streaming supports byte ranges. |
 | `POST /videos`; `PATCH/DELETE /videos/:id` | Admin | Manage reference videos and optional posters. |

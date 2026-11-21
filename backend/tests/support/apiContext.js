@@ -105,6 +105,7 @@ async function createApiContext() {
       const verified = await user.post('/auth/verify-email', {
         email: normalizedEmail,
         code: deliveredCodes.get(`${normalizedEmail}:email-verification`),
+        password,
       })
       if (verified.status !== 200) throw new Error(`Test user verification failed: ${verified.status}`)
       const accepted = await user.post('/auth/consent', {

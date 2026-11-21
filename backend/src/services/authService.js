@@ -1,8 +1,9 @@
 import bcrypt from 'bcrypt'
 import { CONSENT_VERSION, ROLES } from '../config/constants.js'
 import { env } from '../config/env.js'
+import { SIGNUP_TTL_MS } from '../models/User.js'
 import { userRepo } from '../repositories/userRepo.js'
-import { badRequest, conflict, unauthorized } from '../utils/AppError.js'
+import { AppError, badRequest, conflict, unauthorized, validationError } from '../utils/AppError.js'
 import { logger } from '../utils/logger.js'
 import { isDuplicateKeyError } from '../utils/mongoose.js'
 import { generateOtp, hashOtp as otpHash, matchesOtp } from '../utils/otp.js'
@@ -14,6 +15,9 @@ const DUMMY_HASH = bcrypt.hashSync('signpak-timing-guard', env.BCRYPT_ROUNDS)
 
 const emailTaken = () => conflict('An account with this email already exists. Log in instead.', { email: 'An account with this email already exists.' })
 const invalidCode = () => badRequest('That code is invalid or has expired. Request a new code and try again.')
+const wrongCredentials = () => unauthorized('That email and password do not match. Check them and try again.')
+// S2 / SE-4. 429 with its own code, so a client can tell a lockout from a wrong password.
+const accountLocked = () => new AppError(429, 'ACCOUNT_LOCKED', `Too many failed attempts. Try again in ${env.AUTH_LOCKOUT_MINUTES} minutes.`)
 const clearOtp = (user, purpose) => {
   const prefix = purpose === 'email-verification' ? 'emailVerification' : 'passwordReset'
   user[`${prefix}CodeHash`] = null
@@ -22,11 +26,29 @@ const clearOtp = (user, purpose) => {
 }
 
 export const authService = {
+  /**
+   * New sign-up, or B3: signing up again with an email whose sign-up was never finished. That
+   * updates the names and password, restarts the 24-hour expiry (S9) and resends the code
+   * (at most once per AUTH_OTP_RESEND_SECONDS), with the same answer as a new sign-up. The
+   * password is asked for again with the code (verifyEmail), so whoever finishes the sign-up
+   * is the person who chose it.
+   */
   async register({ email, firstName, surname, password }) {
-    if (await userRepo.findByEmail(email)) throw emailTaken()
+    const existing = await userRepo.findByEmail(email, { withOtp: true })
+    if (existing && (existing.emailVerified || existing.role !== ROLES.USER)) throw emailTaken()
     const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
+    const signupExpiresAt = new Date(Date.now() + SIGNUP_TTL_MS)
+    if (existing) {
+      Object.assign(existing, { firstName, surname, passwordHash, signupExpiresAt })
+      const sentAt = existing.emailVerificationSentAt?.getTime() || 0
+      if (existing.emailVerificationCodeHash && Date.now() - sentAt < env.AUTH_OTP_RESEND_SECONDS * 1000) {
+        await userRepo.save(existing) // the code sent a moment ago still works
+        return { email: existing.email, verificationEmailSent: true }
+      }
+      return { email: existing.email, verificationEmailSent: await this.issueOtp(existing, 'email-verification') }
+    }
     try {
-      const user = await userRepo.create({ email, firstName, surname, passwordHash, role: ROLES.USER, emailVerified: false })
+      const user = await userRepo.create({ email, firstName, surname, passwordHash, role: ROLES.USER, emailVerified: false, signupExpiresAt })
       const verificationEmailSent = await this.issueOtp(user, 'email-verification')
       return { email: user.email, verificationEmailSent }
     } catch (error) {
@@ -58,8 +80,8 @@ export const authService = {
   // Goes through the configured email driver (EMAIL_DRIVER): Brevo in production, capture in tests.
   sendOTPEmail: (email, code, purpose) => emailService.sendOtp(email, code, purpose),
 
-  async verifyEmail({ email, code }) {
-    const user = await userRepo.findByEmail(email, { withOtp: true })
+  async verifyEmail({ email, code, password }) {
+    const user = await userRepo.findByEmail(email, { withOtp: true, withPassword: true })
     if (!user || user.emailVerified) throw invalidCode()
     const expiry = user.emailVerificationExpiresAt?.getTime() || 0
     if (!user.emailVerificationCodeHash || expiry < Date.now() || user.emailVerificationAttempts >= env.AUTH_OTP_MAX_ATTEMPTS) {
@@ -72,6 +94,14 @@ export const authService = {
       if (user.emailVerificationAttempts >= env.AUTH_OTP_MAX_ATTEMPTS) clearOtp(user, 'email-verification')
       await userRepo.save(user)
       throw invalidCode()
+    }
+    // B3: the code proves the email; the password proves it is the person who set it. A wrong
+    // password uses up an attempt like a wrong code, and the code stays valid until then.
+    if (!await bcrypt.compare(password, user.passwordHash)) {
+      user.emailVerificationAttempts += 1
+      if (user.emailVerificationAttempts >= env.AUTH_OTP_MAX_ATTEMPTS) clearOtp(user, 'email-verification')
+      await userRepo.save(user)
+      throw validationError({ password: 'That is not the password you chose when signing up. Forgotten it? Sign up again with a new one.' })
     }
     // A correct code only proves the email address. The account is not created (verified, able to log in
     // or contribute) until the contributor accepts the consent notice: see completeSignup.
@@ -92,6 +122,7 @@ export const authService = {
     if (version !== CONSENT_VERSION) throw conflict('The consent notice was updated. Reload the page and read the current version.')
     const user = await this.pendingSignup(consentToken)
     user.emailVerified = true
+    user.signupExpiresAt = null // S9: a finished sign-up never expires
     user.consent = { acceptedAt: new Date(), version: CONSENT_VERSION }
     await userRepo.save(user)
     return { user, token: signToken(user.id, user.authVersion || 0) }
@@ -148,14 +179,48 @@ export const authService = {
     user.authVersion = (user.authVersion || 0) + 1
     clearOtp(user, 'password-reset')
     await userRepo.save(user)
+    await userRepo.clearLoginFailures(user._id) // S2: a reset also ends a lockout
   },
 
+  /**
+   * Password change while logged in. Every other session ends (authVersion), and the caller
+   * gets a fresh token so this device stays signed in.
+   */
+  async changePassword(user, { currentPassword, password }) {
+    const account = await userRepo.findById(user._id, { withPassword: true })
+    if (!account || !await bcrypt.compare(currentPassword, account.passwordHash)) throw unauthorized('Your current password is not correct.')
+    if (await bcrypt.compare(password, account.passwordHash)) throw validationError({ password: 'Choose a password different from your current one.' })
+    account.passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
+    account.authVersion = (account.authVersion || 0) + 1
+    await userRepo.save(account)
+    await userRepo.clearLoginFailures(account._id)
+    return signToken(account.id, account.authVersion)
+  },
+
+  /** S6: logging out ends every session of the account, on every device. */
+  async logout(user) {
+    if (!user) return
+    user.authVersion = (user.authVersion || 0) + 1
+    await userRepo.save(user)
+  },
+
+  /**
+   * S2 / SE-4: AUTH_LOCKOUT_ATTEMPTS wrong passwords lock the account for AUTH_LOCKOUT_MINUTES.
+   * bcrypt always runs (DUMMY_HASH for an unknown email), so timing does not show whether the
+   * email exists. While locked, even the right password is refused.
+   */
   async login({ email, password }) {
-    const user = await userRepo.findByEmail(email, { withPassword: true })
+    const user = await userRepo.findByEmail(email, { withPassword: true, withLockout: true })
     const matches = await bcrypt.compare(password, user?.passwordHash || DUMMY_HASH)
-    if (!user || !matches) throw unauthorized('That email and password do not match. Check them and try again.')
+    if (!user) throw wrongCredentials()
+    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) throw accountLocked()
+    if (!matches) {
+      const { locked } = await userRepo.recordFailedLogin(user._id, { attempts: env.AUTH_LOCKOUT_ATTEMPTS, lockMs: env.AUTH_LOCKOUT_MINUTES * 60_000 })
+      throw locked ? accountLocked() : wrongCredentials()
+    }
     if (user.status === 'suspended') throw unauthorized('This account is suspended.')
     if (!user.emailVerified) throw unauthorized('Verify your email address before logging in.')
+    if (user.failedLoginCount || user.lockedUntil) await userRepo.clearLoginFailures(user._id)
     return { user, token: signToken(user.id, user.authVersion || 0) }
   },
 

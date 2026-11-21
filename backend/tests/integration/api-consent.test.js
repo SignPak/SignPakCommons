@@ -19,6 +19,7 @@ const signupAndVerify = async (email) => {
   const verified = await client.post('/auth/verify-email', {
     email,
     code: deliveredCodes.get(`${email}:email-verification`),
+    password: 'password1',
   })
   assert.equal(verified.status, 200)
   return { client, token: verified.body.data.consentToken }

@@ -32,13 +32,13 @@ backend separately, or set `VITE_API_ORIGIN` to another API origin.
 | `/faq` | Public | Frequently asked questions. |
 | `/contact/verify?id=` | Public | Confirm a signed-out recording/data deletion request with the emailed six-digit code. |
 | `/login`, `/signup` | Signed out | Sign in or register; redirects signed-in users. |
-| `/verify-email`, `/signup/consent`, `/forgot-password` | Signed out | Email verification, consent before account creation, and password recovery. |
+| `/verify-email`, `/signup/consent`, `/forgot-password` | Signed out | Email verification (the code plus the password chosen at sign-up), consent before account creation (survives a reload), and password recovery. |
 | `/consent` | Signed in | Accept the current contributor notice; required for older accounts without current consent. |
 | `/home` | Signed in with current consent | Category overview. |
 | `/library/:categoryId` | Signed in | Videos in a category. |
 | `/watch?v=:videoId` | Signed in | Watch a reference video and record a take. |
 | `/watch/edit?v=:videoId` | Signed in | Review, trim, and submit the current take. |
-| `/profile` | Signed in | Contribution history and profile connections. |
+| `/profile` | Signed in | Contribution history, profile connections, password change, and log out of all devices. |
 | `/admin` | Admin | Admin dashboard. |
 | `/admin/users` | Admin | Account controls, including deleting a contributor's recordings, or the account and its recordings together. |
 | `/admin/videos` | Admin | Manage reference videos and the demo video. |

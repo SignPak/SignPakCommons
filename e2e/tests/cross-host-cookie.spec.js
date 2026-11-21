@@ -47,7 +47,7 @@ test('C4: login cookie set by api.localtest.me works on commons.localtest.me', a
 
   // 3. Log out through the UI: the API clears the cookie and the library is closed again.
   await page.goto(`${crossHost.site}/profile`)
-  await page.getByRole('button', { name: 'Log out' }).click()
+  await page.getByRole('button', { name: 'Log out', exact: true }).click()
   await page.goto(`${crossHost.site}/home`)
   await expect(page).toHaveURL(/\/login/)
   expect((await context.cookies(crossHost.api)).filter((cookie) => cookie.name === 'signpak_token')).toEqual([])
