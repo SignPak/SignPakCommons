@@ -5,8 +5,9 @@ import { contactQuotaRepo } from '../../src/repositories/contactQuotaRepo.js'
 import { messageRepo } from '../../src/repositories/messageRepo.js'
 import { userRepo } from '../../src/repositories/userRepo.js'
 import { accessRestrictionService } from '../../src/services/accessRestrictionService.js'
-import { contactService } from '../../src/services/contactService.js'
+import { CODES_PER_REQUEST, contactSenderKey, contactService } from '../../src/services/contactService.js'
 import { emailService } from '../../src/services/email/index.js'
+import { env } from '../../src/config/env.js'
 import { hashOtp } from '../../src/utils/otp.js'
 
 /**
@@ -33,6 +34,7 @@ const requestDoc = (fields = {}) => ({
   verificationExpiresAt: null,
   verificationAttempts: 0,
   verificationSentAt: null,
+  verificationSendCount: 0,
   ...fields,
 })
 
@@ -65,6 +67,17 @@ beforeEach(() => {
   })
   mock.method(messageRepo, 'remove', async () => {})
   mock.method(messageRepo, 'save', async (doc) => saved.push({ ...doc }))
+  // The atomic resend claim, applied to whatever document findForVerification returns, with
+  // the same conditions as the MongoDB filter in messageRepo.claimResend.
+  mock.method(messageRepo, 'claimResend', async (id, { sentBefore, maxSends, now }) => {
+    const doc = await messageRepo.findForVerification(id)
+    if (!doc || doc.verified || doc.user || doc.topic !== 'recording-deletion') return null
+    if ((doc.verificationSentAt?.getTime() ?? 0) > sentBefore.getTime()) return null
+    if ((doc.verificationSendCount ?? 0) >= maxSends) return null
+    doc.verificationSentAt = now
+    doc.verificationSendCount = (doc.verificationSendCount ?? 0) + 1
+    return doc
+  })
   mock.method(emailService, 'sendOtp', async (email, code, purpose) => emails.push({ email, code, purpose }))
   mock.method(accessRestrictionService, 'create', async () => assert.fail('contact rules must never create a restriction'))
   originalDeliver = contactService.deliver
@@ -234,5 +247,85 @@ describe('D4: deletion requests', () => {
     await rejectsWith(contactService.resend('message-1'), 400)
     messageRepo.findForVerification.mock.mockImplementation(async () => requestDoc({ user: 'user-1' }))
     await rejectsWith(contactService.resend('message-1'), 400)
+  })
+})
+
+describe('S4: limits on code emails (fixes after verification)', () => {
+  const aged = () => new Date(Date.now() - 61_000)
+
+  test('S4: a signed-out deletion request starts with one code counted', async () => {
+    mock.method(messageRepo, 'findForVerification', async () => null)
+    await contactService.send(deletion('former@example.com'), SIGNED_OUT)
+    assert.equal(created[0].verificationSendCount, 1)
+    await contactService.send(deletion(), SIGNED_IN)
+    assert.equal(created[1].verificationSendCount, 0, 'a signed-in request sends no code')
+  })
+
+  test('S4: a request gets at most five codes, the first included, then resend answers 429', async () => {
+    const doc = requestDoc({ verificationSentAt: aged(), verificationSendCount: 1 })
+    mock.method(messageRepo, 'findForVerification', async () => doc)
+    mock.method(userRepo, 'findByEmail', async () => ({ _id: 'user-1' }))
+    for (let send = 2; send <= CODES_PER_REQUEST; send += 1) {
+      doc.verificationSentAt = aged()
+      await contactService.resend('message-1')
+      assert.equal(doc.verificationSendCount, send)
+    }
+    doc.verificationSentAt = aged()
+    await assert.rejects(contactService.resend('message-1'), (error) =>
+      error.status === 429 && error.message === 'This request has had too many codes. Send a new request tomorrow.')
+    assert.equal(doc.verificationSendCount, CODES_PER_REQUEST)
+    await flush()
+  })
+
+  test('S4: the per-request cap counts and answers the same for an email with no account', async () => {
+    const answers = []
+    for (const account of [{ _id: 'user-1' }, null]) {
+      const doc = requestDoc({ verificationSentAt: aged(), verificationSendCount: CODES_PER_REQUEST - 1 })
+      mock.method(messageRepo, 'findForVerification', async () => doc)
+      mock.method(userRepo, 'findByEmail', async () => account)
+      answers.push(await contactService.resend('message-1'))
+      assert.equal(doc.verificationSendCount, CODES_PER_REQUEST)
+      doc.verificationSentAt = aged()
+      answers.push(await contactService.resend('message-1').catch((error) => ({ status: error.status, message: error.message })))
+      await flush()
+    }
+    assert.deepEqual(answers[0], answers[2])
+    assert.deepEqual(answers[1], answers[3])
+    assert.equal(answers[1].status, 429)
+  })
+
+  test('S4: a resend that loses the race for the send time answers "wait a minute"', async () => {
+    const doc = requestDoc({ verificationSentAt: aged(), verificationSendCount: 1 })
+    mock.method(messageRepo, 'findForVerification', async () => doc)
+    messageRepo.claimResend.mock.mockImplementation(async () => null)
+    await assert.rejects(contactService.resend('message-1'), (error) =>
+      error.status === 429 && error.message === 'Wait a minute before asking for a new code.')
+  })
+
+  test('S4: at most CONTACT_CODE_EMAILS_PER_DAY code emails go to one address a day, across requests', async () => {
+    assert.equal(env.CONTACT_CODE_EMAILS_PER_DAY, 5)
+    mock.method(userRepo, 'findByEmail', async () => ({ _id: 'user-1' }))
+    const results = []
+    for (let n = 1; n <= 7; n += 1) {
+      const doc = requestDoc({ _id: `message-${n}` })
+      mock.method(messageRepo, 'findForVerification', async () => doc)
+      results.push(await contactService.issueCode(`message-${n}`))
+      if (n === 7) assert.equal(doc.verificationCodeHash, null, 'no code is stored when none is sent')
+    }
+    assert.deepEqual(results, [true, true, true, true, true, false, false])
+    assert.equal(emails.length, 5)
+
+    const emailKey = contactSenderKey('email', 'sara@example.com')
+    assert.equal(quota.sender.get(emailKey), 5)
+    assert.match(emailKey, /^[0-9a-f]{64}$/)
+    assert.equal(emailKey.includes('sara'), false, 'the address is never stored in the clear')
+  })
+
+  test('S4: a failed code email gives its place in the daily cap back', async () => {
+    mock.method(userRepo, 'findByEmail', async () => ({ _id: 'user-1' }))
+    mock.method(messageRepo, 'findForVerification', async () => requestDoc())
+    emailService.sendOtp.mock.mockImplementation(async () => { throw new Error('Brevo down') })
+    await assert.rejects(contactService.issueCode('message-1'))
+    assert.equal(quota.sender.get(contactSenderKey('email', 'sara@example.com')), 0)
   })
 })

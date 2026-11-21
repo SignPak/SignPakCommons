@@ -121,7 +121,12 @@ Deletion requests are verified before the team acts on them (D4):
    account uses it (`src/utils/otp.js`, the same HMAC, expiry and attempt rules as
    sign-up). The answer is identical whether or not an account exists.
 3. `POST /contact/:id/verify` with the right code sets `verified: true`;
-   `POST /contact/:id/resend` sends a new code at most once a minute.
+   `POST /contact/:id/resend` sends a new code at most once a minute and at most 5 codes
+   per request. The send time and count are claimed in one atomic update
+   (`messageRepo.claimResend`), so simultaneous resends can't both pass. An address gets
+   at most `CONTACT_CODE_EMAILS_PER_DAY` code emails a day across all requests (a
+   `ContactSenderQuota` row keyed by an HMAC of the address); past that the code is
+   silently not sent.
 4. A request for an email with no account stays unverified for the team to check by
    hand. Each message also has `status`, `handledAt` and `handledBy` for that work.
 

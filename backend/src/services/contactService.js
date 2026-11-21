@@ -12,6 +12,8 @@ import { sendContactWeb3Forms } from './external/sendContactWeb3Forms.js'
 
 export const DELETION_TOPIC = 'recording-deletion'
 const CODE_PURPOSE = 'deletion-request'
+/** Codes one deletion request can ever get, the first one included (S4). */
+export const CODES_PER_REQUEST = 5
 
 const utcDay = () => new Date().toISOString().slice(0, 10)
 const topicLabels = {
@@ -24,10 +26,13 @@ const dailyLimitError = () => tooManyRequests('The contact form has reached its 
 const senderLimitError = () => tooManyRequests('You have already sent two deletion requests today. Try again tomorrow, or sign in to send one now.')
 const invalidCode = () => badRequest('That code is invalid or has expired. Request a new code and try again.')
 const resendTooSoon = () => tooManyRequests('Wait a minute before asking for a new code.')
+const tooManyCodes = () => tooManyRequests('This request has had too many codes. Send a new request tomorrow.')
 
-// S4: per-sender quota keys. An HMAC rather than a plain hash, so the small IPv4 space can't be
-// hashed and looked up; the raw IP and device ID are never stored.
-const senderKey = (kind, value) => createHmac('sha256', env.JWT_SECRET).update(`contact-sender:${kind}:${value}`).digest('hex')
+// S4: quota keys for an IP, a device or a recipient address. An HMAC rather than a plain hash,
+// so the small IPv4 space (or a list of addresses) can't be hashed and looked up; the raw
+// values are never stored.
+export const contactSenderKey = (kind, value) => createHmac('sha256', env.JWT_SECRET).update(`contact-sender:${kind}:${value}`).digest('hex')
+const senderKey = contactSenderKey
 
 /**
  * Contact form (FR13.13), with the rules settled in FIX-PLAN section 0 and D4:
@@ -80,6 +85,8 @@ export const contactService = {
         // Every signed-out deletion request gets a send time, account or not, so the resend
         // wait looks the same whether or not the email belongs to someone.
         verificationSentAt: isDeletion && !user ? new Date() : null,
+        // The first code counts toward CODES_PER_REQUEST, account or not.
+        verificationSendCount: isDeletion && !user ? 1 : 0,
       })
 
       await this.deliver({
@@ -103,13 +110,20 @@ export const contactService = {
     return { received: true, id: String(saved._id), verificationRequired }
   },
 
-  /** Emails a fresh code for a signed-out deletion request, if an account uses its email. */
+  /**
+   * Emails a fresh code for a signed-out deletion request, if an account uses its email and
+   * that address has had fewer than CONTACT_CODE_EMAILS_PER_DAY code emails today (S4). Runs
+   * after the response, so whether it sends never changes what the visitor sees.
+   */
   async issueCode(messageId) {
     const request = await messageRepo.findForVerification(messageId)
     if (!request || request.verified) return false
     request.verificationSentAt = new Date()
     const account = await userRepo.findByEmail(request.email)
-    if (!account) {
+    const day = utcDay()
+    const recipientKey = senderKey('email', request.email)
+    if (!account || !await contactQuotaRepo.claimSender(recipientKey, day, env.CONTACT_CODE_EMAILS_PER_DAY)) {
+      if (account) logger.warn({ messageId: String(request._id) }, 'Deletion-request code not sent: daily limit for this address reached')
       await messageRepo.save(request)
       return false
     }
@@ -118,7 +132,12 @@ export const contactService = {
     request.verificationExpiresAt = new Date(Date.now() + env.AUTH_OTP_TTL_MINUTES * 60_000)
     request.verificationAttempts = 0
     await messageRepo.save(request)
-    await emailService.sendOtp(request.email, code, CODE_PURPOSE)
+    try {
+      await emailService.sendOtp(request.email, code, CODE_PURPOSE)
+    } catch (error) {
+      await attemptCleanup('release code email quota', () => contactQuotaRepo.releaseSender(recipientKey, day))
+      throw error
+    }
     return true
   },
 
@@ -155,11 +174,15 @@ export const contactService = {
     if (!request || request.topic !== DELETION_TOPIC || request.verified || request.user) {
       throw badRequest('This request does not need a code.')
     }
-    const sentAt = request.verificationSentAt?.getTime() ?? 0
-    if (Date.now() - sentAt < env.AUTH_OTP_RESEND_SECONDS * 1000) throw resendTooSoon()
-    // Claim the send time now, so two quick resends can't both go through.
-    request.verificationSentAt = new Date()
-    await messageRepo.save(request)
+    if ((request.verificationSendCount ?? 0) >= CODES_PER_REQUEST) throw tooManyCodes()
+    // One atomic claim of the send time and the count, so two simultaneous resends can't both
+    // pass. Counted whether or not an account exists, so the answers stay the same.
+    const claimed = await messageRepo.claimResend(request._id, {
+      sentBefore: new Date(Date.now() - env.AUTH_OTP_RESEND_SECONDS * 1000),
+      maxSends: CODES_PER_REQUEST,
+      now: new Date(),
+    })
+    if (!claimed) throw resendTooSoon()
     void this.issueCode(request._id).catch((error) => logger.error({ err: error }, 'Could not resend a deletion-request code'))
     return { message: 'If an account uses this email, a new code is on its way.' }
   },

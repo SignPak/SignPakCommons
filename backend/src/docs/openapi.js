@@ -658,7 +658,7 @@ export const openapi = {
       post: {
         tags: ['Contact'],
         summary: 'Email a new code for a signed-out deletion request',
-        description: 'Same answer whether or not an account uses the email; a code is sent only when one does. At most once per AUTH_OTP_RESEND_SECONDS (429 before then). 400 for a request that needs no code.',
+        description: 'Same answer whether or not an account uses the email; a code is sent only when one does, and only while that address has had fewer than CONTACT_CODE_EMAILS_PER_DAY code emails today (the answer is the same either way). At most once per AUTH_OTP_RESEND_SECONDS, and at most 5 codes per request, the first included (429 for either). 400 for a request that needs no code.',
         responses: {
           202: jsonResponse('Accepted', { type: 'object', required: ['message'], properties: { message: { type: 'string' } } }),
           400: errorResponse,

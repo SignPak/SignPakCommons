@@ -168,6 +168,7 @@ shared credentials.
 | `CONTACT_DAILY_LIMIT` | Set manually; default `25` | Maximum successfully delivered messages per UTC day. |
 | `CONTACT_USER_DAILY_LIMIT` | Set manually; default `1` | Maximum contact messages per account per UTC day. |
 | `CONTACT_SENDER_DAILY_LIMIT` | Set manually; default `2` | Signed-out recording/data deletion requests allowed per IP address and per device each UTC day. A request over either limit gets 429; nothing is ever blocked (S4). |
+| `CONTACT_CODE_EMAILS_PER_DAY` | Set manually; default `5` | Deletion-request code emails sent to one address each UTC day, across all requests. Past it no code is sent, but the visitor sees the same answer as when one is (no account guessing). Each request also gets at most 5 codes in total. (S4) |
 | `E2E_TEST_HOOKS` | Leave unset outside the test environment; default `false` | Test-only. With `NODE_ENV=test`, mounts `GET /__test/emails` so the Playwright suite can read captured codes. The server refuses to start when this is set with `NODE_ENV=production`. |
 
 In production, `BREVO_API_KEY`, a valid `BREVO_SENDER_EMAIL`, and

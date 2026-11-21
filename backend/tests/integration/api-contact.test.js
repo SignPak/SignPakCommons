@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 import { Client } from '../support/helpers.js'
 import { useApiContext } from '../support/apiContext.js'
+import { listCapturedEmails } from '../../src/services/email/index.js'
+import { contactSenderKey } from '../../src/services/contactService.js'
 
 /**
  * Phase 4: the contact form (C2's API side), no automatic blocks (S4) and verified deletion
@@ -202,5 +204,63 @@ describe('deletion requests: D4, verified by code', () => {
         assert.equal(secret in message, false, `${secret} must not be returned`)
       }
     }
+  })
+})
+
+describe('code email limits: S4, fixes after verification', () => {
+  const codeEmails = (email) => listCapturedEmails({ to: email, purpose: 'deletion-request' }).length
+  /** Waits until `email` has received `count` code emails, then a little longer for any extra. */
+  async function settle(email, count) {
+    for (let attempt = 0; attempt < 100 && codeEmails(email) < count; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    return codeEmails(email)
+  }
+
+  test('S4: the sixth code for one request is refused and no sixth email is sent', async () => {
+    await createVerifiedUser({ firstName: 'Iqra', surname: 'Flood', email: 'iqra@example.com' })
+    const { id } = (await new Client(base).post('/contact', deletion('iqra@example.com'))).body.data
+    assert.equal(await settle('iqra@example.com', 1), 1)
+
+    for (let send = 2; send <= 5; send += 1) {
+      await ageLastSend(id)
+      assert.equal((await new Client(base).post(`/contact/${id}/resend`)).status, 202, `resend ${send}`)
+      assert.equal(await settle('iqra@example.com', send), send)
+    }
+    await ageLastSend(id)
+    const sixth = await new Client(base).post(`/contact/${id}/resend`)
+    assert.equal(sixth.status, 429)
+    assert.equal(sixth.body.error.message, 'This request has had too many codes. Send a new request tomorrow.')
+    assert.equal(await settle('iqra@example.com', 6), 5, 'no sixth email')
+  })
+
+  test('S4: requests from different IPs for the same address stop at five code emails a day', async () => {
+    await createVerifiedUser({ firstName: 'Jana', surname: 'Target', email: 'jana@example.com' })
+    const emailKey = contactSenderKey('email', 'jana@example.com')
+    const answers = []
+    for (let n = 1; n <= 7; n += 1) {
+      // A fresh IP and device for every request: drop every sender row except the address's.
+      await mongoose.models.ContactSenderQuota.deleteMany({ key: { $ne: emailKey } })
+      const sent = await new Client(base).post('/contact', deletion('jana@example.com'), { headers: { 'x-device-id': `device-jana-${n}` } })
+      answers.push({ status: sent.status, keys: Object.keys(sent.body.data).sort(), verificationRequired: sent.body.data.verificationRequired })
+      await settle('jana@example.com', Math.min(n, 5))
+    }
+    assert.equal(await settle('jana@example.com', 7), 5)
+    for (const answer of answers) assert.deepEqual(answer, answers[0], 'the answer never changes at the cap')
+    assert.equal(answers[0].status, 201)
+  })
+
+  test('S4: two simultaneous resends of one request send one email', async () => {
+    await createVerifiedUser({ firstName: 'Kiran', surname: 'Race', email: 'kiran@example.com' })
+    const { id } = (await new Client(base).post('/contact', deletion('kiran@example.com'))).body.data
+    assert.equal(await settle('kiran@example.com', 1), 1)
+    await ageLastSend(id)
+
+    const statuses = (await Promise.all([1, 2].map(() => new Client(base).post(`/contact/${id}/resend`)))).map((r) => r.status)
+    assert.deepEqual(statuses.sort(), [202, 429])
+    assert.equal(await settle('kiran@example.com', 3), 2, 'the first code plus exactly one resend')
+    const stored = await mongoose.models.ContactMessage.findById(id).select('+verificationSendCount')
+    assert.equal(stored.verificationSendCount, 2)
   })
 })

@@ -24,13 +24,13 @@ Counts as of **Phase 4** (backend 1.0.10, frontend 1.0.12):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 22 | 117 |
-| Integration (backend) | `backend/tests/integration/` | 13 | 69 |
+| Unit (backend) | `backend/tests/unit/` | 22 | 123 |
+| Integration (backend) | `backend/tests/integration/` | 13 | 72 |
 | Security (backend) | `backend/tests/security/` | 6 | 65 |
 | Unit (frontend) | `frontend/test/unit/` | 9 | 28 |
 | Integration (frontend) | `frontend/test/integration/` | 3 | 21 |
 | End-to-end | `e2e/tests/` | 4 | 18 (6 tests × 3 browsers) |
-| **Total** | | **57** | **318** |
+| **Total** | | **57** | **327** |
 
 The backend security count is per-route: the access matrix produces one case per route (49
 today) plus the completeness check; the hook suite adds three, the production-error suite
@@ -158,6 +158,12 @@ suite four. Frontend cases count each `it.each` row separately.
 | U-115 | `contactSchemas.test.js` | D4: the code body takes exactly six digits | FR13.13, SE-10 | S4 | unit |
 | U-116 | `contactSchemas.test.js` | D4: a NoSQL operator object is not a code | FR13.13, SE-10 | S4 | unit |
 | U-117 | `contactSchemas.test.js` | D4: the message id must be a 24-character object id | FR13.13, SE-10 | S4 | unit |
+| U-118 | `contactRules.test.js` | S4: a signed-out deletion request starts with one code counted | FR13.13 | S4 | unit |
+| U-119 | `contactRules.test.js` | S4: a request gets at most five codes, the first included, then resend answers 429 | FR13.13 | S4 | unit |
+| U-120 | `contactRules.test.js` | S4: the per-request cap counts and answers the same for an email with no account | FR13.13 | S4 | unit |
+| U-121 | `contactRules.test.js` | S4: a resend that loses the race for the send time answers "wait a minute" | FR13.13 | S4 | unit |
+| U-122 | `contactRules.test.js` | S4: at most CONTACT_CODE_EMAILS_PER_DAY code emails go to one address a day, across requests | FR13.13 | S4 | unit |
+| U-123 | `contactRules.test.js` | S4: a failed code email gives its place in the daily cap back | FR13.13 | S4 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -235,6 +241,9 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-67 | `api-contact.test.js` | D4: a request for an email with no account sends no code and stays unverified | FR13.13 | S4 | integration |
 | I-68 | `api-contact.test.js` | D4: unknown ids and malformed codes are refused | FR13.13 | S4 | integration |
 | I-69 | `api-contact.test.js` | D4: the admin inbox shows verified and status, and never the code fields | FR13.13 | S4 | integration |
+| I-70 | `api-contact.test.js` | S4: the sixth code for one request is refused and no sixth email is sent | FR13.13 | S4 | integration |
+| I-71 | `api-contact.test.js` | S4: requests from different IPs for the same address stop at five code emails a day | FR13.13 | S4 | integration |
+| I-72 | `api-contact.test.js` | S4: two simultaneous resends of one request send one email | FR13.13 | S4 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -344,7 +353,7 @@ Drive upload`) and a row here.
 | C1, C4, S3, S5 | **Covered in Phase 1** (U-38–U-61, I-46–I-49, S-06–S-10, FU-21–FU-23, E-04). The real-server checks are still pending: see `docs/phase-reports/PHASE-1.md`. | 1 |
 | C5, B1, B6, B8 | **Covered in Phase 2** (U-62–U-89, I-50–I-56, S-11–S-13). Real-server check pending: a production upload leaves `uploads/tmp` empty. | 2 |
 | S1 | **Covered in Phase 3** (U-90, U-91, FU-24; the whole suite re-run on the patched versions). The CI audit job is now required. | 3 |
-| C2, S4 | **Covered in Phase 4** (U-92–U-117, I-39 adjusted, I-57–I-69, S-14–S-17, the two new access-matrix routes, FU-25–FU-28, FI-05–FI-16, E-05, E-06). | 4 |
+| C2, S4 | **Covered in Phase 4** (U-92–U-123, I-39 adjusted, I-57–I-72, S-14–S-17, the two new access-matrix routes, FU-25–FU-28, FI-05–FI-16, E-05, E-06). | 4 |
 | C3 | recording deletion for one contributor, deletion log, admin messages page | 5 |
 | S2, S6, S9, B2, B3, B4 | login lockout, logout invalidating the JWT, unverified-signup expiry, verified-only counts, re-signup, consent token in sessionStorage | 6 |
 | S7 | admin list promotion/demotion and the activity log | 7 |

@@ -5,7 +5,7 @@ export const CONTACT_TOPICS = ['general', 'partnership', 'recording-deletion']
 export const CONTACT_STATUSES = ['open', 'done', 'rejected']
 
 // Never sent to any client, the admin list included.
-const VERIFICATION_SECRETS = ['verificationCodeHash', 'verificationExpiresAt', 'verificationAttempts', 'verificationSentAt']
+const VERIFICATION_SECRETS = ['verificationCodeHash', 'verificationExpiresAt', 'verificationAttempts', 'verificationSentAt', 'verificationSendCount']
 
 const contactMessageSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -22,6 +22,8 @@ const contactMessageSchema = new mongoose.Schema({
   verificationExpiresAt: { type: Date, default: null, select: false },
   verificationAttempts: { type: Number, default: 0, select: false },
   verificationSentAt: { type: Date, default: null, select: false },
+  // Codes sent for this request, the first one included, with or without an account (S4).
+  verificationSendCount: { type: Number, default: 0, select: false },
 
   // Handling by the team (set from Admin -> Messages in Phase 5).
   status: { type: String, enum: CONTACT_STATUSES, default: 'open' },

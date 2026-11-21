@@ -287,3 +287,82 @@ visible browser: `cd e2e && npx playwright test tests/contact.spec.js --headed -
    time, account or not. This keeps the two cases identical.
 4. **A request for an email with no account can never be verified by code.** By design (D4) it
    waits for the manual check in Phase 5.
+
+## Fixes after verification
+
+### Issue 1: code emails for deletion requests had no overall limit
+
+**What verification found.** `resend()` only enforced 60 s per request and `contactCodeLimiter`
+(20 per 15 minutes per IP). One person could create two requests for a victim's email and resend
+each one indefinitely: about 1,900 code emails a day from one IP. That floods the victim's inbox
+and can use up the Brevo daily quota, which would stop sign-up and password-reset codes for
+everyone. The 60 s check was also a read followed by a separate write, so two simultaneous
+resends could both pass.
+
+**Fix**
+- **Per-request cap: 5 codes, the first one included** (`CODES_PER_REQUEST` in
+  `contactService.js`).
+  - New hidden field `ContactMessage.verificationSendCount`, set to 1 when a signed-out
+    deletion request is saved and incremented on each resend. It is never returned by the API.
+  - After the cap, resend answers **429 "This request has had too many codes. Send a new
+    request tomorrow."**
+  - The count is kept for requests with no account too, so the answers are identical.
+- **Per-recipient cap: `CONTACT_CODE_EMAILS_PER_DAY` (default 5)** code emails per address per
+  UTC day, across all requests and senders.
+  - It reuses `ContactSenderQuota` with the key `HMAC("contact-sender:email:" + address)`, the
+    same keyed hash as the IP and device keys, so addresses aren't stored in the clear.
+  - At the cap, `issueCode` doesn't send (it logs a warning) and stores no new code. The
+    visitor's answer is exactly the same, because the code is always sent after the response.
+  - A failed Brevo send gives its place in the cap back.
+- **Atomic resend claim.** `messageRepo.claimResend()` is one `findOneAndUpdate`. It matches
+  only an unverified, signed-out deletion request whose `verificationSentAt` is null or older
+  than 60 s and whose send count is below 5. It sets the send time and increments the count in
+  the same update. A losing simultaneous request gets the usual 429 "Wait a minute…".
+- **Setting:** `CONTACT_CODE_EMAILS_PER_DAY` is in `env.js`, both env templates and `setup.md`.
+  The per-request cap is a fixed 5, as specified, not a setting.
+- **Docs:** `docs/API.md`, `src/docs/openapi.js` (resend description), `ARCHITECTURE.md`,
+  `backend/README.md`.
+
+**Resulting worst case from one IP:** 2 requests a day × 5 codes = 10 code emails, and never
+more than 5 a day to any one address, however many IPs are used.
+
+**Tests added** (all named "S4:"; rows in `TEST-CASES.md`):
+
+| Level | Rows | Tests |
+| --- | --- | --- |
+| Unit, `contactRules.test.js` | U-118–U-123 | a signed-out request starts with one code counted; at most five codes per request, then the 429; the per-request cap counts and answers the same without an account; a resend that loses the race answers "wait a minute"; at most `CONTACT_CODE_EMAILS_PER_DAY` code emails per address, with an HMAC key; a failed email gives its place back |
+| Integration, `api-contact.test.js` | I-70 | the 6th code for one request is refused (429), and no 6th email is captured |
+| Integration, `api-contact.test.js` | I-71 | 7 requests for one address, each from a fresh IP and device, produce exactly 5 emails, and all 7 answers are identical |
+| Integration, `api-contact.test.js` | I-72 | two simultaneous resends: one 202 and one 429, and exactly one extra email (send count 2) |
+
+The unit tests replace the repositories, so they include a fake `claimResend` that applies the
+same conditions as the MongoDB filter. The real filter is exercised by I-70–I-72. **No
+existing test was changed**: the 17 earlier unit tests in `contactRules.test.js` pass as they
+were.
+
+**Proof:** with the pre-fix `contactService.js`, `messageRepo.js`, `ContactMessage.js` and
+`env.js` put back (plus only the two new exports, so the test file can import), **I-70, I-71
+and I-72 all fail**. I-72 failing shows the race was real: both simultaneous resends sent a
+code. All three pass on the fix.
+
+**How I-71 simulates different IPs:** every test request comes from 127.0.0.1, and the API
+doesn't trust forwarded headers in tests. Before each request the test deletes every
+`ContactSenderQuota` row except the address's own. That is exactly the state a new IP and
+device would see.
+
+### Test gate after the fix
+
+Run on this branch, Windows 11, Node v24.13.1, 21 Nov 2026. Pasted from real output.
+
+| Gate | Result | Exit |
+| --- | --- | --- |
+| backend `test:unit` | tests 123, pass 123, fail 0 | 0 |
+| backend `test:integration` | tests 72, pass 72, fail 0 | 0 |
+| backend `test:security` | tests 65, pass 65, fail 0 | 0 |
+| backend `test:coverage` | pass 260, fail 0; overall 92.92% lines / 88.2% branches, `src/services` 87.42% / 86.68%; floors passed | 0 |
+| frontend `lint` / `test` / `test:coverage` / `build` | clean / 49 passed / 24.62% lines / built | 0 |
+| `e2e` | 18 passed (1.2 m) | 0 |
+| `npm audit --omit=dev --audit-level=high` (backend, frontend, e2e) | found 0 vulnerabilities ×3 | 0 |
+
+No version bump: FIX-PLAN asks for one per phase, and Phase 4 already has it (backend
+1.0.10, frontend 1.0.12).

@@ -125,8 +125,9 @@ mounted outside production.
   email; quotas are one general/partnership message per account per UTC day and
   25 such messages per UTC day site-wide by default. Deletion requests are exempt
   from both. Signed-out visitors may send only deletion requests, two per IP and per
-  device per UTC day, confirmed with a code emailed to the account. Quotas answer
-  403, 409 or 429; they never restrict a device or IP.
+  device per UTC day, confirmed with a code emailed to the account (at most 5 codes
+  per request and 5 code emails per address per day). Quotas answer 403, 409 or 429;
+  they never restrict a device or IP.
 
 ## Testing
 

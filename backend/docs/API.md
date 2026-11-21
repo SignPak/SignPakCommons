@@ -188,8 +188,17 @@ no account stays unverified and is checked by hand by the team.
   `400 BAD_REQUEST` ("That code is invalid or has expired…").
 - `POST /api/v1/contact/:id/resend` returns `202 { data: { message } }` with the same
   message whether or not an account exists, and emails a new code only when one
-  does. Within `AUTH_OTP_RESEND_SECONDS` (default 60) of the last send it returns
-  429; for a request that needs no code (signed-in or already verified) it returns 400.
+  does. It returns 429 within `AUTH_OTP_RESEND_SECONDS` (default 60) of the last send,
+  and 429 "This request has had too many codes. Send a new request tomorrow." once the
+  request has had 5 codes, the first one included. Both checks count requests for an
+  email with no account too, so the answers are the same either way. Two simultaneous
+  resends can't both pass. For a request that needs no code (signed-in or already
+  verified) it returns 400.
+
+At most `CONTACT_CODE_EMAILS_PER_DAY` (default 5) deletion-request code emails go to
+one address per UTC day, across all requests and senders. Past that no code is sent,
+but the answer is exactly the same as when one is. This stops anyone flooding an
+inbox, or using up the Brevo daily quota that sign-up and password-reset codes need.
 
 Both code routes are limited to 20 requests per 15 minutes per IP when rate limiting
 is on. Admins see `verified`, `status` (`open`, `done`, `rejected`), `handledAt` and
