@@ -20,17 +20,17 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 2** (backend 1.0.8, frontend 1.0.10):
+Counts as of **Phase 3** (backend 1.0.9, frontend 1.0.11):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 18 | 89 |
+| Unit (backend) | `backend/tests/unit/` | 19 | 91 |
 | Integration (backend) | `backend/tests/integration/` | 12 | 56 |
 | Security (backend) | `backend/tests/security/` | 5 | 59 |
-| Unit (frontend) | `frontend/test/unit/` | 7 | 23 |
+| Unit (frontend) | `frontend/test/unit/` | 8 | 24 |
 | Integration (frontend) | `frontend/test/integration/` | 1 | 4 |
 | End-to-end | `e2e/tests/` | 3 | 12 (4 tests × 3 browsers) |
-| **Total** | | **46** | **243** |
+| **Total** | | **48** | **246** |
 
 The backend security count is per-route: the access matrix produces one case per route (47
 today) plus the completeness check; the hook suite adds three, the production-error suite
@@ -129,6 +129,8 @@ three, the listen-address suite two and the upload-type suite three.
 | U-87 | `cleanupOrder.test.js` | B1: a failed removal of the previous demo file keeps the new demo video | FR13.11 | B1 | unit |
 | U-88 | `localStorage.test.js` | C5: startup removes temp files older than an hour and keeps newer files and subfolders | FR13.8 | C5 | unit |
 | U-89 | `localStorage.test.js` | C5: the startup sweep is a no-op on an empty or missing temp folder | FR13.8 | C5 | unit |
+| U-90 | `dependencyFloors.test.js` | S1: the version comparison orders releases numerically | — (deployment safety, no SRS requirement) | S1 | unit |
+| U-91 | `dependencyFloors.test.js` | S1: production dependencies are at or above their patched versions | — (deployment safety, no SRS requirement) | S1 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -244,6 +246,7 @@ a new route cannot be added without an access decision.
 | FU-21 | `seoCatalog.test.js` | C1: SITE_URL defaults to https://commons.signpak.tech | — (deployment safety, no SRS requirement) | C1 | unit |
 | FU-22 | `seoCatalog.test.js` | C1: an explicit SITE_URL is used, with a trailing slash trimmed | — (deployment safety, no SRS requirement) | C1 | unit |
 | FU-23 | `seoCatalog.test.js` | C1: no longer points at the old signpakcommons.example placeholder | — (deployment safety, no SRS requirement) | C1 | unit |
+| FU-24 | `dependencyFloors.test.js` | S1: vite and source-map-js are at or above their patched versions | — (deployment safety, no SRS requirement) | S1 | unit |
 
 ## 5. Frontend integration tests — `frontend/test/integration/`
 
@@ -278,7 +281,7 @@ Drive upload`) and a row here.
 | --- | --- | --- |
 | C1, C4, S3, S5 | **Covered in Phase 1** (U-38–U-61, I-46–I-49, S-06–S-10, FU-21–FU-23, E-04). The real-server checks are still pending: see `docs/phase-reports/PHASE-1.md`. | 1 |
 | C5, B1, B6, B8 | **Covered in Phase 2** (U-62–U-89, I-50–I-56, S-11–S-13). Real-server check pending: a production upload leaves `uploads/tmp` empty. | 2 |
-| S1 | the whole suite re-run on updated dependencies; the audit job becomes required | 3 |
+| S1 | **Covered in Phase 3** (U-90, U-91, FU-24; the whole suite re-run on the patched versions). The CI audit job is now required. | 3 |
 | C2, S4 | contact form sends, deletion request with an emailed code, per-sender quotas | 4 |
 | C3 | recording deletion for one contributor, deletion log, admin messages page | 5 |
 | S2, S6, S9, B2, B3, B4 | login lockout, logout invalidating the JWT, unverified-signup expiry, verified-only counts, re-signup, consent token in sessionStorage | 6 |

@@ -46,7 +46,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 
 ## Security
 
-- [ ] **S1. Vulnerable packages.** `npm audit` in the backend shows high issues in body-parser, mongoose 7.0–7.8.12, multer 2.0–2.4.0 and zod <4.6.6, and moderate issues in qs and ip-address. Run `npm audit fix` and bump the versions, then re-run the tests. Frontend: vite 8.3.0–8.3.2 (dev server only).
+- [x] **S1. Vulnerable packages.** *(Phase 3: mongoose 7.8.13, multer 2.5.0, zod 4.6.7, body-parser 1.20.9, qs 6.16.2, ip-address 10.7.6, vite 8.3.6, source-map-js 1.2.2; `npm audit --omit=dev --audit-level=high` finds 0 in both packages and the CI audit job is now required. Dev-only `react-snap` advisories remain, see `docs/phase-reports/PHASE-3.md`.)* `npm audit` in the backend shows high issues in body-parser, mongoose 7.0–7.8.12, multer 2.0–2.4.0 and zod <4.6.6, and moderate issues in qs and ip-address. Run `npm audit fix` and bump the versions, then re-run the tests. Frontend: vite 8.3.0–8.3.2 (dev server only).
 - [ ] **S2. Add a per-account login lockout.** Lock the account for 15 minutes after 5 failed attempts (matching SE-4). Today there is only an IP limit of 20 attempts per 15 minutes (`authLimiter`).
 - [ ] **S3. Proxy and rate-limit setup.** *(Phase 1: `TRUST_PROXY=true` in `backend/.env.production.example`, a startup warning when it is off in production, request logs record the visitor IP. Rate limits stay in memory with one PM2 process, as FIX-PLAN D1 decides, instead of an Upstash store. **Pending:** confirming real IPs in the server logs.)*
   - Set `TRUST_PROXY=true` on the host. Without it, all users share one IP and get 20 login attempts per 15 minutes in total.

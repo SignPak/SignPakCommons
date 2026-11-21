@@ -43,6 +43,23 @@ npx npm@10 install --package-lock-only
 
 Then check both: `npx npm@10 ci --dry-run` and `npm ci --dry-run`.
 
+### Updating dependencies
+
+CI's `audit` job is **required** (since Phase 3): `npm audit --omit=dev --audit-level=high`
+must find nothing in `backend/` and `frontend/`. To fix an advisory, take the **newest release
+that is at least two weeks old** and fixes it (freshly published versions carry the most
+supply-chain risk), with npm 10 so the lockfile stays readable by CI:
+
+```sh
+npx npm@10 install <package>@<version> --before=<date two weeks ago>
+npx npm@10 audit fix --before=<date two weeks ago>      # transitive fixes, no major bumps
+npx npm@10 ci --dry-run && npm ci --dry-run              # both npm versions accept the lock
+```
+
+`--before` makes npm resolve every package, direct and transitive, as the registry stood on
+that date. If you raise a patched minimum, update `tests/unit/dependencyFloors.test.js` (backend)
+or `test/unit/dependencyFloors.test.js` (frontend) too.
+
 ## Guardrails
 
 - Do not put credentials or private keys in `VITE_*` variables; they are exposed

@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "SignPakCommons API: Express, Node.js and MongoDB",
   "main": "server.js",
   "scripts": {
@@ -31,12 +31,12 @@
     "googleapis": "^182.0.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^7.8.12",
-    "multer": "^2.4.0",
+    "mongoose": "^7.8.13",
+    "multer": "^2.5.0",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "swagger-ui-express": "^5.0.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "c8": "^12.0.0",

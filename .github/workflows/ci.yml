@@ -184,9 +184,8 @@ jobs:
   audit:
     name: Dependency audit (high and above)
     runs-on: ubuntu-latest
-    # Allowed to fail until Phase 3 updates mongoose, multer, zod, body-parser and vite.
-    # Phase 3 removes this line and makes the job required.
-    continue-on-error: true
+    # Required since Phase 3: production dependencies must have no high or critical advisory.
+    # Dev-only tools (react-snap, test runners) are outside --omit=dev; see PHASE-3.md.
 
     steps:
       - name: Check out repository
