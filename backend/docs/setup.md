@@ -33,6 +33,12 @@ Dependency changes: regenerate `package-lock.json` with npm 10
 (`npx npm@10 install --package-lock-only`), because CI installs with the npm bundled with
 Node 22. A lockfile written by npm 11 omits entries npm 10 requires and fails `npm ci` there.
 
+CI also runs `npm audit --omit=dev --audit-level=high` as a **required** job (since Phase 3).
+To fix an advisory, take the newest release at least two weeks old that fixes it:
+`npx npm@10 install <package>@<version> --before=<date two weeks ago>`, then
+`npx npm@10 audit fix --before=<same date>` for transitive fixes. The patched minimums are
+pinned by `tests/unit/dependencyFloors.test.js`.
+
 ## 3. Create the environment file
 
 Copy the committed template. Never commit the resulting `.env` file.
@@ -302,8 +308,9 @@ End-to-end tests live in `e2e/` at the repository root and are run with `npm run
 there; `npm run e2e:server` in this folder starts the API they use (in-memory MongoDB, local
 storage, captured email, test hooks on). See [e2e/README.md](../../e2e/README.md).
 
-`.github/workflows/ci.yml` runs the whole gate — backend, frontend, e2e and the dependency
-audit — on every push and pull request.
+`.github/workflows/ci.yml` runs the whole gate — backend, frontend, e2e, deploy files and the
+dependency audit — on every push and pull request. All jobs are required; the audit job stopped
+being "allowed to fail" in Phase 3.
 
 ## 9. Frontend connection
 
