@@ -36,8 +36,8 @@ describe('auth', () => {
     assert.equal(res.body.data.verificationEmailSent, true)
     assert.equal(res.setCookie.length, 0)
     assert.equal((await c.post('/auth/login', { email: 'eve@example.com', password: 'password1' })).status, 401)
-    assert.equal((await c.post('/auth/verify-email', { email: 'eve@example.com', code: '000000' })).status, 400)
-    const verified = await c.post('/auth/verify-email', { email: 'eve@example.com', code: deliveredCodes.get('eve@example.com:email-verification') })
+    assert.equal((await c.post('/auth/verify-email', { email: 'eve@example.com', code: '000000', password: 'password1' })).status, 400)
+    const verified = await c.post('/auth/verify-email', { email: 'eve@example.com', code: deliveredCodes.get('eve@example.com:email-verification'), password: 'password1' })
     assert.equal(verified.status, 200)
     assert.equal(verified.setCookie.length, 0)
     assert.ok(verified.body.data.consentToken)
@@ -85,10 +85,13 @@ describe('auth', () => {
   })
 
   test('session, logout and tampered cookies', async () => {
+    // Its own account: since S6 (Phase 6) logout ends every session of the account, so logging
+    // out the shared contributor here would sign it out for the tests that follow.
+    await createVerifiedUser({ firstName: 'Lena', surname: 'Logout', email: 'lena.logout@example.com' })
     const c = new Client(base)
     assert.equal((await c.get('/auth/session')).body.data, null)
-    assert.equal((await c.post('/auth/login', { email: 'SARA@example.com', password: 'password1' })).status, 200)
-    assert.equal((await c.get('/auth/session')).body.data.firstName, 'Sara')
+    assert.equal((await c.post('/auth/login', { email: 'LENA.logout@example.com', password: 'password1' })).status, 200)
+    assert.equal((await c.get('/auth/session')).body.data.firstName, 'Lena')
     assert.equal((await c.post('/auth/logout')).status, 204)
     assert.equal((await c.get('/auth/session')).body.data, null)
     c.cookies.set('signpak_token', 'not.a.jwt')

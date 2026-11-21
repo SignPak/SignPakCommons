@@ -50,6 +50,8 @@ const matrix = {
   'PATCH /api/v1/users/me': [401, OPEN, 401, OPEN],
   'DELETE /api/v1/users/me': [401, OPEN, 401, OPEN],
   'POST /api/v1/users/me/consent': [401, OPEN, 401, OPEN],
+  // Password change while logged in: any active session (the body is then validated: 422 here).
+  'POST /api/v1/users/me/password': [401, OPEN, 401, OPEN],
 
   // Library metadata: readable by visitors, writable by admins.
   'GET /api/v1/categories': [OPEN, OPEN, OPEN, OPEN],
@@ -131,25 +133,43 @@ async function call(client, method, path) {
   return bound.request(method, target, method === 'GET' ? undefined : { json: {} })
 }
 
+/**
+ * S6 (Phase 6): logout ends every session of the account, not just the cookie in the copied
+ * jar. After the logout row, sign the shared contributor and admin in again so the rows that
+ * follow still run with live sessions. (Logout leaves a suspended account's version alone.)
+ */
+const SESSION_ENDING = new Set(['POST /api/v1/auth/logout'])
+async function signBackIn() {
+  for (const [index, email, password] of [[1, 'sara@example.com', 'password1'], [3, process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD]]) {
+    // The shared clients' base already includes /api/v1.
+    const res = await clients[index].post('/auth/login', { email, password })
+    assert.equal(res.status, 200, `signing ${ROLE_NAMES[index]} back in`)
+  }
+}
+
 describe('security: route access matrix', () => {
   for (const [key, expectations] of Object.entries(matrix)) {
     const [method, path] = key.split(' ')
     test(`${key} enforces its access rules`, async () => {
-      for (const [index, expected] of expectations.entries()) {
-        const response = await call(clients[index], method, path)
-        const who = ROLE_NAMES[index]
-        if (expected === OPEN) {
-          assert.ok(
-            response.status !== 401 && response.status !== 403,
-            `${key} should let ${who} through, got ${response.status} ${JSON.stringify(response.body)}`,
-          )
-        } else {
-          assert.equal(
-            response.status,
-            expected,
-            `${key} should answer ${who} with ${expected}, got ${response.status} ${JSON.stringify(response.body)}`,
-          )
+      try {
+        for (const [index, expected] of expectations.entries()) {
+          const response = await call(clients[index], method, path)
+          const who = ROLE_NAMES[index]
+          if (expected === OPEN) {
+            assert.ok(
+              response.status !== 401 && response.status !== 403,
+              `${key} should let ${who} through, got ${response.status} ${JSON.stringify(response.body)}`,
+            )
+          } else {
+            assert.equal(
+              response.status,
+              expected,
+              `${key} should answer ${who} with ${expected}, got ${response.status} ${JSON.stringify(response.body)}`,
+            )
+          }
         }
+      } finally {
+        if (SESSION_ENDING.has(key)) await signBackIn()
       }
     })
   }

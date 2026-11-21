@@ -1,7 +1,8 @@
 import { userService } from '../services/userService.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { noContent, ok } from '../utils/response.js'
-import { clearAuthCookie } from '../utils/tokens.js'
+import { authService } from '../services/authService.js'
+import { clearAuthCookie, setAuthCookie } from '../utils/tokens.js'
 
 export const userController = {
   me: (req, res) => ok(res, req.user),
@@ -10,6 +11,10 @@ export const userController = {
   removeMe: asyncHandler(async (req, res) => {
     await userService.removeSelf(req.user.id, req.body.password)
     clearAuthCookie(res)
+    noContent(res)
+  }),
+  changePassword: asyncHandler(async (req, res) => {
+    setAuthCookie(res, await authService.changePassword(req.user, req.body))
     noContent(res)
   }),
   list: asyncHandler(async (req, res) => ok(res, await userService.listAll())),

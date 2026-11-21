@@ -24,12 +24,16 @@ export const clearAuthCookie = (res) => res.clearCookie(AUTH_COOKIE, cookieOptio
 
 // Short-lived proof that someone just entered a valid email code. It is not a login: the account
 // is only finished (and a session started) once the consent notice is accepted (see authService.completeSignup).
+// B3: claim `v` is the account's authVersion when the code was verified. A re-signup bumps it,
+// so a token handed out before that can no longer finish or cancel the sign-up.
 const CONSENT_TOKEN_MINUTES = 30
-export const signConsentToken = (userId) => jwt.sign({ purpose: 'signup-consent' }, env.JWT_SECRET, { subject: String(userId), expiresIn: `${CONSENT_TOKEN_MINUTES}m`, algorithm: 'HS256' })
+export const signConsentToken = (userId, authVersion = 0) => jwt.sign({ purpose: 'signup-consent', v: authVersion }, env.JWT_SECRET, { subject: String(userId), expiresIn: `${CONSENT_TOKEN_MINUTES}m`, algorithm: 'HS256' })
+
+/** Returns { userId, v } for a valid consent token, or null. A token without v counts as version 0. */
 export function verifyConsentToken(token) {
   try {
     const payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] })
-    return payload.purpose === 'signup-consent' && payload.sub ? payload.sub : null
+    return payload.purpose === 'signup-consent' && payload.sub ? { userId: payload.sub, v: payload.v ?? 0 } : null
   } catch {
     return null
   }

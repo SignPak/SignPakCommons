@@ -30,6 +30,7 @@ export const apiRoutes = {
     me: () => `${API_BASE}/users/me`,
     removeMe: () => `${API_BASE}/users/me`,
     consent: () => `${API_BASE}/users/me/consent`,
+    password: () => `${API_BASE}/users/me/password`,
     list: () => `${API_BASE}/admin/users`,
     update: (id) => `${API_BASE}/admin/users/${id}`,
     remove: (id, { withRecordings } = {}) => `${API_BASE}/admin/users/${id}${qs({ withRecordings: withRecordings ? 'true' : undefined })}`,

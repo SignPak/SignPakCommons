@@ -13,7 +13,7 @@ export const statsService = {
   async overview({ days }) {
     const start = startOfUtcDay(Date.now() - (days - 1) * DAY_MS)
     const [contributors, videos, published, submissions, categories, createdDates, perVideo, videoCategories, recent] = await Promise.all([
-      userRepo.countByRole(ROLES.USER),
+      userRepo.countVerified(ROLES.USER), // B2: finished sign-ups only
       videoRepo.count(),
       videoRepo.count({ status: VIDEO_STATUS.PUBLISHED }),
       submissionRepo.count(),

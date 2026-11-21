@@ -19,10 +19,22 @@ export const loginSchema = z.object({
 
 export const emailOnlySchema = z.object({ email: emailField })
 
+const newPassword = z.string({ error: 'Create a password.' }).min(8, 'Use at least 8 characters.').max(72, 'Use 72 characters or fewer.')
+
+// B3: the password chosen at sign-up is asked for again with the code, so only the person who
+// set it can finish the sign-up (a re-signup can change it before the code is entered).
 export const verifyEmailSchema = z.object({
   email: emailField,
   code: z.string().regex(/^\d{6}$/, 'Enter the six-digit code from your email.'),
+  password: z.string({ error: 'Enter the password you chose when signing up.' }).min(1, 'Enter the password you chose when signing up.').max(200),
 })
+
+// Password change while logged in.
+export const changePasswordSchema = z.object({
+  currentPassword: z.string({ error: 'Enter your current password.' }).min(1, 'Enter your current password.').max(200),
+  password: newPassword,
+  confirmPassword: z.string(),
+}).refine((data) => data.confirmPassword === data.password, { path: ['confirmPassword'], message: 'Passwords do not match.' })
 
 export const resetPasswordSchema = z.object({
   email: emailField,

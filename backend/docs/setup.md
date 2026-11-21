@@ -110,9 +110,11 @@ URL-encode special characters in the database username or password.
 | `COOKIE_SECURE` | Usually leave unset; production defaults to `true` | Sends cookies only over HTTPS when true. Use false only for local HTTP development. |
 | `COOKIE_SAMESITE` | Usually `lax`; use `none` only for cross-site HTTPS deployment | Controls cross-site cookie behavior. `none` requires `COOKIE_SECURE=true`. |
 | `BCRYPT_ROUNDS` | Set manually from `4` to `15`; default `12` | Password hashing cost. Increase only when deployment CPU allows it. |
-| `AUTH_OTP_TTL_MINUTES` | Set manually; default `5`, range `1`–`30` | Lifetime of email verification and password-reset codes. |
+| `AUTH_OTP_TTL_MINUTES` | Set manually; default `10`, range `1`–`30` | Lifetime of email verification and password-reset codes (10 minutes matches the SRS). |
 | `AUTH_OTP_RESEND_SECONDS` | Set manually; default `60`, range `0`–`3600` | Minimum interval between verification-code resend requests. |
-| `AUTH_OTP_MAX_ATTEMPTS` | Set manually; default `5`, range `1`–`10` | Maximum code verification attempts. |
+| `AUTH_OTP_MAX_ATTEMPTS` | Set manually; default `5`, range `1`–`10` | Maximum code verification attempts. A wrong sign-up password at the verify step counts as one. |
+| `AUTH_LOCKOUT_ATTEMPTS` | Set manually; default `5`, range `1`–`50` | Wrong passwords in a row before an account is locked (S2, SE-4). The count resets after a successful login, a password reset or a password change. |
+| `AUTH_LOCKOUT_MINUTES` | Set manually; default `15`, range `1`–`1440` | How long a locked account refuses every login, even with the right password. Forgot password still works and ends the lock. |
 | `EMAIL_DRIVER` | `brevo` or `capture`; default `brevo` | How verification and reset codes are delivered. `capture` keeps them in memory for the automated tests and never sends anything; the server refuses to start with `capture` when `NODE_ENV=production`. |
 
 Generate a JWT secret:

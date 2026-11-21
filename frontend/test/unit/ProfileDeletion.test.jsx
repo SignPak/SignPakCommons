@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import ProfileDashboard from '../../src/pages/ProfileDashboard'
@@ -60,7 +60,8 @@ describe('profile account deletion', () => {
     expect(dialog.textContent).toContain('already used in a released model cannot be removed')
     expect(dialog.textContent).toContain('Request recording/data deletion')
 
-    fireEvent.change(screen.getByLabelText('Current password'), { target: { value: 'password1' } })
+    // Scoped to the dialog: since Phase 6 the profile also has a change-password form with its own "Current password".
+    fireEvent.change(within(dialog).getByLabelText('Current password'), { target: { value: 'password1' } })
     fireEvent.click(screen.getByRole('button', { name: 'Permanently delete account' }))
 
     await waitFor(() => expect(deleteAccount).toHaveBeenCalledWith('password1'))

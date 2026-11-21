@@ -10,6 +10,7 @@ import { paths } from '../routes/appRoutes'
 import { api } from '../services/api'
 import { verifyEmailSchema } from '../utils/authSchemas'
 import { applyAuthFieldErrors } from '../utils/authFormErrors'
+import { consentTokenStore } from '../utils/consentTokenStore'
 
 export default function VerifyEmail() {
   const [params] = useSearchParams()
@@ -23,13 +24,14 @@ export default function VerifyEmail() {
     : params.get('email') ? 'Enter the six-digit code sent to your email.' : '')
   const { register, handleSubmit, getValues, setError: setFieldError, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(verifyEmailSchema),
-    defaultValues: { email: params.get('email') || '', code: '' },
+    defaultValues: { email: params.get('email') || '', code: '', password: '' },
   })
 
-  const submit = async ({ email, code }) => {
+  const submit = async ({ email, code, password }) => {
     setError('')
     try {
-      const { consentToken } = await verifyEmail(email, code)
+      const { consentToken } = await verifyEmail(email, code, password)
+      consentTokenStore.save(consentToken) // B4: survives a reload of the consent page
       navigate(paths.signupConsent, { replace: true, state: { consentToken } })
     } catch (cause) {
       if (!applyAuthFieldErrors(cause, setFieldError)) setError(cause.message || 'We could not verify that code.')
@@ -63,6 +65,15 @@ export default function VerifyEmail() {
         autoComplete="one-time-code"
         {...register('code', { setValueAs: (value) => value.replace(/\D/g, '').slice(0, 6) })}
         error={errors.code?.message}
+      />
+      {/* B3: the password chosen at sign-up, so only the person who set it can finish. */}
+      <Field
+        label="Password"
+        type="password"
+        autoComplete="current-password"
+        hint="The password you chose when signing up."
+        {...register('password')}
+        error={errors.password?.message}
       />
       {notice && <Alert tone="info">{notice}</Alert>}
       {error && <Alert tone="error">{error}</Alert>}

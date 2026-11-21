@@ -19,9 +19,39 @@ submit recordings until they accept. Browser clients must send requests with
 credentials.
 
 `GET /auth/session` returns the current user or `null` for a visitor. `POST
-/auth/logout` clears the cookie. Authenticated requests reload the user from
-MongoDB, so role, suspension, deletion, and session-version changes take effect
-immediately.
+/auth/logout` clears the cookie and, with a valid session, **ends every session of
+the account on every device** (S6): it bumps the account's session version, so any
+copy of the old token stops working. A password reset or a password change does the
+same. Authenticated requests reload the user from MongoDB, so role, suspension,
+deletion, and session-version changes take effect immediately.
+
+**Lockout (S2, SE-4).** `AUTH_LOCKOUT_ATTEMPTS` (5) wrong passwords in a row lock
+the account for `AUTH_LOCKOUT_MINUTES` (15): the attempt that locks it and every login
+until then answer `429` with code `ACCOUNT_LOCKED` ("Too many failed attempts. Try
+again in 15 minutes."), even with the right password. A successful login, a password
+reset or a password change resets the count. An unknown email is never locked and
+takes as long to refuse as a known one. A wrong current password on `POST
+/users/me/password` counts the same way, and while the account is locked that route
+also answers 429 `ACCOUNT_LOCKED`; the lock doesn't end the session already open.
+
+**Sign-up.** `POST /auth/signup` answers 201 `{ email, verificationEmailSent }`. For an
+email whose sign-up was never finished it does the same (B3): the names and password are
+updated, the 24-hour expiry restarts, and the code is resent unless one went out in the
+last `AUTH_OTP_RESEND_SECONDS`. A finished account still gets 409. `POST
+/auth/verify-email` takes `{ email, code, password }`: the password chosen at sign-up is
+checked with the code (a wrong one is 422 on `password` and uses up an attempt), so only
+the person who set the latest password can finish. A re-signup also bumps the account's
+session version, and the consent token carries the version it was issued for (claim `v`):
+a token from before a re-signup is refused by `POST /auth/consent` and `POST
+/auth/decline-consent` with 400 "This sign-up step has expired. Verify your email again to
+continue." So nobody can slip their own details in between someone else's verification
+and consent. The re-signup and the consent (or decline) are each a single conditional write
+on "still unfinished, still at this version", so when they race exactly one wins: a consent
+that lands while a re-signup is still hashing the password finishes the account and the
+re-signup gets 409 "An account with this email already exists."; a re-signup that lands
+first makes the consent (or decline) 400 as above. Unfinished sign-ups are deleted 24
+hours after the latest sign-up (S9, a TTL index on `signupExpiresAt` limited to
+unverified contributor accounts).
 
 Verification and password-reset codes are stored as keyed hashes, expire according
 to `AUTH_OTP_TTL_MINUTES`, and are subject to the configured attempt and resend
@@ -62,18 +92,19 @@ All paths below are relative to `/api/v1`.
 | GET | `/health` | Public | Report uptime, database connectivity and whether storage initialized. `200` with `status: ok` only when both are up; otherwise `503` with `status: degraded`. Booleans only, and it answers even when initialization failed. |
 | POST | `/auth/signup` | Public | Create an unverified contributor and send an email code. |
 | POST | `/auth/login` | Public | Authenticate and set the session cookie. |
-| POST | `/auth/verify-email` | Public | Verify an email code and return a short-lived consent token. |
+| POST | `/auth/verify-email` | Public | Verify an email code with the sign-up password and return a short-lived consent token. |
 | POST | `/auth/consent` | Public | Accept the current consent notice, activate a pending signup, and start a session. |
 | POST | `/auth/decline-consent` | Public | Discard a pending signup after consent is declined. |
 | POST | `/auth/resend-verification` | Public | Request another verification code. |
 | POST | `/auth/forgot-password` | Public | Request a password-reset code. |
 | POST | `/auth/reset-password` | Public | Reset a password and invalidate older sessions. |
-| POST | `/auth/logout` | Public | Clear the session cookie. |
+| POST | `/auth/logout` | Public | Clear the session cookie; with a session, end every session of the account (S6). |
 | GET | `/auth/session` | Public | Return the current user or `null`. |
 | GET | `/users/me` | Authenticated user | Read the signed-in user's profile. |
 | PATCH | `/users/me` | Authenticated user | Update supported profile connections. |
 | DELETE | `/users/me` | Contributor | Delete the account after confirming the current password; submitted recordings and contribution data remain stored. |
 | POST | `/users/me/consent` | Authenticated user | Accept the current notice for an existing account. |
+| POST | `/users/me/password` | Authenticated user | Change the password: `{ currentPassword, password, confirmPassword }`. 401 for a wrong current password (counts toward the lockout), 429 `ACCOUNT_LOCKED` while locked, 422 for a mismatch or the same password; 204 with a new cookie. Every other session ends. |
 | GET | `/categories` | Public | List categories. |
 | POST | `/categories` | Admin | Create a category. |
 | PATCH | `/categories/:id` | Admin | Update a category. |

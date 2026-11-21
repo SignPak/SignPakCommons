@@ -192,10 +192,11 @@ export const openapi = {
       },
       VerifyEmailInput: {
         type: 'object',
-        required: ['email', 'code'],
+        required: ['email', 'code', 'password'],
         properties: {
           email: { type: 'string', format: 'email' },
           code: { type: 'string', pattern: '^\\d{6}$' },
+          password: { type: 'string', minLength: 1, maxLength: 200, description: 'The password chosen at sign-up (B3): only the person who set it can finish.' },
         },
       },
       ResetPasswordInput: {
@@ -384,6 +385,7 @@ export const openapi = {
       post: {
         tags: ['Auth'],
         summary: 'Create an unverified account and send a code',
+        description: 'For an email whose sign-up was never finished, the same 201: names and password are updated, the 24-hour expiry restarts and the code is resent (at most once per AUTH_OTP_RESEND_SECONDS). A finished account gets 409, including one finished by a consent that lands while this request is running.',
         requestBody: { required: true, content: { 'application/json': { schema: ref('SignupInput') } } },
         responses: { 201: jsonResponse('Account pending email verification', ref('User')), ...authErrors },
       },
@@ -392,6 +394,7 @@ export const openapi = {
       post: {
         tags: ['Auth'],
         summary: 'Log in and set the HTTP-only cookie',
+        description: 'AUTH_LOCKOUT_ATTEMPTS wrong passwords lock the account for AUTH_LOCKOUT_MINUTES: 429 with code ACCOUNT_LOCKED, even for the right password, until the lock passes or the password is reset.',
         requestBody: { required: true, content: { 'application/json': { schema: ref('LoginInput') } } },
         responses: { 200: jsonResponse('Logged in', ref('User')), 401: errorResponse, 429: errorResponse },
       },
@@ -409,7 +412,7 @@ export const openapi = {
       post: {
         tags: ['Auth'],
         summary: 'Accept the consent notice, create the account and log in',
-        description: 'Activates the account, stores the acceptance date, time and notice version, and sets the session cookie.',
+        description: 'Activates the account, stores the acceptance date, time and notice version, and sets the session cookie. The consent token is bound to the sign-up it was issued for: after a re-signup of the same email, an older token gets 400 "This sign-up step has expired" (the same applies to /auth/decline-consent). The account is finished in one conditional write, so a racing re-signup and this consent cannot both succeed.',
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['consentToken', 'accepted', 'version'], properties: { consentToken: { type: 'string' }, accepted: { type: 'boolean', enum: [true] }, version: { type: 'string' } } } } } },
         responses: { 200: jsonResponse('Account created and logged in', ref('User')), ...authErrors, 409: errorResponse },
       },
@@ -418,6 +421,7 @@ export const openapi = {
       post: {
         tags: ['Auth'],
         summary: 'Decline the consent notice and discard the unfinished sign-up',
+        description: 'Like /auth/consent, the token must be from the newest verification: after a re-signup an older token gets 400 and the sign-up is kept.',
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['consentToken'], properties: { consentToken: { type: 'string' } } } } } },
         responses: { 204: { description: 'Sign-up discarded' }, ...authErrors },
       },
@@ -447,7 +451,13 @@ export const openapi = {
       },
     },
     '/auth/logout': {
-      post: { tags: ['Auth'], summary: 'Clear the session cookie', responses: { 204: { description: 'Logged out' } } },
+      post: {
+        tags: ['Auth'],
+        summary: 'Log out everywhere',
+        description: 'Clears the cookie. With a valid session it also ends every session of the account on every device (the session version is bumped), so an old copy of the token stops working.',
+        security: [{ cookieAuth: [] }, {}],
+        responses: { 204: { description: 'Logged out' } },
+      },
     },
     '/auth/session': {
       get: {
@@ -478,6 +488,31 @@ export const openapi = {
         security: userSecurity,
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['password'], properties: { password: { type: 'string', minLength: 1, maxLength: 128 } } } } } },
         responses: { 204: { description: 'Account deleted; existing submissions remain' }, 401: errorResponse, 403: errorResponse, 404: errorResponse, 422: errorResponse },
+      },
+    },
+    '/users/me/password': {
+      post: {
+        tags: ['Users'],
+        summary: 'Change the password while logged in',
+        description: 'Checks the current password, then ends every other session and sets a new cookie for this one. A wrong current password counts toward the login lockout; while the account is locked this answers 429 ACCOUNT_LOCKED.',
+        security: userSecurity,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['currentPassword', 'password', 'confirmPassword'],
+                properties: {
+                  currentPassword: { type: 'string', minLength: 1, maxLength: 200 },
+                  password: { type: 'string', minLength: 8, maxLength: 72 },
+                  confirmPassword: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 204: { description: 'Password changed; a new cookie is set' }, 401: errorResponse, 422: errorResponse, 429: errorResponse },
       },
     },
     '/users/me/consent': {

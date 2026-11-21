@@ -1,6 +1,7 @@
 import { API_PREFIX } from '../config/constants.js'
 import { connectDb, isDbReady } from '../config/db.js'
 import { env } from '../config/env.js'
+import { userRepo } from '../repositories/userRepo.js'
 import { authService } from './authService.js'
 import { storageService } from './storage/index.js'
 import { logger } from '../utils/logger.js'
@@ -23,6 +24,9 @@ export function initServices() {
 
       logger.info('Bootstrapping the admin account')
       await authService.ensureAdminFromEnv()
+
+      // S9: give unfinished sign-ups from before the TTL index an expiry.
+      await userRepo.backfillSignupExpiry()
 
       logger.info('All services initialized')
     })().catch((error) => {

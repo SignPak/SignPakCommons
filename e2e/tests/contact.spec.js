@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 import { apiOrigin } from '../playwright.config.js'
 import { signUpThroughUi, uniqueEmail } from '../support/flows.js'
 

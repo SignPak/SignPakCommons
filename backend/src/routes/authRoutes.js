@@ -15,7 +15,7 @@ router.post('/decline-consent', authLimiter, validate({ body: declineConsentSche
 router.post('/resend-verification', authLimiter, validate({ body: emailOnlySchema }), authController.resendVerification)
 router.post('/forgot-password', authLimiter, validate({ body: emailOnlySchema }), authController.forgotPassword)
 router.post('/reset-password', authLimiter, validate({ body: resetPasswordSchema }), authController.resetPassword)
-router.post('/logout', authController.logout)
+router.post('/logout', optionalAuthenticate, authController.logout)
 router.get('/session', optionalAuthenticate, authController.session)
 
 export default router

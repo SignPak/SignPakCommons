@@ -107,9 +107,19 @@ The client:
   Zod validation remains authoritative.
 
 Email verification returns a short-lived consent token rather than a session.
-The signup consent screen submits that token and the current notice version;
-only successful acceptance activates and signs in the new account. Declining
-discards the pending signup. Existing contributors without the current consent
+The verify page sends the password chosen at sign-up with the code (B3), so only the
+person who set the latest password can finish a sign-up. The token is kept in
+`sessionStorage` by `src/utils/consentTokenStore.js` (B4), with its own expiry, so
+reloading the consent page doesn't lose it; accepting or declining clears it. The
+signup consent screen submits that token and the current notice version; only
+successful acceptance activates and signs in the new account. Declining discards the
+pending signup.
+
+**Profile → Security** (`src/components/AccountSecurity.jsx`) changes the password
+while logged in (every other session ends, this one stays) and offers **Log out of
+all devices**. Since Phase 6 every logout ends the account's sessions on all devices
+(S6). Five wrong passwords lock an account for 15 minutes; the login page shows the
+server's message. Existing contributors without the current consent
 version are routed to `/consent` before using protected contributor pages.
 
 Vite proxies `/api` to `http://localhost:5000` for local development. The

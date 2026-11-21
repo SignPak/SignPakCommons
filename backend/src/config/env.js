@@ -60,9 +60,13 @@ const schema = z.object({
   BREVO_API_KEY: z.string().optional(),
   BREVO_SENDER_EMAIL: z.string().email('BREVO_SENDER_EMAIL must be a valid email').optional().or(z.literal('')),
   BREVO_SENDER_NAME: z.string().min(1).default('SignPak Commons'),
-  AUTH_OTP_TTL_MINUTES: z.coerce.number().int().min(1).max(30).default(5),
+  // FIX-PLAN section 0: codes last 10 minutes, matching the SRS.
+  AUTH_OTP_TTL_MINUTES: z.coerce.number().int().min(1).max(30).default(10),
   AUTH_OTP_RESEND_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
   AUTH_OTP_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
+  // S2 / SE-4: wrong passwords before an account is locked, and for how long.
+  AUTH_LOCKOUT_ATTEMPTS: z.coerce.number().int().min(1).max(50).default(5),
+  AUTH_LOCKOUT_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
 
   WEB3FORMS_ACCESS_KEY: z.string().optional(),
   CONTACT_DAILY_LIMIT: z.coerce.number().int().min(1).default(25),

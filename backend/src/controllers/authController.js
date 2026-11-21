@@ -47,10 +47,12 @@ export const authController = {
     ok(res, { message: 'Password reset. You can now log in.' })
   }),
 
-  logout: (req, res) => {
+  // S6: with a valid session this ends it everywhere; a visitor just gets the cookie cleared.
+  logout: asyncHandler(async (req, res) => {
+    await authService.logout(req.user)
     clearAuthCookie(res)
     noContent(res)
-  },
+  }),
 
   // Answers 200 with null for visitors, so the app can ask "who am I?" on load without an error.
   session: (req, res) => ok(res, req.user),

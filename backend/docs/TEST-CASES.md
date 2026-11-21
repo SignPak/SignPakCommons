@@ -20,22 +20,22 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 5** (backend 1.0.11, frontend 1.0.13):
+Counts as of **Phase 6** (backend 1.0.12, frontend 1.0.14):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 25 | 140 |
-| Integration (backend) | `backend/tests/integration/` | 14 | 85 |
-| Security (backend) | `backend/tests/security/` | 7 | 71 |
-| Unit (frontend) | `frontend/test/unit/` | 10 | 34 |
-| Integration (frontend) | `frontend/test/integration/` | 4 | 26 |
-| End-to-end | `e2e/tests/` | 5 | 21 (7 tests × 3 browsers) |
-| **Total** | | **65** | **377** |
+| Unit (backend) | `backend/tests/unit/` | 29 | 161 |
+| Integration (backend) | `backend/tests/integration/` | 15 | 110 |
+| Security (backend) | `backend/tests/security/` | 8 | 78 |
+| Unit (frontend) | `frontend/test/unit/` | 12 | 42 |
+| Integration (frontend) | `frontend/test/integration/` | 6 | 37 |
+| End-to-end | `e2e/tests/` | 6 | 30 (10 tests × 3 browsers) |
+| **Total** | | **76** | **458** |
 
-The backend security count is per-route: the access matrix produces one case per route (53
+The backend security count is per-route: the access matrix produces one case per route (54
 today) plus the completeness check; the hook suite adds three, the production-error suite
 three, the listen-address suite two, the upload-type suite three, the contact-verification
-suite four and the admin-deletion suite two. Frontend cases count each `it.each` row separately.
+suite four, the admin-deletion suite two and the JWT suite six. Frontend cases count each `it.each` row separately.
 
 ## 1. Backend unit tests — `backend/tests/unit/`
 
@@ -181,6 +181,27 @@ suite four and the admin-deletion suite two. Frontend cases count each `it.each`
 | U-138 | `env-guards.test.js` | C3: production refuses to start without EMAIL_HASH_SECRET, or with a short one | — (deployment safety, no SRS requirement) | C3 | unit |
 | U-139 | `env-guards.test.js` | C3: outside production an empty EMAIL_HASH_SECRET falls back to the development key | — (deployment safety, no SRS requirement) | C3 | unit |
 | U-140 | `requestLog.test.js` | C3: an email in the query string is redacted from the logged URL | FR13.13 | C3 | unit |
+| U-141 | `lockout.test.js` | S2: the defaults are 5 attempts and 15 minutes | SE-4 | S2 | unit |
+| U-142 | `lockout.test.js` | S2: four wrong passwords are plain 401s, the fifth locks the account | SE-4 | S2 | unit |
+| U-143 | `lockout.test.js` | S2: while locked even the right password is refused | SE-4 | S2 | unit |
+| U-144 | `lockout.test.js` | S2: once the lock has passed the right password works and clears it | SE-4 | S2 | unit |
+| U-145 | `lockout.test.js` | S2: after a lock has passed, the count starts again from zero | SE-4 | S2 | unit |
+| U-146 | `lockout.test.js` | S2: a successful login resets the count | SE-4 | S2 | unit |
+| U-147 | `lockout.test.js` | S2: an unknown email still runs bcrypt (timing) and is never locked | SE-4 | S2 | unit |
+| U-148 | `userIndexes.test.js` | S9: the TTL index removes a document as soon as signupExpiresAt passes, 24 h after sign-up | FR13.1 | S9 | unit |
+| U-149 | `userIndexes.test.js` | S9: the partial filter matches only unverified contributor accounts | FR13.1 | S9 | unit |
+| U-150 | `userIndexes.test.js` | S9: the expiry is never sent to a client | FR13.1 | S9 | unit |
+| U-151 | `userIndexes.test.js` | B2: countVerified counts only accounts that finished sign-up | UI 3.1.1.3, FR13.12 | B2 | unit |
+| U-152 | `userIndexes.test.js` | codes last 10 minutes by default (FIX-PLAN section 0) | FR13.1 | — | unit |
+| U-153 | `consentToken.test.js` | B3: the token carries the version as claim v, and verifying returns it | FR13.1, SE-9 | B3 | unit |
+| U-154 | `consentToken.test.js` | B3: a tampered or wrong-purpose token is rejected | FR13.1, SE-9 | B3 | unit |
+| U-155 | `consentToken.test.js` | B3: pendingSignup accepts a token for the current version | FR13.1, SE-9 | B3 | unit |
+| U-156 | `consentToken.test.js` | B3: pendingSignup refuses a token from before a re-signup (mismatched v) | FR13.1, SE-9 | B3 | unit |
+| U-157 | `consentToken.test.js` | B3: a token without v (issued before this change) counts as version 0 | FR13.1, SE-9 | B3 | unit |
+| U-158 | `pendingSignupRepo.test.js` | B3: versionMatch(0) also matches an account with no authVersion field; other versions match exactly | FR13.1, SE-9 | B3 | unit |
+| U-159 | `pendingSignupRepo.test.js` | B3: updatePendingSignup only updates an unfinished user sign-up at the expected version, bumps the version and selects the code fields | FR13.1, SE-9 | B3 | unit |
+| U-160 | `pendingSignupRepo.test.js` | B3: completePendingSignup only finishes an unfinished user sign-up at the token's version | FR13.1, SE-9 | B3 | unit |
+| U-161 | `pendingSignupRepo.test.js` | B3: removePendingSignup deletes only an unfinished user sign-up at the token's version | FR13.1, SE-9 | B3 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -274,6 +295,31 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-83 | `api-admin-deletion.test.js` | C3: a contributor's submissions are listed a page at a time | FR13.13 | C3 | integration |
 | I-84 | `api-admin-deletion.test.js` | C3: messages can be filtered by topic, status and verified | FR13.13, SE-1 | C3 | integration |
 | I-85 | `api-admin-deletion.test.js` | C3: marking a message done or rejected records who and when; reopening clears it | FR13.13 | C3 | integration |
+| I-86 | `api-account-security.test.js` | S2: five wrong passwords lock the account, even against the right password | SE-4 | S2 | integration |
+| I-87 | `api-account-security.test.js` | S2: once the lock has passed, logging in works and clears it | SE-4 | S2 | integration |
+| I-88 | `api-account-security.test.js` | S2: a successful login resets the count | SE-4 | S2 | integration |
+| I-89 | `api-account-security.test.js` | S2: a password reset ends a lockout | SE-4 | S2 | integration |
+| I-90 | `api-account-security.test.js` | S6: after logout the old token no longer works, even if replayed | SE-2, SE-9 | S6 | integration |
+| I-91 | `api-account-security.test.js` | S6: logging out on one device ends the session on every other device | SE-2, SE-9 | S6 | integration |
+| I-92 | `api-account-security.test.js` | S6: logout without a session still answers 204 | SE-2, SE-9 | S6 | integration |
+| I-93 | `api-account-security.test.js` | a wrong current password is refused with 401 and changes nothing | SE-2, SE-3 | — | integration |
+| I-94 | `api-account-security.test.js` | a mismatched confirmation or the same password is refused with 422 | SE-2, SE-3 | — | integration |
+| I-95 | `api-account-security.test.js` | S6: a password change keeps this session, ends every other one, and the new password works | SE-2, SE-9 | S6 | integration |
+| I-96 | `api-account-security.test.js` | S9: a new sign-up expires 24 hours later, and finishing it removes the expiry | FR13.1 | S9 | integration |
+| I-97 | `api-account-security.test.js` | S9: sign-ups from before the TTL index get an expiry 24 h after they were created | FR13.1 | S9 | integration |
+| I-98 | `api-account-security.test.js` | B3: signing up again with an unfinished email succeeds, updates the details and restarts the expiry | FR13.1 | B3 | integration |
+| I-99 | `api-account-security.test.js` | B3: the password is checked with the code, so only the person who chose it can finish | FR13.1 | B3 | integration |
+| I-100 | `api-account-security.test.js` | B3: a finished account still answers 409 to a new sign-up | FR13.1 | B3 | integration |
+| I-101 | `api-account-security.test.js` | codes expire after 10 minutes | FR13.1 | — | integration |
+| I-102 | `api-account-security.test.js` | B2: public and admin stats count only contributors who finished sign-up | UI 3.1.1.3, FR13.12 | B2 | integration |
+| I-103 | `api-account-security.test.js` | B3: a consent token from before a re-signup is refused, and the other person never gets an account | FR13.1, SE-9 | B3 | integration |
+| I-104 | `api-account-security.test.js` | B3: declining with a token from before a re-signup is refused and the sign-up is kept | FR13.1, SE-9 | B3 | integration |
+| I-105 | `api-account-security.test.js` | S2: five wrong current passwords lock the account, the session stays, and login is locked too | SE-4 | S2 | integration |
+| I-106 | `api-account-security.test.js` | B3: consent that lands while a re-signup is hashing wins; the re-signup gets 409 and changes nothing | FR13.1, SE-9 | B3 | integration |
+| I-107 | `api-account-security.test.js` | B3: a re-signup that commits between consent's check and its write wins; consent gets 400 | FR13.1, SE-9 | B3 | integration |
+| I-108 | `api-account-security.test.js` | B3: a re-signup that commits between decline's check and its delete wins; decline gets 400 and the sign-up is kept | FR13.1, SE-9 | B3 | integration |
+| I-109 | `api-account-security.test.js` | B3: stress, 10 re-signups racing consent: exactly one wins every time and the other person never logs in | FR13.1, SE-9 | B3 | integration |
+| I-110 | `api-account-security.test.js` | B3: the conditional writes treat an account with no authVersion field as version 0 | FR13.1, SE-9 | B3 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -298,6 +344,12 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | S-17 | `contact-verification.test.js` | D4: the code routes are rate limited separately from the contact form | FR13.13 | S4 | security |
 | S-18 | `admin-deletion.test.js` | C3: no DeletionLog or DeletedAccount document contains the email, in any field | FR13.13 | C3 | security |
 | S-19 | `admin-deletion.test.js` | C3: query operators are refused in place of an email, an id or a cursor | FR13.13, SE-10 | C3 | security |
+| S-20 | `jwt.test.js` | S6: a correctly signed token for the current version is accepted (control) | SE-2, SE-9 | S6 | security |
+| S-21 | `jwt.test.js` | S6: a tampered token is rejected | SE-2, SE-9 | S6 | security |
+| S-22 | `jwt.test.js` | S6: an expired token is rejected | SE-2, SE-9 | S6 | security |
+| S-23 | `jwt.test.js` | S6: an unsigned (alg: none) token is rejected | SE-2, SE-9 | S6 | security |
+| S-24 | `jwt.test.js` | S6: the token from before a logout is rejected afterwards | SE-2, SE-9 | S6 | security |
+| S-25 | `jwt.test.js` | S6: the token from before a password change is rejected afterwards | SE-2, SE-9 | S6 | security |
 
 The matrix in S-01 calls every route as an anonymous visitor, a contributor, a suspended
 contributor and an admin. A denied caller must get the exact status (401 or 403); an allowed
@@ -342,6 +394,14 @@ a new route cannot be added without an access decision.
 | FU-32 | `AdminUsers.test.jsx` | C3: plain "Delete" says the recordings are kept, and keeps them | FR13.12, FR13.13 | C3 | unit |
 | FU-33 | `AdminUsers.test.jsx` | C3: a partial failure is shown, with the number that failed | FR13.12, FR13.13 | C3 | unit |
 | FU-34 | `ContactForm.test.jsx` | C2: no field can be filled in until the session check has finished, so nothing typed is lost | FR13.13 | C2 | unit |
+| FU-35 | `consentTokenStore.test.js` | B4: a saved token is read back until it expires | FR13.1, OR-19 | B4 | unit |
+| FU-36 | `consentTokenStore.test.js` | B4: clear removes it | FR13.1, OR-19 | B4 | unit |
+| FU-37 | `consentTokenStore.test.js` | B4: a token without a readable expiry is never stored | FR13.1, OR-19 | B4 | unit |
+| FU-38 | `consentTokenStore.test.js` | B4: blocked or corrupt storage falls back to "no token" instead of throwing | FR13.1, OR-19 | B4 | unit |
+| FU-39 | `VerifyEmail.test.jsx` | B3: sends the sign-up password with the code | FR13.1 | B3 | unit |
+| FU-40 | `VerifyEmail.test.jsx` | B3: the password is required before anything is sent | FR13.1 | B3 | unit |
+| FU-41 | `VerifyEmail.test.jsx` | B4: the consent token is saved, so the consent page survives a reload | FR13.1, OR-19 | B4 | unit |
+| FU-42 | `VerifyEmail.test.jsx` | B3: a wrong sign-up password from the server is shown next to the password field | FR13.1 | B3 | unit |
 
 ## 5. Frontend integration tests — `frontend/test/integration/`
 
@@ -370,6 +430,17 @@ Rendered with the real router, providers and API client; only the network is moc
 | FI-19 | `AdminMessages.test.jsx` | C3: find contributor → delete recordings with the confirmed count → mark done | FR13.13 | C3 | integration |
 | FI-20 | `AdminMessages.test.jsx` | C3: an unverified request with no current account is flagged for a manual check | FR13.13 | C3 | integration |
 | FI-21 | `AdminMessages.test.jsx` | C3: a partial failure is shown and the remaining count is kept | FR13.13 | C3 | integration |
+| FI-22 | `ConsentReload.test.jsx` | B4: keeps the visitor on the consent page, and accepting uses the saved token then clears it | FR13.1, OR-19 | B4 | integration |
+| FI-23 | `ConsentReload.test.jsx` | B4: declining also clears the saved token | FR13.1, OR-19 | B4 | integration |
+| FI-24 | `ConsentReload.test.jsx` | B4: with no saved token the visitor is sent back to verify their email | FR13.1, OR-19 | B4 | integration |
+| FI-25 | `AccountSecurity.test.jsx` | S6: sends the three fields and confirms that other devices were signed out | SE-2, SE-9 | S6 | integration |
+| FI-26 | `AccountSecurity.test.jsx` | a wrong current password is shown next to that field | SE-2, SE-3 | — | integration |
+| FI-27 | `AccountSecurity.test.jsx` | a server field error (same password) is shown next to the new password | SE-2, SE-3 | — | integration |
+| FI-28 | `AccountSecurity.test.jsx` | mismatched or short passwords never reach the network | SE-2, SE-3 | — | integration |
+| FI-29 | `AccountSecurity.test.jsx` | S6: calls logout and leaves the profile | SE-2, SE-9 | S6 | integration |
+| FI-30 | `AccountSecurity.test.jsx` | S6: explains that it ends every session, this one included | SE-2, SE-9 | S6 | integration |
+| FI-31 | `ConsentReload.test.jsx` | B3: an expired sign-up step clears the saved token and offers a fresh sign-up | FR13.1, SE-9 | B3 | integration |
+| FI-32 | `ConsentReload.test.jsx` | B3: declining with an expired step also clears the saved token | FR13.1, SE-9 | B3 | integration |
 
 ## 6. End-to-end tests — `e2e/tests/`
 
@@ -385,6 +456,9 @@ API with an in-memory database.
 | E-05 | `contact.spec.js` | C2: a signed-in contributor sends a contact message from the landing page | FR13.13 | C2 | E2E |
 | E-06 | `contact.spec.js` | D4: a signed-out deletion request is confirmed with the emailed code | FR13.13 | S4 | E2E |
 | E-07 | `admin-deletion.spec.js` | C3: a deletion request ends with 0 recordings left for that contributor | FR13.13 | C3 | E2E |
+| E-08 | `account-security.spec.js` | S2: five wrong passwords lock the account, and the right one is refused until the lock passes | SE-4 | S2 | E2E |
+| E-09 | `account-security.spec.js` | S6: resetting the password on another device logs out the old session | SE-2, SE-9 | S6 | E2E |
+| E-10 | `account-security.spec.js` | B4: reloading the consent page keeps the visitor on it, and accepting still works | FR13.1, OR-19 | B4 | E2E |
 
 ## 7. Gaps to close in later phases
 
@@ -399,7 +473,7 @@ Drive upload`) and a row here.
 | S1 | **Covered in Phase 3** (U-90, U-91, FU-24; the whole suite re-run on the patched versions). The CI audit job is now required. | 3 |
 | C2, S4 | **Covered in Phase 4** (U-92–U-123, I-39 adjusted, I-57–I-72, S-14–S-17, the two new access-matrix routes, FU-25–FU-28, FI-05–FI-16, E-05, E-06). | 4 |
 | C3 | **Covered in Phase 5** (U-124–U-140, I-73–I-85, S-18, S-19, the four new access-matrix routes, FU-29–FU-34, FI-17–FI-21, E-07). | 5 |
-| S2, S6, S9, B2, B3, B4 | login lockout, logout invalidating the JWT, unverified-signup expiry, verified-only counts, re-signup, consent token in sessionStorage | 6 |
+| S2, S6, S9, B2, B3, B4 | **Covered in Phase 6** (U-141–U-161, I-86–I-110, S-20–S-25, the new access-matrix route, FU-35–FU-42, FI-22–FI-32, E-08–E-10). | 6 |
 | S7 | admin list promotion/demotion and the activity log | 7 |
 | B5, B7 | submissions export (CSV/JSON) and paginated admin data | 8 |
 | S8, S10 | CSP and security headers, `X-Request-Id` validation, axe checks | 9 |

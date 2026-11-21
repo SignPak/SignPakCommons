@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, routeThirdParty, test } from '../support/test.js'
 import { apiOrigin, webOrigin } from '../playwright.config.js'
 import { signUpThroughUi, uniqueEmail } from '../support/flows.js'
 
@@ -63,6 +63,7 @@ test('C3: a deletion request ends with 0 recordings left for that contributor', 
 
   // 3. An admin finds the request, deletes the recordings and closes it.
   const adminContext = await browser.newContext()
+  await routeThirdParty(adminContext)
   const admin = await adminContext.newPage()
   await admin.goto('/login')
   await admin.getByLabel('Email address').fill(ADMIN.email)
