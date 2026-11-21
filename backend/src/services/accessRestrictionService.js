@@ -50,28 +50,4 @@ export const accessRestrictionService = {
     ] })
   },
 
-  async temporarilyRestrictRequest(ip, deviceId, reason, durationMs) {
-    const target = deviceId ? { type: 'device', value: deviceId } : { type: 'ip', value: ip }
-    const filter = { type: target.type, identifierHash: hash(target.value) }
-    const expiresAt = new Date(Date.now() + durationMs)
-    let restriction = await AccessRestriction.findOne(filter)
-    if (restriction) {
-      if (!restriction.expiresAt) return
-      restriction.expiresAt = expiresAt
-      restriction.reason = reason
-      await restriction.save()
-      return
-    }
-    try {
-      await AccessRestriction.create({ ...filter, identifierHint: hint(target.type, target.value), reason, expiresAt })
-    } catch (error) {
-      if (error?.code !== 11000) throw error
-      restriction = await AccessRestriction.findOne(filter)
-      if (restriction?.expiresAt) {
-        restriction.expiresAt = expiresAt
-        restriction.reason = reason
-        await restriction.save()
-      }
-    }
-  },
 }

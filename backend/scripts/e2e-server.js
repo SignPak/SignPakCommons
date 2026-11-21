@@ -40,6 +40,9 @@ Object.assign(process.env, {
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'Admin@12345',
   // Short enough that an E2E test can wait out a per-video cooldown.
   SUBMISSION_COOLDOWN_MS: process.env.SUBMISSION_COOLDOWN_MS || '2000',
+  // Every browser in the suite connects from 127.0.0.1, so the per-sender deletion-request
+  // limit (2 a day in production) would stop the second engine's run.
+  CONTACT_SENDER_DAILY_LIMIT: process.env.CONTACT_SENDER_DAILY_LIMIT || '50',
   MONGODB_URI: 'mongodb://placeholder/unused', // replaced below, before anything connects
 })
 
@@ -47,14 +50,20 @@ const { MongoMemoryServer } = await import('mongodb-memory-server')
 const memory = await MongoMemoryServer.create()
 process.env.MONGODB_URI = memory.getUri('signpak_e2e')
 
-const [{ default: app }, { connectDb, disconnectDb }, { storageService }, { authService }, { default: mongoose }] =
+const [{ default: app }, { connectDb, disconnectDb }, { storageService }, { authService }, { contactService }, { default: mongoose }] =
   await Promise.all([
     import('../src/app.js'),
     import('../src/config/db.js'),
     import('../src/services/storage/index.js'),
     import('../src/services/authService.js'),
+    import('../src/services/contactService.js'),
     import('mongoose'),
   ])
+
+// Contact messages are saved as usual but never forwarded to Web3Forms from a test run.
+contactService.deliver = async ({ topic, verification }) => {
+  console.log(`[e2e] contact message not forwarded: ${topic}${verification ? ` (${verification})` : ''}`)
+}
 
 await connectDb(process.env.MONGODB_URI)
 await mongoose.connection.dropDatabase()

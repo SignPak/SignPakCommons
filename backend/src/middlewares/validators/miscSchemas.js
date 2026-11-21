@@ -8,6 +8,11 @@ export const contactSchema = z.object({
   message: z.string({ error: 'Write a message.' }).trim().min(1, 'Write a message.').max(2000, 'Keep your message under 2000 characters.'),
 })
 
+// D4: the six-digit code emailed for a signed-out deletion request.
+export const contactCodeSchema = z.object({
+  code: z.string({ error: 'Enter the six-digit code from your email.' }).trim().regex(/^\d{6}$/, 'Enter the six-digit code from your email.'),
+})
+
 export const statsQuerySchema = z.object({ days: z.coerce.number().int().min(7).max(90).default(14) })
 
 export const limitQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) })

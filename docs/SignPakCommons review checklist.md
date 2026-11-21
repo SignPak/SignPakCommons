@@ -22,7 +22,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 | FR13.10 Coverage count, GitHub/LinkedIn | Done | |
 | FR13.11 Admin videos, posters, categories, demo video | Done | |
 | FR13.12 Stats, suspend/delete, IP/device restriction | Done | Dashboard stats are worked out in the browser (see B7). |
-| FR13.13 Deletion request through the contact form | **Not working** | See C2 and C3. |
+| FR13.13 Deletion request through the contact form | **User side works (Phase 4)**; admin side pending | The form sends and deletion requests are verified (C2, S4). Acting on a request (deleting the recordings) is C3, Phase 5. |
 | OR-19 Consent notice | Done | Version `2026-10-15`, the same on frontend and backend. |
 
 ## Critical (fix first)
@@ -30,7 +30,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 - [ ] **C1. The live backend is down.** *(Phase 1: code and deployment files done — `deploy/` (Nginx, PM2, deploy.sh, server guide), health reports storage, graceful shutdown. Domain decided: `api.commons.signpak.tech` (D2). **Pending:** the server (D1) and deploying to it; see `docs/phase-reports/PHASE-1.md`.)* The deployed frontend calls `https://signpakcommons-production.up.railway.app`, which answers `404 Application not found`. Nobody can log in or upload on commonssignpak.vercel.app.
   - Redeploy or restore the backend.
   - Set `VITE_API_ORIGIN` to the new URL and rebuild the frontend.
-- [ ] **C2. The contact form never sends.** In `frontend/src/pages/Landing.jsx`, `ContactForm.submit()` sets `status = 'sending'` and never calls `api.contact.send`, so the button stays on "Sending…".
+- [x] **C2. The contact form never sends.** *(Phase 4: the form calls `api.contact.send`, offers the topics that fit the visitor, shows field and server errors, and sends a signed-out deletion request on to `/contact/verify`. Also fixed: the public landing page now loads the session, so a signed-in contributor gets the signed-in form. Proven in E2E on all three engines.)* In `frontend/src/pages/Landing.jsx`, `ContactForm.submit()` sets `status = 'sending'` and never calls `api.contact.send`, so the button stays on "Sending…".
   - Connect the call and handle success and errors.
   - Restore the topic `<select>`, which is commented out.
   - For signed-out visitors, default the topic to `recording-deletion`. Otherwise `contactService.send` treats a signed-out `general` message as abuse and blocks the device for 10 minutes.
@@ -51,7 +51,7 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 - [ ] **S3. Proxy and rate-limit setup.** *(Phase 1: `TRUST_PROXY=true` in `backend/.env.production.example`, a startup warning when it is off in production, request logs record the visitor IP. Rate limits stay in memory with one PM2 process, as FIX-PLAN D1 decides, instead of an Upstash store. **Pending:** confirming real IPs in the server logs.)*
   - Set `TRUST_PROXY=true` on the host. Without it, all users share one IP and get 20 login attempts per 15 minutes in total.
   - The limits are kept in memory and reset on restart. Consider an Upstash-backed store, since Upstash is already configured.
-- [ ] **S4. Contact form abuse** (`contactService.js`):
+- [x] **S4. Contact form abuse** (`contactService.js`): *(Phase 4: nothing in the contact flow restricts a device or IP any more; refusals are plain 403/409/429. The site-wide cap applies to general/partnership messages only, deletion requests are exempt; signed-out deletion requests are limited to 2 a day per IP and per device. Signed-out deletion requests are confirmed with a six-digit code emailed to the account (D4); requests for an email with no account stay unverified for a manual check. The auto-block function and `CONTACT_ABUSE_BLOCK_MINUTES` are removed.)*
   - Anyone can use up the site-wide cap (`CONTACT_DAILY_LIMIT`, 25 a day), and whoever hits it is then blocked for 10 minutes. Make the cap per IP or device, and stop blocking the user who happens to hit it.
   - Signed-out deletion requests aren't verified. Confirm through the account email (for example a code or link) before acting.
 - [x] **S5. Error details leak in the 503 response.** *(Phase 1: `detail` only outside production; proven by a security test that runs a real production process.)* `ensureServicesInitialized` in `backend/src/services/initialization.js` returns `detail: error.message`. Remove it in production.

@@ -167,7 +167,7 @@ shared credentials.
 | `WEB3FORMS_ACCESS_KEY` | Create an access key at Web3Forms | Required in production for contact-message delivery. |
 | `CONTACT_DAILY_LIMIT` | Set manually; default `25` | Maximum successfully delivered messages per UTC day. |
 | `CONTACT_USER_DAILY_LIMIT` | Set manually; default `1` | Maximum contact messages per account per UTC day. |
-| `CONTACT_ABUSE_BLOCK_MINUTES` | Set manually; default `10`, range `1`–`1440` | Temporary device/IP restriction for anonymous, mismatched-email, or over-limit contact attempts. |
+| `CONTACT_SENDER_DAILY_LIMIT` | Set manually; default `2` | Signed-out recording/data deletion requests allowed per IP address and per device each UTC day. A request over either limit gets 429; nothing is ever blocked (S4). |
 | `E2E_TEST_HOOKS` | Leave unset outside the test environment; default `false` | Test-only. With `NODE_ENV=test`, mounts `GET /__test/emails` so the Playwright suite can read captured codes. The server refuses to start when this is set with `NODE_ENV=production`. |
 
 In production, `BREVO_API_KEY`, a valid `BREVO_SENDER_EMAIL`, and

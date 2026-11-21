@@ -19,6 +19,7 @@ import Player from './pages/Player'
 import ProfileDashboard from './pages/ProfileDashboard'
 import RecordingEditor from './pages/RecordingEditor'
 import Consent from './pages/Consent'
+import ContactVerify from './pages/ContactVerify'
 import Signup from './pages/Signup'
 import VerifyEmail from './pages/VerifyEmail'
 
@@ -29,6 +30,8 @@ export default function App() {
       <Route index element={<Landing />} />
       <Route path="demo" element={<Demo />} />
       <Route path="faq" element={<Faq />} />
+      {/* D4: outside the guards, because the sender may be signed out or have no account any more. */}
+      <Route path="contact/verify" element={<ContactVerify />} />
       <Route element={<GuestOnly />}>
         <Route path="login" element={<Login />} />
         <Route path="signup" element={<Signup />} />

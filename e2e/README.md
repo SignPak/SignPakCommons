@@ -46,10 +46,14 @@ so it cannot reach the deployed API.
 | --- | --- |
 | `tests/landing.spec.js` | the landing page renders with no console or page errors; the API is reachable through the proxy |
 | `tests/signup.spec.js` | sign-up → emailed code → consent → library |
+| `tests/cross-host-cookie.spec.js` | the login cookie set by `api.localtest.me` works on `commons.localtest.me` (C4) |
+| `tests/contact.spec.js` | a signed-in contributor sends a contact message (C2); a signed-out deletion request is confirmed with the emailed code (D4) |
+
+The E2E API saves contact messages but never forwards them to Web3Forms, and raises the
+per-sender deletion-request limit because every browser connects from 127.0.0.1.
 
 Later phases add the rest of the list in `docs/FIX-PLAN.md` section 4.4 (login and lockout,
-forgot password, record/trim/submit, admin flows, the contact and deletion-request flow, the
-CSV export, and the cross-hostname cookie check).
+forgot password, record/trim/submit, admin flows and the CSV export).
 
 Recording flows need a camera: the Chromium project runs with
 `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`, and Firefox and WebKit

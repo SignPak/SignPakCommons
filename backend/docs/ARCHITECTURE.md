@@ -83,7 +83,8 @@ compression, JSON body parsing, cookie parsing, and request logging. A global
 limiter applies to `/api/v1`; auth, contact, and upload endpoints have additional
 limits. State-changing browser requests carrying an `Origin` must use a configured
 `CLIENT_ORIGIN`. Requests are also checked against hashed device/IP restrictions;
-admin routes are exempt from this restriction middleware to allow recovery.
+admin routes are exempt from this restriction middleware to allow recovery. Only an
+admin creates restrictions (FR13.12); nothing in the contact flow does (S4).
 
 Authentication uses the HTTP-only `signpak_token` cookie. Authenticated requests
 reload the account from MongoDB, so role changes, suspensions, deletion, and
@@ -109,9 +110,24 @@ reference; the API never streams or mutates the archived file. Contributor
 responses omit archive paths, while admins can see archive metadata. Account
 deletion removes the account and its cooldown claims but retains its submissions
 and archived recording objects. The contact form accepts a separate
-recording/data deletion request before or after account deletion, at any time;
-requests made after account deletion may require the team to verify and manually
-match the former contributor. Deleting a base video does not remove submissions.
+recording/data deletion request before or after account deletion, at any time
+(FR13.13). Deleting a base video does not remove submissions.
+
+Deletion requests are verified before the team acts on them (D4):
+
+1. A signed-in contributor's request is saved with `verified: true`.
+2. A signed-out request is saved with `verified: false`; `contactService` answers at
+   once and then, in the background, emails a six-digit code to the address if an
+   account uses it (`src/utils/otp.js`, the same HMAC, expiry and attempt rules as
+   sign-up). The answer is identical whether or not an account exists.
+3. `POST /contact/:id/verify` with the right code sets `verified: true`;
+   `POST /contact/:id/resend` sends a new code at most once a minute.
+4. A request for an email with no account stays unverified for the team to check by
+   hand. Each message also has `status`, `handledAt` and `handledBy` for that work.
+
+Signed-out requests are limited per IP and per device (`CONTACT_SENDER_DAILY_LIMIT`,
+keyed by an HMAC so neither is stored in the clear) and are exempt from the site-wide
+cap on general messages, so that cap cannot be used to block deletion requests.
 
 Uploads first land in a temporary directory (`UPLOAD_DIR/tmp`). Multer limits file size and
 count; services then inspect file signatures before handing valid assets to the selected

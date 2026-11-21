@@ -167,10 +167,21 @@ bytes.
 
 Contributors can delete their account from the profile after confirming their
 password; submitted recordings and contribution data are retained. The public
-contact form accepts a dedicated recording/data deletion topic without sign-in
-at any time, including after account deletion. Requests sent after deletion may
-require the team to verify and manually match the former contributor. Data
-already incorporated into a released model cannot be removed from that model.
+contact form (`src/components/ContactForm.jsx`, on the landing page) accepts a
+dedicated recording/data deletion topic without sign-in at any time, including
+after account deletion. Signed-out visitors see only that topic; signed-in
+contributors also see General inquiry and Partnership. Data already incorporated
+into a released model cannot be removed from that model.
+
+A signed-out deletion request goes on to `/contact/verify?id=<message id>`
+(`src/pages/ContactVerify.jsx`), where the sender enters the six-digit code
+emailed to the account; a new code can be requested once a minute. The page never
+says whether an account exists: a sender with no account is told the team will
+check the request by hand. A signed-in request needs no code.
+
+The landing page is public, so no route guard loads the session there. It calls
+`ensureSession()` itself, and the contact form keeps its send button disabled until
+the session is known, so a signed-in contributor always gets the signed-in form.
 
 ## UI and styling
 

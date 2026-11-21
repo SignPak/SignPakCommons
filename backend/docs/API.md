@@ -160,12 +160,41 @@ reading metadata from the configured storage driver.
 
 ## Contact, rate limits, and access restrictions
 
-Contact requires a signed-in account and a submitted email matching that account.
-Each account can send one message per UTC day; successful deliveries are limited
-to `CONTACT_DAILY_LIMIT` per UTC day (default 25). Delivery uses Web3Forms and
-successful messages are retained for the admin inbox. Anonymous or mismatched
-requests, and requests after the global daily cap, temporarily restrict the
-request's device ID or IP for `CONTACT_ABUSE_BLOCK_MINUTES` (default 10).
+`POST /api/v1/contact` takes `{ topic, name, email, message }`, where `topic` is
+`general`, `partnership` or `recording-deletion` (default `general`). Delivery uses
+Web3Forms and every delivered message is kept for the admin inbox. The rules
+(FIX-PLAN section 0, S4 and D4):
+
+| Sender | Topics | Limits | Deletion request |
+| --- | --- | --- | --- |
+| Signed in | all three; `email` must match the account (else 403) | one general/partnership message per UTC day (`CONTACT_USER_DAILY_LIMIT`, 409 when used); deletion requests don't count | verified at once |
+| Signed out | `recording-deletion` only (anything else 403) | `CONTACT_SENDER_DAILY_LIMIT` (default 2) per IP **and** per device per UTC day (429) | verified with an emailed code |
+
+General and partnership messages share a site-wide cap of `CONTACT_DAILY_LIMIT`
+per UTC day (default 25; 429 once reached). Deletion requests are exempt from it,
+so nobody can use the cap up to stop others asking for their data to be deleted.
+None of these refusals ever restricts the device or IP: they are plain 403, 409 and
+429 answers.
+
+The `201` body is `{ data: { received: true, id, verificationRequired } }`.
+`verificationRequired` is `true` only for a signed-out deletion request: if an
+account uses that email, a six-digit code is emailed to it (it expires after
+`AUTH_OTP_TTL_MINUTES` and dies after `AUTH_OTP_MAX_ATTEMPTS` wrong tries). The
+answer is the same whether or not an account exists. A request for an email with
+no account stays unverified and is checked by hand by the team.
+
+- `POST /api/v1/contact/:id/verify` with `{ code }` returns `200 { data: { verified: true } }`.
+  A wrong, expired or used-up code, or an unknown id, returns the same
+  `400 BAD_REQUEST` ("That code is invalid or has expired…").
+- `POST /api/v1/contact/:id/resend` returns `202 { data: { message } }` with the same
+  message whether or not an account exists, and emails a new code only when one
+  does. Within `AUTH_OTP_RESEND_SECONDS` (default 60) of the last send it returns
+  429; for a request that needs no code (signed-in or already verified) it returns 400.
+
+Both code routes are limited to 20 requests per 15 minutes per IP when rate limiting
+is on. Admins see `verified`, `status` (`open`, `done`, `rejected`), `handledAt` and
+`handledBy` on each message in `GET /api/v1/admin/messages`; the code fields are never
+returned.
 
 When `RATE_LIMIT_ENABLED=true`, the API has a global limit of 1,000 requests per
 15 minutes, auth endpoints allow 20 attempts per 15 minutes, contact allows 5

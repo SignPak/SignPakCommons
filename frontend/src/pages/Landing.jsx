@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import Field from '../components/Field'
+import ContactForm from '../components/ContactForm'
 import Footer from '../components/Footer'
-import { Alert, Arrow, Button, ButtonLink, Eyebrow } from '../components/ui'
+import { Arrow, ButtonLink, Eyebrow } from '../components/ui'
 import { api } from '../services/api'
 import { paths } from '../routes/appRoutes'
 
@@ -45,7 +45,13 @@ const contributorPerks = [
 ]
 
 export default function Landing() {
-  const { user } = useAuth()
+  const { user, sessionChecked, ensureSession } = useAuth()
+
+  // The landing page is public, so no route guard loads the session. Check it here, so a
+  // signed-in contributor who opens the site directly gets the signed-in contact form (C2).
+  useEffect(() => {
+    if (!sessionChecked) void ensureSession()
+  }, [sessionChecked, ensureSession])
   const [stats, setStats] = useState(null)
   const [statsError, setStatsError] = useState(false)
 
@@ -227,73 +233,3 @@ export default function Landing() {
   )
 }
 
-function ContactForm() {
-  const { user } = useAuth()
-  const [values, setValues] = useState(() => ({ name: user ? `${user.firstName} ${user.surname}` : '', email: user?.email || '', message: '' }))
-  const [status, setStatus] = useState('idle') // idle | sending | sent | error
-  const [errorMessage, setErrorMessage] = useState('')
-  const change = (event) => setValues((current) => ({ ...current, [event.target.name]: event.target.value }))
-
-  const submit = async (event) => {
-    event.preventDefault()
-    setStatus('sending')
-    setErrorMessage('')
-  }
-
-  if (status === 'sent') {
-    return (
-      <div className="contact-card contact-done">
-        <span className="contact-check" aria-hidden="true">✓</span>
-        <h3 className="display display-md">Message received.</h3>
-        <p>Thank you for reaching out! We have received your message and will get back to you shortly.</p>
-        <Button variant="ghost" onClick={() => setStatus('idle')}>
-          Send another message
-        </Button>
-      </div>
-    )
-  }
-
-  return (
-    <form className="contact-card" onSubmit={submit}>
-      {/* <Field as="select" label="Contact topic" value={topic} onChange={(event) => setTopic(event.target.value)} disabled={!user}>
-        {user && <><option value="general">General inquiry</option><option value="partnership">Partnership</option></>}
-        <option value="recording-deletion">Request recording/data deletion</option>
-      </Field>
-      {topic === 'recording-deletion' && <p className="contact-copy">You can submit this request before or after deleting your account, at any time. Include the email used on your contributor account so the team can identify the data. After account deletion, the team may ask for additional information to verify and match your former recordings. Account deletion alone does not delete recordings. Recordings already used in a released model cannot be removed from that model.</p>} */}
-      <Field
-        label="Your name"
-        name="name"
-        value={values.name}
-        onChange={change}
-        placeholder="e.g. Ali Imran"
-        required
-        autoComplete="name"
-      />
-      <Field
-        label="Email address"
-        name="email"
-        type="email"
-        value={values.email}
-        onChange={change}
-        readOnly={Boolean(user)}
-        placeholder="you@example.com"
-        required
-        autoComplete="email"
-      />
-      <Field
-        as="textarea"
-        label="Your message"
-        name="message"
-        value={values.message}
-        onChange={change}
-        placeholder="Ask a question, share feedback, or inquire about contributing datasets…"
-        rows={5}
-        required
-      />
-      {status === 'error' && <Alert tone="error">{errorMessage}</Alert>}
-      <Button type="submit" block disabled={status === 'sending'}>
-        {status === 'sending' ? 'Sending…' : 'Send message'} <Arrow />
-      </Button>
-    </form>
-  )
-}

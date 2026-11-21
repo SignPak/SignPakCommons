@@ -75,6 +75,10 @@ const matrix = {
   // Contact: signed-out visitors may send a recording-deletion request, so the route itself
   // is open and contactService decides on the topic.
   'POST /api/v1/contact': [OPEN, OPEN, OPEN, OPEN],
+  // D4: confirming a signed-out deletion request needs no session (the sender may no longer
+  // have an account); the message id plus the emailed code are the proof.
+  'POST /api/v1/contact/:id/verify': [OPEN, OPEN, OPEN, OPEN],
+  'POST /api/v1/contact/:id/resend': [OPEN, OPEN, OPEN, OPEN],
 
   // Admin workspace
   'GET /api/v1/admin/users': [401, 403, 401, OPEN],

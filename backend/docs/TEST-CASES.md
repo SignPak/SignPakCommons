@@ -20,21 +20,22 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 3** (backend 1.0.9, frontend 1.0.11):
+Counts as of **Phase 4** (backend 1.0.10, frontend 1.0.12):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 19 | 91 |
-| Integration (backend) | `backend/tests/integration/` | 12 | 56 |
-| Security (backend) | `backend/tests/security/` | 5 | 59 |
-| Unit (frontend) | `frontend/test/unit/` | 8 | 24 |
-| Integration (frontend) | `frontend/test/integration/` | 1 | 4 |
-| End-to-end | `e2e/tests/` | 3 | 12 (4 tests × 3 browsers) |
-| **Total** | | **48** | **246** |
+| Unit (backend) | `backend/tests/unit/` | 22 | 117 |
+| Integration (backend) | `backend/tests/integration/` | 13 | 69 |
+| Security (backend) | `backend/tests/security/` | 6 | 65 |
+| Unit (frontend) | `frontend/test/unit/` | 9 | 28 |
+| Integration (frontend) | `frontend/test/integration/` | 3 | 21 |
+| End-to-end | `e2e/tests/` | 4 | 18 (6 tests × 3 browsers) |
+| **Total** | | **57** | **318** |
 
-The backend security count is per-route: the access matrix produces one case per route (47
+The backend security count is per-route: the access matrix produces one case per route (49
 today) plus the completeness check; the hook suite adds three, the production-error suite
-three, the listen-address suite two and the upload-type suite three.
+three, the listen-address suite two, the upload-type suite three and the contact-verification
+suite four. Frontend cases count each `it.each` row separately.
 
 ## 1. Backend unit tests — `backend/tests/unit/`
 
@@ -131,6 +132,32 @@ three, the listen-address suite two and the upload-type suite three.
 | U-89 | `localStorage.test.js` | C5: the startup sweep is a no-op on an empty or missing temp folder | FR13.8 | C5 | unit |
 | U-90 | `dependencyFloors.test.js` | S1: the version comparison orders releases numerically | — (deployment safety, no SRS requirement) | S1 | unit |
 | U-91 | `dependencyFloors.test.js` | S1: production dependencies are at or above their patched versions | — (deployment safety, no SRS requirement) | S1 | unit |
+| U-92 | `otp.test.js` | generateOtp returns six digits, never with a leading zero lost | FR13.1, FR13.13 | — | unit |
+| U-93 | `otp.test.js` | a code hash is bound to its purpose and subject | FR13.1, FR13.13 | — | unit |
+| U-94 | `otp.test.js` | matchesOtp accepts only the right code for the right purpose and subject | FR13.1, FR13.13 | — | unit |
+| U-95 | `otp.test.js` | matchesOtp is false without a stored hash or with a malformed one | FR13.1, FR13.13 | — | unit |
+| U-96 | `contactRules.test.js` | S4: a signed-out general message is refused with 403 before any quota is touched | FR13.13 | S4 | unit |
+| U-97 | `contactRules.test.js` | S4: a signed-in message from another email is refused with 403 | FR13.13 | S4 | unit |
+| U-98 | `contactRules.test.js` | S4: the site-wide cap answers 429 and releases the user quota it claimed | FR13.13 | S4 | unit |
+| U-99 | `contactRules.test.js` | S4: deletion requests never touch the site-wide cap | FR13.13 | S4 | unit |
+| U-100 | `contactRules.test.js` | S4: signed-out deletion requests are limited per IP and per device (default two a day) | FR13.13 | S4 | unit |
+| U-101 | `contactRules.test.js` | S4: the per-sender keys are keyed hashes, never the raw IP or device ID | FR13.13 | S4 | unit |
+| U-102 | `contactRules.test.js` | S4: a failed forward removes the message and releases every quota it claimed | FR13.13 | S4 | unit |
+| U-103 | `contactRules.test.js` | D4: a signed-in deletion request is verified at once and skips the one-a-day quota | FR13.13 | S4 | unit |
+| U-104 | `contactRules.test.js` | D4: a signed-out deletion request is saved unverified with a send time, and forwarded as pending | FR13.13 | S4 | unit |
+| U-105 | `contactRules.test.js` | D4: a code is emailed when an account uses the email, and none otherwise | FR13.13 | S4 | unit |
+| U-106 | `contactRules.test.js` | D4: the send answer is identical with and without an account | FR13.13 | S4 | unit |
+| U-107 | `contactRules.test.js` | D4: the right code verifies the request and clears the code | FR13.13 | S4 | unit |
+| U-108 | `contactRules.test.js` | D4: an expired code is refused with the generic 400 | FR13.13 | S4 | unit |
+| U-109 | `contactRules.test.js` | D4: the fifth wrong attempt clears the code | FR13.13 | S4 | unit |
+| U-110 | `contactRules.test.js` | D4: an unknown id, a non-deletion message and a request with no code all give the same 400 | FR13.13 | S4 | unit |
+| U-111 | `contactRules.test.js` | D4: resend waits a minute after the last send, then claims the send time and answers the same for everyone | FR13.13 | S4 | unit |
+| U-112 | `contactRules.test.js` | D4: resend is refused for signed-in or verified requests | FR13.13 | S4 | unit |
+| U-113 | `contactSchemas.test.js` | C2: the contact body accepts the three topics and defaults to general | FR13.13, SE-10 | C2 | unit |
+| U-114 | `contactSchemas.test.js` | C2: the contact body refuses an unknown topic, a bad email, and empty or oversized fields | FR13.13, SE-10 | C2 | unit |
+| U-115 | `contactSchemas.test.js` | D4: the code body takes exactly six digits | FR13.13, SE-10 | S4 | unit |
+| U-116 | `contactSchemas.test.js` | D4: a NoSQL operator object is not a code | FR13.13, SE-10 | S4 | unit |
+| U-117 | `contactSchemas.test.js` | D4: the message id must be a 24-character object id | FR13.13, SE-10 | S4 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -177,7 +204,7 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-36 | `api-submissions.test.js` | deleting a base video keeps contributors' submissions on record | FR13.8, FR13.11 | — | integration |
 | I-37 | `api-admin-stats-contact.test.js` | stats add up | FR13.12, SE-1 | B7 (to extend) | integration |
 | I-38 | `api-admin-stats-contact.test.js` | deleting a category unassigns its videos instead of deleting them | FR13.11 | — | integration |
-| I-39 | `api-admin-stats-contact.test.js` | contact delivery requires matching account email, enforces quotas, and blocks abusive devices | FR13.13, SE-1, SE-10 | S4 (to change) | integration |
+| I-39 | `api-admin-stats-contact.test.js` | contact delivery requires matching account email and enforces quotas; S4: refusals never block the device | FR13.13, SE-1, SE-10 | S4 | integration |
 | I-40 | `api-admin-stats-contact.test.js` | oversized uploads are rejected with 413 | FR13.7, SE-10 | — | integration |
 | I-41 | `api-admin-user-controls.test.js` | suspending a user blocks its existing session and login; reactivation restores access | FR13.12, SE-2 | — | integration |
 | I-42 | `api-admin-user-controls.test.js` | contributors can delete their account without removing submitted recordings | FR13.13, SE-2 | C3 (to change) | integration |
@@ -195,6 +222,19 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-54 | `api-storage-drive.test.js` | B1: a failed removal of the previous demo video keeps the new one playable | FR13.11 | B1 | integration |
 | I-55 | `api-storage-drive.test.js` | B6: .m4a and .3gp recordings are rejected with 422 and nothing is stored | FR13.8, SE-10 | B6 | integration |
 | I-56 | `api-storage-drive.test.js` | C5: old temp files are cleared when storage initializes at startup | FR13.8 | C5 | integration |
+| I-57 | `api-contact.test.js` | S4: a signed-out general message gets 403 and the device is not blocked afterwards | FR13.13 | S4 | integration |
+| I-58 | `api-contact.test.js` | S4: a signed-in message from another email gets 403 and the device is not blocked | FR13.13 | S4 | integration |
+| I-59 | `api-contact.test.js` | S4: the site-wide cap answers 429 without blocking, and deletion requests are exempt from it | FR13.13 | S4 | integration |
+| I-60 | `api-contact.test.js` | S4: two signed-out deletion requests a day per IP; the third gets 429 and nothing is blocked | FR13.13 | S4 | integration |
+| I-61 | `api-contact.test.js` | S4: a failed forward releases the sender quota | FR13.13 | S4 | integration |
+| I-62 | `api-contact.test.js` | D4: a signed-out request for an account is saved unverified, a code is emailed, and the code verifies it | FR13.13 | S4 | integration |
+| I-63 | `api-contact.test.js` | D4: five wrong codes kill the code, so even the right one fails afterwards | FR13.13 | S4 | integration |
+| I-64 | `api-contact.test.js` | D4: an expired code is refused | FR13.13 | S4 | integration |
+| I-65 | `api-contact.test.js` | D4: resend is refused within a minute of the last send, then sends a new code | FR13.13 | S4 | integration |
+| I-66 | `api-contact.test.js` | D4: a signed-in deletion request is verified at once and does not use the one-a-day quota | FR13.13 | S4 | integration |
+| I-67 | `api-contact.test.js` | D4: a request for an email with no account sends no code and stays unverified | FR13.13 | S4 | integration |
+| I-68 | `api-contact.test.js` | D4: unknown ids and malformed codes are refused | FR13.13 | S4 | integration |
+| I-69 | `api-contact.test.js` | D4: the admin inbox shows verified and status, and never the code fields | FR13.13 | S4 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -213,6 +253,10 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | S-11 | `upload-types.test.js` | B6: disguised files are rejected on the contributor recording route | FR13.8, SE-10 | B6 | security |
 | S-12 | `upload-types.test.js` | B6: disguised files are rejected on the reference video route | FR13.11, SE-10 | B6 | security |
 | S-13 | `upload-types.test.js` | B6: disguised files are rejected on the demo video route | FR13.11, SE-10 | B6 | security |
+| S-14 | `contact-verification.test.js` | D4: sending a request answers the same, in shape and time, with and without an account | FR13.13 | S4 | security |
+| S-15 | `contact-verification.test.js` | D4: a wrong code and a resend answer the same with and without an account | FR13.13 | S4 | security |
+| S-16 | `contact-verification.test.js` | D4: a NoSQL operator in place of the code is rejected as invalid input | FR13.13, SE-10 | S4 | security |
+| S-17 | `contact-verification.test.js` | D4: the code routes are rate limited separately from the contact form | FR13.13 | S4 | security |
 
 The matrix in S-01 calls every route as an anonymous visitor, a contributor, a suspended
 contributor and an admin. A denied caller must get the exact status (401 or 403); an allowed
@@ -247,6 +291,10 @@ a new route cannot be added without an access decision.
 | FU-22 | `seoCatalog.test.js` | C1: an explicit SITE_URL is used, with a trailing slash trimmed | — (deployment safety, no SRS requirement) | C1 | unit |
 | FU-23 | `seoCatalog.test.js` | C1: no longer points at the old signpakcommons.example placeholder | — (deployment safety, no SRS requirement) | C1 | unit |
 | FU-24 | `dependencyFloors.test.js` | S1: vite and source-map-js are at or above their patched versions | — (deployment safety, no SRS requirement) | S1 | unit |
+| FU-25 | `ContactForm.test.jsx` | C2: a signed-out visitor is offered only the deletion request, with its explanation | FR13.13 | C2 | unit |
+| FU-26 | `ContactForm.test.jsx` | C2: a signed-in contributor sees all three topics, general first, with name and email filled in | FR13.13 | C2 | unit |
+| FU-27 | `ContactForm.test.jsx` | C2: sending waits until the session check has finished | FR13.13 | C2 | unit |
+| FU-28 | `ContactForm.test.jsx` | C2: choosing the deletion topic when signed in explains it is confirmed straight away | FR13.13 | C2 | unit |
 
 ## 5. Frontend integration tests — `frontend/test/integration/`
 
@@ -258,6 +306,18 @@ Rendered with the real router, providers and API client; only the network is moc
 | FI-02 | `Login.test.jsx` | shows the server message when the credentials are refused | FR13.1 | — | integration |
 | FI-03 | `Login.test.jsx` | puts field errors from a 422 next to their input | FR13.1 | — | integration |
 | FI-04 | `Login.test.jsx` | never reaches the network when the form itself is invalid | FR13.1 | — | integration |
+| FI-05 | `Contact.test.jsx` | C2: a signed-in contributor who opens the landing page directly gets the signed-in form | FR13.13, UI 3.1.1.3 | C2 | integration |
+| FI-06 | `Contact.test.jsx` | C2: a signed-in contributor sends a general message and sees the confirmation | FR13.13 | C2 | integration |
+| FI-07 | `Contact.test.jsx` | C2: a signed-out deletion request goes to the verify page with the message id | FR13.13 | C2 | integration |
+| FI-08 | `Contact.test.jsx` | C2: a signed-in deletion request needs no code and shows the confirmation | FR13.13 | C2 | integration |
+| FI-09 | `Contact.test.jsx` | C2: field errors from a 422 appear next to their input | FR13.13 | C2 | integration |
+| FI-10 | `Contact.test.jsx` | C2: a %s from the server shows its message and keeps the form | FR13.13 | C2 | integration |
+| FI-11 | `ContactVerify.test.jsx` | D4: the right code confirms the request | FR13.13 | S4 | integration |
+| FI-12 | `ContactVerify.test.jsx` | D4: a wrong or expired code shows the server message | FR13.13 | S4 | integration |
+| FI-13 | `ContactVerify.test.jsx` | D4: a code that is not six digits never reaches the network | FR13.13 | S4 | integration |
+| FI-14 | `ContactVerify.test.jsx` | D4: the resend button waits a minute, then asks for a new code and waits again | FR13.13 | S4 | integration |
+| FI-15 | `ContactVerify.test.jsx` | D4: a 429 on resend shows the server message | FR13.13 | S4 | integration |
+| FI-16 | `ContactVerify.test.jsx` | D4: a missing or malformed id (%s) shows an invalid-link message | FR13.13 | S4 | integration |
 
 ## 6. End-to-end tests — `e2e/tests/`
 
@@ -270,6 +330,8 @@ API with an in-memory database.
 | E-02 | `landing.spec.js` | the API the site talks to is healthy through the preview proxy | QA-3 | C1 (fixture) | E2E |
 | E-03 | `signup.spec.js` | sign-up: form, emailed code, consent, then the library | FR13.1, OR-19 | — | E2E |
 | E-04 | `cross-host-cookie.spec.js` | C4: login cookie set by api.localtest.me works on commons.localtest.me | FR13.1, SE-2 | C4 | E2E |
+| E-05 | `contact.spec.js` | C2: a signed-in contributor sends a contact message from the landing page | FR13.13 | C2 | E2E |
+| E-06 | `contact.spec.js` | D4: a signed-out deletion request is confirmed with the emailed code | FR13.13 | S4 | E2E |
 
 ## 7. Gaps to close in later phases
 
@@ -282,7 +344,7 @@ Drive upload`) and a row here.
 | C1, C4, S3, S5 | **Covered in Phase 1** (U-38–U-61, I-46–I-49, S-06–S-10, FU-21–FU-23, E-04). The real-server checks are still pending: see `docs/phase-reports/PHASE-1.md`. | 1 |
 | C5, B1, B6, B8 | **Covered in Phase 2** (U-62–U-89, I-50–I-56, S-11–S-13). Real-server check pending: a production upload leaves `uploads/tmp` empty. | 2 |
 | S1 | **Covered in Phase 3** (U-90, U-91, FU-24; the whole suite re-run on the patched versions). The CI audit job is now required. | 3 |
-| C2, S4 | contact form sends, deletion request with an emailed code, per-sender quotas | 4 |
+| C2, S4 | **Covered in Phase 4** (U-92–U-117, I-39 adjusted, I-57–I-69, S-14–S-17, the two new access-matrix routes, FU-25–FU-28, FI-05–FI-16, E-05, E-06). | 4 |
 | C3 | recording deletion for one contributor, deletion log, admin messages page | 5 |
 | S2, S6, S9, B2, B3, B4 | login lockout, logout invalidating the JWT, unverified-signup expiry, verified-only counts, re-signup, consent token in sessionStorage | 6 |
 | S7 | admin list promotion/demotion and the activity log | 7 |

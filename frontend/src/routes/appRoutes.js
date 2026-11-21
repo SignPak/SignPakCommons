@@ -14,6 +14,7 @@ export const paths = {
   faq: '/faq',
   about: '/#about',
   contact: '/#contact',
+  contactVerify: '/contact/verify',
   policy: '/#policy',
   login: '/login',
   signup: '/signup',
@@ -33,3 +34,4 @@ export const paths = {
 export const categoryUrl = (categoryId) => `/library/${encodeURIComponent(categoryId)}`
 export const watchUrl = (videoId) => `/watch?v=${encodeURIComponent(videoId)}`
 export const watchEditUrl = (videoId) => `/watch/edit?v=${encodeURIComponent(videoId)}`
+export const contactVerifyUrl = (messageId) => `/contact/verify?id=${encodeURIComponent(messageId)}`

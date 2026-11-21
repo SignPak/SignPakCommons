@@ -65,7 +65,7 @@ describe('admin stats and contact', () => {
     assert.equal((await contributor.get(`/videos/${video1.id}`)).status, 404) // hidden from contributors now
   })
 
-  test('contact delivery requires matching account email, enforces quotas, and blocks abusive devices', async () => {
+  test('contact delivery requires matching account email and enforces quotas; S4: refusals never block the device', async () => {
     const bad = await contributor.post('/contact', { name: '', email: 'nope', message: '' })
     assert.equal(bad.status, 422)
     assert.ok(bad.body.error.fields.email)
@@ -88,17 +88,20 @@ describe('admin stats and contact', () => {
 
     const mismatchDevice = 'device-contact-email-mismatch'
     assert.equal((await contributor.post('/contact', { name: 'Sara Ahmed', email: 'other@example.com', message: 'Wrong email' }, { headers: { 'x-device-id': mismatchDevice } })).status, 403)
-    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': mismatchDevice } })).status, 403)
+    // S4 (Phase 4): this refusal used to restrict the device for 10 minutes; it must not any more.
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': mismatchDevice } })).status, 200)
 
     const today = new Date().toISOString().slice(0, 10)
     await ContactDailyQuota.findByIdAndUpdate(today, { count: 25 }, { upsert: true })
     const cappedDevice = 'device-contact-global-cap'
     assert.equal((await other.post('/contact', { name: 'Omar Khan', email: 'omar@example.com', message: 'Over cap' }, { headers: { 'x-device-id': cappedDevice } })).status, 429)
-    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': cappedDevice } })).status, 403)
+    // S4 (Phase 4): this refusal used to restrict the device for 10 minutes; it must not any more.
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': cappedDevice } })).status, 200)
 
     const anonymousDevice = 'device-contact-anonymous-test'
     assert.equal((await new Client(base).post('/contact', { name: 'Guest', email: 'guest@example.com', message: 'No session' }, { headers: { 'x-device-id': anonymousDevice } })).status, 403)
-    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': anonymousDevice } })).status, 403)
+    // S4 (Phase 4): this refusal used to restrict the device for 10 minutes; it must not any more.
+    assert.equal((await new Client(base).get('/health', { headers: { 'x-device-id': anonymousDevice } })).status, 200)
 
     const list = await admin.get('/admin/messages')
     assert.equal(list.status, 200)
