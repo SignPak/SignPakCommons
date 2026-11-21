@@ -211,6 +211,77 @@ describe('S9 and B3: unfinished sign-ups', () => {
   })
 })
 
+describe('B3: a re-signup between verify and consent (fixes after verification)', () => {
+  const consent = async (client, consentToken) => {
+    const { CONSENT_VERSION } = await import('../../src/config/constants.js')
+    return client.post('/auth/consent', { consentToken, accepted: true, version: CONSENT_VERSION })
+  }
+
+  test('B3: a consent token from before a re-signup is refused, and the other person never gets an account', async () => {
+    // Sara signs up and verifies: she now holds a consent token.
+    const sara = new Client(base)
+    assert.equal((await signup(sara, 'sara.b3@example.com', { firstName: 'Sara', surname: 'Owner', password: 'sarapass1' })).status, 201)
+    const verified = await sara.post('/auth/verify-email', { email: 'sara.b3@example.com', code: code('sara.b3@example.com'), password: 'sarapass1' })
+    assert.equal(verified.status, 200)
+    const saraToken = verified.body.data.consentToken
+
+    // Someone else signs up again with her email, their own name and password (inside the
+    // resend window, so no email goes out).
+    const attacker = new Client(base)
+    const again = await signup(attacker, 'sara.b3@example.com', { firstName: 'Mallory', surname: 'Other', password: 'attacker1' })
+    assert.equal(again.status, 201)
+
+    // Sara's consent with her (now stale) token is refused.
+    const res = await consent(sara, saraToken)
+    assert.equal(res.status, 400)
+    assert.equal(res.body.error.message, 'This sign-up step has expired. Verify your email again to continue.')
+    assert.equal(res.setCookie.length, 0, 'no session is started')
+    const doc = await users().findOne({ email: 'sara.b3@example.com' }).lean()
+    assert.equal(doc.emailVerified, false, 'no account was finished with the other person\'s details')
+    assert.equal((await login(new Client(base), 'sara.b3@example.com', 'attacker1')).status, 401, 'the other person cannot log in')
+
+    // Sara signs up again, verifies with the new code and her password, consents and logs in.
+    await users().updateOne({ email: 'sara.b3@example.com' }, { $set: { emailVerificationSentAt: new Date(Date.now() - 61_000) } })
+    assert.equal((await signup(sara, 'sara.b3@example.com', { firstName: 'Sara', surname: 'Owner', password: 'sarapass1' })).status, 201)
+    const reverified = await sara.post('/auth/verify-email', { email: 'sara.b3@example.com', code: code('sara.b3@example.com'), password: 'sarapass1' })
+    assert.equal(reverified.status, 200)
+    const accepted = await consent(sara, reverified.body.data.consentToken)
+    assert.equal(accepted.status, 200)
+    assert.equal(accepted.body.data.firstName, 'Sara')
+    assert.equal((await login(new Client(base), 'sara.b3@example.com', 'sarapass1')).status, 200)
+    assert.equal((await login(new Client(base), 'sara.b3@example.com', 'attacker1')).status, 401)
+  })
+
+  test('B3: declining with a token from before a re-signup is refused and the sign-up is kept', async () => {
+    const owner = new Client(base)
+    assert.equal((await signup(owner, 'decline.b3@example.com')).status, 201)
+    const verified = await owner.post('/auth/verify-email', { email: 'decline.b3@example.com', code: code('decline.b3@example.com'), password: 'password1' })
+    const staleToken = verified.body.data.consentToken
+    assert.equal((await signup(new Client(base), 'decline.b3@example.com', { password: 'otherpass1' })).status, 201)
+
+    const declined = await owner.post('/auth/decline-consent', { consentToken: staleToken })
+    assert.equal(declined.status, 400)
+    assert.equal(declined.body.error.message, 'This sign-up step has expired. Verify your email again to continue.')
+    assert.equal(await users().countDocuments({ email: 'decline.b3@example.com' }), 1, 'the pending sign-up is not removed')
+  })
+})
+
+describe('S2: password change counts toward the lockout (fixes after verification)', () => {
+  test('S2: five wrong current passwords lock the account, the session stays, and login is locked too', async () => {
+    const c = await createVerifiedUser({ firstName: 'Change', surname: 'Lock', email: 'changelock@example.com' })
+    const wrong = () => c.post('/users/me/password', { currentPassword: 'not-it', password: 'newpassword1', confirmPassword: 'newpassword1' })
+    for (let n = 1; n <= 4; n += 1) assert.equal((await wrong()).status, 401, `attempt ${n}`)
+    const fifth = await wrong()
+    assert.equal(fifth.status, 429)
+    assert.equal(fifth.body.error.code, 'ACCOUNT_LOCKED')
+
+    const right = await c.post('/users/me/password', { currentPassword: 'password1', password: 'newpassword1', confirmPassword: 'newpassword1' })
+    assert.equal(right.status, 429, 'locked even with the right current password')
+    assert.equal((await login(new Client(base), 'changelock@example.com')).status, 429, 'login is locked too')
+    assert.equal((await c.get('/users/me')).status, 200, 'the existing session is not ended by the lock')
+  })
+})
+
 describe('B2: contributor counts', () => {
   test('B2: public and admin stats count only contributors who finished sign-up', async () => {
     const before = (await new Client(base).get('/public/stats')).body.data.contributors

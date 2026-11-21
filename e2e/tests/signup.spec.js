@@ -1,4 +1,4 @@
-import { test } from '@playwright/test'
+import { test } from '../support/test.js'
 import { signUpThroughUi, uniqueEmail } from '../support/flows.js'
 
 /**

@@ -39,7 +39,8 @@ export const authService = {
     const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
     const signupExpiresAt = new Date(Date.now() + SIGNUP_TTL_MS)
     if (existing) {
-      Object.assign(existing, { firstName, surname, passwordHash, signupExpiresAt })
+      // B3: bumping the version voids any consent token handed out before this re-signup.
+      Object.assign(existing, { firstName, surname, passwordHash, signupExpiresAt, authVersion: (existing.authVersion || 0) + 1 })
       const sentAt = existing.emailVerificationSentAt?.getTime() || 0
       if (existing.emailVerificationCodeHash && Date.now() - sentAt < env.AUTH_OTP_RESEND_SECONDS * 1000) {
         await userRepo.save(existing) // the code sent a moment ago still works
@@ -107,13 +108,20 @@ export const authService = {
     // or contribute) until the contributor accepts the consent notice: see completeSignup.
     clearOtp(user, 'email-verification')
     await userRepo.save(user)
-    return { consentToken: signConsentToken(user.id) }
+    return { consentToken: signConsentToken(user.id, user.authVersion || 0) }
   },
 
+  /**
+   * The unfinished sign-up a consent token belongs to. The token must still match the account's
+   * version (B3): after a re-signup only a token from the newest verification can finish or
+   * cancel it. That covers completeSignup and declineSignup.
+   */
   async pendingSignup(consentToken) {
-    const userId = verifyConsentToken(consentToken)
-    const user = userId ? await userRepo.findById(userId) : null
-    if (!user || user.emailVerified || user.role !== ROLES.USER) throw badRequest('This sign-up step has expired. Verify your email again to continue.')
+    const claims = verifyConsentToken(consentToken)
+    const user = claims ? await userRepo.findById(claims.userId) : null
+    if (!user || user.emailVerified || user.role !== ROLES.USER || (user.authVersion || 0) !== claims.v) {
+      throw badRequest('This sign-up step has expired. Verify your email again to continue.')
+    }
     return user
   },
 
@@ -187,8 +195,16 @@ export const authService = {
    * gets a fresh token so this device stays signed in.
    */
   async changePassword(user, { currentPassword, password }) {
-    const account = await userRepo.findById(user._id, { withPassword: true })
-    if (!account || !await bcrypt.compare(currentPassword, account.passwordHash)) throw unauthorized('Your current password is not correct.')
+    const account = await userRepo.findById(user._id, { withPassword: true, withLockout: true })
+    if (!account) throw unauthorized('Your current password is not correct.')
+    const matches = await bcrypt.compare(currentPassword, account.passwordHash)
+    // S2: a wrong current password counts like a wrong login password, and a locked account
+    // can't change its password until the lock passes. The current session is not ended.
+    if (account.lockedUntil && account.lockedUntil.getTime() > Date.now()) throw accountLocked()
+    if (!matches) {
+      const { locked } = await userRepo.recordFailedLogin(account._id, { attempts: env.AUTH_LOCKOUT_ATTEMPTS, lockMs: env.AUTH_LOCKOUT_MINUTES * 60_000 })
+      throw locked ? accountLocked() : unauthorized('Your current password is not correct.')
+    }
     if (await bcrypt.compare(password, account.passwordHash)) throw validationError({ password: 'Choose a password different from your current one.' })
     account.passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
     account.authVersion = (account.authVersion || 0) + 1

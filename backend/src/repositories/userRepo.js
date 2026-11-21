@@ -3,9 +3,10 @@ import { SIGNUP_TTL_MS, User } from '../models/User.js'
 const LOCKOUT_FIELDS = '+failedLoginCount +lockedUntil'
 
 export const userRepo = {
-  findById: (id, { withPassword = false } = {}) => {
+  findById: (id, { withPassword = false, withLockout = false } = {}) => {
     const query = User.findById(id)
     if (withPassword) query.select('+passwordHash')
+    if (withLockout) query.select(LOCKOUT_FIELDS)
     return query
   },
   findByEmail: (email, { withPassword = false, withOtp = false, withLockout = false } = {}) => {

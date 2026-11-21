@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, routeThirdParty, test } from '../support/test.js'
 import { apiOrigin } from '../playwright.config.js'
 import { expectInLibrary, latestCode, signUpThroughUi, uniqueEmail } from '../support/flows.js'
 
@@ -47,6 +47,7 @@ test('S6: resetting the password on another device logs out the old session', as
 
   // Another device: forgot password → code → new password.
   const otherContext = await browser.newContext()
+  await routeThirdParty(otherContext)
   const other = await otherContext.newPage()
   await other.goto('/forgot-password')
   await other.getByLabel('Email address').fill(email)

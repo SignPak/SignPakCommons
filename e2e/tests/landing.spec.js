@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 
 /** Smoke test: the public landing page renders from the production build, in every engine. */
 test.describe('landing page', () => {

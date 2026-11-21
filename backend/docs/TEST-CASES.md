@@ -24,13 +24,13 @@ Counts as of **Phase 6** (backend 1.0.12, frontend 1.0.14):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 27 | 152 |
-| Integration (backend) | `backend/tests/integration/` | 15 | 102 |
+| Unit (backend) | `backend/tests/unit/` | 28 | 157 |
+| Integration (backend) | `backend/tests/integration/` | 15 | 105 |
 | Security (backend) | `backend/tests/security/` | 8 | 78 |
 | Unit (frontend) | `frontend/test/unit/` | 12 | 42 |
-| Integration (frontend) | `frontend/test/integration/` | 6 | 35 |
+| Integration (frontend) | `frontend/test/integration/` | 6 | 37 |
 | End-to-end | `e2e/tests/` | 6 | 30 (10 tests × 3 browsers) |
-| **Total** | | **74** | **439** |
+| **Total** | | **75** | **449** |
 
 The backend security count is per-route: the access matrix produces one case per route (54
 today) plus the completeness check; the hook suite adds three, the production-error suite
@@ -193,6 +193,11 @@ suite four, the admin-deletion suite two and the JWT suite six. Frontend cases c
 | U-150 | `userIndexes.test.js` | S9: the expiry is never sent to a client | FR13.1 | S9 | unit |
 | U-151 | `userIndexes.test.js` | B2: countVerified counts only accounts that finished sign-up | UI 3.1.1.3, FR13.12 | B2 | unit |
 | U-152 | `userIndexes.test.js` | codes last 10 minutes by default (FIX-PLAN section 0) | FR13.1 | — | unit |
+| U-153 | `consentToken.test.js` | B3: the token carries the version as claim v, and verifying returns it | FR13.1, SE-9 | B3 | unit |
+| U-154 | `consentToken.test.js` | B3: a tampered or wrong-purpose token is rejected | FR13.1, SE-9 | B3 | unit |
+| U-155 | `consentToken.test.js` | B3: pendingSignup accepts a token for the current version | FR13.1, SE-9 | B3 | unit |
+| U-156 | `consentToken.test.js` | B3: pendingSignup refuses a token from before a re-signup (mismatched v) | FR13.1, SE-9 | B3 | unit |
+| U-157 | `consentToken.test.js` | B3: a token without v (issued before this change) counts as version 0 | FR13.1, SE-9 | B3 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -303,6 +308,9 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-100 | `api-account-security.test.js` | B3: a finished account still answers 409 to a new sign-up | FR13.1 | B3 | integration |
 | I-101 | `api-account-security.test.js` | codes expire after 10 minutes | FR13.1 | — | integration |
 | I-102 | `api-account-security.test.js` | B2: public and admin stats count only contributors who finished sign-up | UI 3.1.1.3, FR13.12 | B2 | integration |
+| I-103 | `api-account-security.test.js` | B3: a consent token from before a re-signup is refused, and the other person never gets an account | FR13.1, SE-9 | B3 | integration |
+| I-104 | `api-account-security.test.js` | B3: declining with a token from before a re-signup is refused and the sign-up is kept | FR13.1, SE-9 | B3 | integration |
+| I-105 | `api-account-security.test.js` | S2: five wrong current passwords lock the account, the session stays, and login is locked too | SE-4 | S2 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -422,6 +430,8 @@ Rendered with the real router, providers and API client; only the network is moc
 | FI-28 | `AccountSecurity.test.jsx` | mismatched or short passwords never reach the network | SE-2, SE-3 | — | integration |
 | FI-29 | `AccountSecurity.test.jsx` | S6: calls logout and leaves the profile | SE-2, SE-9 | S6 | integration |
 | FI-30 | `AccountSecurity.test.jsx` | S6: explains that it ends every session, this one included | SE-2, SE-9 | S6 | integration |
+| FI-31 | `ConsentReload.test.jsx` | B3: an expired sign-up step clears the saved token and offers a fresh sign-up | FR13.1, SE-9 | B3 | integration |
+| FI-32 | `ConsentReload.test.jsx` | B3: declining with an expired step also clears the saved token | FR13.1, SE-9 | B3 | integration |
 
 ## 6. End-to-end tests — `e2e/tests/`
 
@@ -454,7 +464,7 @@ Drive upload`) and a row here.
 | S1 | **Covered in Phase 3** (U-90, U-91, FU-24; the whole suite re-run on the patched versions). The CI audit job is now required. | 3 |
 | C2, S4 | **Covered in Phase 4** (U-92–U-123, I-39 adjusted, I-57–I-72, S-14–S-17, the two new access-matrix routes, FU-25–FU-28, FI-05–FI-16, E-05, E-06). | 4 |
 | C3 | **Covered in Phase 5** (U-124–U-140, I-73–I-85, S-18, S-19, the four new access-matrix routes, FU-29–FU-34, FI-17–FI-21, E-07). | 5 |
-| S2, S6, S9, B2, B3, B4 | **Covered in Phase 6** (U-141–U-152, I-86–I-102, S-20–S-25, the new access-matrix route, FU-35–FU-42, FI-22–FI-30, E-08–E-10). | 6 |
+| S2, S6, S9, B2, B3, B4 | **Covered in Phase 6** (U-141–U-157, I-86–I-105, S-20–S-25, the new access-matrix route, FU-35–FU-42, FI-22–FI-32, E-08–E-10). | 6 |
 | S7 | admin list promotion/demotion and the activity log | 7 |
 | B5, B7 | submissions export (CSV/JSON) and paginated admin data | 8 |
 | S8, S10 | CSP and security headers, `X-Request-Id` validation, axe checks | 9 |

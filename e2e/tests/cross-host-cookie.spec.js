@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 import { crossHost, webOrigin } from '../playwright.config.js'
 import { expectInLibrary, signUpThroughUi, uniqueEmail } from '../support/flows.js'
 
@@ -46,8 +46,14 @@ test('C4: login cookie set by api.localtest.me works on commons.localtest.me', a
   await expectInLibrary(page)
 
   // 3. Log out through the UI: the API clears the cookie and the library is closed again.
+  //    Wait for the logout answer before navigating: leaving the page while the request is in
+  //    flight aborts it, and the browser then never sees the Set-Cookie that clears the cookie.
+  //    (Since Phase 6 logout also writes to the database first, which made that race show on
+  //    CI's WebKit.)
   await page.goto(`${crossHost.site}/profile`)
+  const loggedOut = page.waitForResponse((response) => response.url() === `${crossHost.api}/api/v1/auth/logout`)
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
+  expect((await loggedOut).status()).toBe(204)
   await page.goto(`${crossHost.site}/home`)
   await expect(page).toHaveURL(/\/login/)
   expect((await context.cookies(crossHost.api)).filter((cookie) => cookie.name === 'signpak_token')).toEqual([])

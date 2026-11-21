@@ -78,6 +78,31 @@ describe('consent page after a reload', () => {
     expect(consentTokenStore.read()).toBeNull()
   })
 
+  it('B3: an expired sign-up step clears the saved token and offers a fresh sign-up', async () => {
+    const message = 'This sign-up step has expired. Verify your email again to continue.'
+    server.use(http.post('*/api/v1/auth/consent', () => HttpResponse.json({ error: { code: 'BAD_REQUEST', message } }, { status: 400 })))
+    consentTokenStore.save(TOKEN)
+    renderAfterReload()
+
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and create my account' }))
+
+    expect(await screen.findByText(message)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Sign up again' }).getAttribute('href')).toBe('/signup')
+    expect(consentTokenStore.read()).toBeNull()
+  })
+
+  it('B3: declining with an expired step also clears the saved token', async () => {
+    const message = 'This sign-up step has expired. Verify your email again to continue.'
+    server.use(http.post('*/api/v1/auth/decline-consent', () => HttpResponse.json({ error: { code: 'BAD_REQUEST', message } }, { status: 400 })))
+    consentTokenStore.save(TOKEN)
+    renderAfterReload()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Decline and cancel sign-up' }))
+    expect(await screen.findByText(message)).toBeTruthy()
+    expect(consentTokenStore.read()).toBeNull()
+  })
+
   it('B4: with no saved token the visitor is sent back to verify their email', () => {
     renderAfterReload()
     expect(screen.getByText('verify page')).toBeTruthy()

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import AuthShell from '../components/AuthShell'
@@ -24,6 +24,8 @@ export default function Consent({ mode = 'existing' }) {
   const dialogRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // B3: the step expired, or a newer sign-up replaced it. The saved token is dead; start again.
+  const [expired, setExpired] = useState(false)
   const { register, handleSubmit, setError: setFieldError, control, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(consentFormSchema),
     defaultValues: { accepted: false },
@@ -54,8 +56,18 @@ export default function Consent({ mode = 'existing' }) {
       } else await acceptConsent(CONSENT_VERSION)
       navigate(paths.library, { replace: true })
     } catch (cause) {
+      if (stepExpired(cause)) return
       if (!applyAuthFieldErrors(cause, setFieldError)) setError(cause.message || 'We could not save your consent. Try again.')
     }
+  }
+
+  /** A 400 on the sign-up step means the token no longer works: forget it and offer a fresh start. */
+  function stepExpired(cause) {
+    if (mode !== 'signup' || cause?.status !== 400) return false
+    consentTokenStore.clear()
+    setError(cause.message || 'This sign-up step has expired. Verify your email again to continue.')
+    setExpired(true)
+    return true
   }
 
   const decline = async () => {
@@ -70,8 +82,9 @@ export default function Consent({ mode = 'existing' }) {
         await logout()
       }
     } catch (cause) {
-      setError(cause.message || 'We could not complete that. Try again.')
       setBusy(false)
+      if (stepExpired(cause)) return
+      setError(cause.message || 'We could not complete that. Try again.')
     }
   }
 
@@ -88,7 +101,7 @@ export default function Consent({ mode = 'existing' }) {
         <span>I have read the notice and consent to my recordings being used as described.</span>
       </label>
       {errors.accepted?.message && <Alert tone="error">{errors.accepted.message}</Alert>}
-      {error && <Alert tone="error">{error}</Alert>}
+      {error && <Alert tone="error">{error}{expired && <> <Link to={paths.signup}>Sign up again</Link></>}</Alert>}
       <Button type="submit" block disabled={busy || isSubmitting || !agreed}>{isSubmitting ? 'Saving…' : mode === 'signup' ? 'Accept and create my account' : 'Accept and continue'}</Button>
     </form>
     <Button variant="outline" block onClick={decline} disabled={busy || isSubmitting}>{mode === 'signup' ? 'Decline and cancel sign-up' : 'Decline and log out'}</Button>

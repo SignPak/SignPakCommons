@@ -57,6 +57,10 @@ I stopped and asked you. You chose **"Ask for password at verify"**:
   and finishes.
 - The verify page has a Password field, and the E2E sign-up helper fills it in.
 
+**That closed the gap only up to verification.** Your verification found the same takeover
+*between* verify and consent; it's fixed under "Fixes after verification" below. A re-signup
+now also voids any consent token issued before it.
+
 ## Routes, models and env vars
 
 **Routes:** one added, none renamed.
@@ -200,10 +204,11 @@ Run on this branch, Windows 11, Node v24.13.1, 21 Nov 2026. Pasted from real out
 
 ### CI
 
-Run [44920642061](https://github.com/SignPak/SignPakCommons/actions/runs/44920642061) on
-`c235d42` (PR #36): overall **success**. All five jobs are green: Backend (unit, integration,
-security, coverage), Frontend (lint, test, coverage, build), End-to-end (Playwright),
-Dependency audit and Deploy files.
+- **First version:** run [44920642061](https://github.com/SignPak/SignPakCommons/actions/runs/44920642061)
+  on `c235d42` was green.
+- **The report commit after it (`8bfcf2d`) went red:** End-to-end failed in both its runs
+  (push 44921493767, pull_request 44921498965).
+- See "Fixes after verification" for the cause and the CI results on the fixed commits.
 
 ## How to verify by hand
 
@@ -249,3 +254,113 @@ In the running app:
 5. **Production effect of the S9 backfill:** pending accounts older than 24 hours are deleted by
    MongoDB within about a minute of the first start of this version. That's intended, but it is
    a data removal, so it's worth knowing before deploying.
+
+## Fixes after verification
+
+### 1. B3: account takeover between verify-email and consent (blocker)
+
+**What you found, reproduced first as a failing test:**
+1. Sara signs up and verifies, so she holds a consent token.
+2. Someone else POSTs `/auth/signup` with her email and their own name and password. That's a
+   201, and no email goes out inside the resend window.
+3. Sara POSTs `/auth/consent` with her token: 200, and the account is created **as the other
+   person, with their password**. They can log in; Sara can't.
+
+**Cause:** `signConsentToken(userId)` carried only the user id, and `pendingSignup` never checked
+that the sign-up was still the one that had been verified.
+
+**Fix (your approach):**
+- **`register()`:** updating an existing unverified account (B3) also bumps `authVersion`.
+- **The token:** `signConsentToken(userId, authVersion)` puts the version in the token as claim
+  `v`, and `verifyConsentToken` returns `{ userId, v }`. A token without `v` (issued before this
+  change, valid at most 30 minutes) counts as version 0.
+- **`pendingSignup()`** refuses a token whose `v` differs from the account's current
+  `authVersion`, with the existing 400 "This sign-up step has expired. Verify your email again
+  to continue." That covers `completeSignup` and `declineSignup`.
+- **Frontend (`Consent.jsx`):** on that 400 (accept or decline) it clears `consentTokenStore`,
+  so a reload doesn't keep offering a dead token. It shows the message with a "Sign up again"
+  link to `/signup`.
+- **Docs:** the B3 notes in `docs/API.md` and `src/docs/openapi.js` (`/auth/consent`,
+  `/auth/decline-consent`), and the B3 decision section above.
+
+**Tests** (failing first: all the new backend ones failed on `8bfcf2d`, apart from the two
+checks that were already true):
+
+| Level | Test | Row |
+| --- | --- | --- |
+| Integration | "B3: a consent token from before a re-signup is refused, and the other person never gets an account": the exact scenario. Sara's consent is 400 with no cookie; the account stays unverified; the other person can't log in. Then Sara signs up again, verifies with the new code and her password, consents (200, first name Sara), and logs in; the other password still fails | I-103 |
+| Integration | "B3: declining with a token from before a re-signup is refused and the sign-up is kept": 400, and the pending account still exists | I-104 |
+| Unit | `consentToken.test.js`: the token carries `v` and verifying returns it; tampered and wrong-purpose tokens rejected; the current `v` accepted; **a mismatched `v` rejected**; a legacy token without `v` counts as 0 | U-153–U-157 |
+| Frontend integration | `ConsentReload.test.jsx`: the expired-step 400 on accept clears the stored token and shows the message with "Sign up again"; the same on decline. Both fail against the previous `Consent.jsx` | FI-31, FI-32 |
+
+The requirement column is FR13.1 and SE-9 (the API only honours a token that's still valid for
+that sign-up).
+
+### 2. CI red on `8bfcf2d`: a flaky E2E test
+
+**Which test:** from the `playwright-report` artifact of run 44921498965, it's **WebKit only**,
+`cross-host-cookie.spec.js` "C4: login cookie set by api.localtest.me works on
+commons.localtest.me", step 3. The first try and the CI retry both failed on the same assertion:
+the API host's `signpak_token` cookie was **still in the browser** after "Log out".
+
+**Root cause: a missing wait in the test.**
+- It clicked "Log out" and called `page.goto('/home')` straight away. Leaving the page while the
+  logout request is in flight aborts it, so the browser never processes the `Set-Cookie` that
+  clears the cookie.
+- The server had already ended the session (S6), so the redirect to `/login` passed, but the
+  stale cookie stayed in the jar.
+- Before Phase 6 logout answered without touching the database, so the request usually finished
+  first. Now it writes `authVersion` first, which widened the window enough to hit on CI's WebKit.
+- The app itself isn't affected: the profile's logout awaits the request before navigating.
+
+**Fix:** the test now waits for the logout response (`page.waitForResponse(...)`, asserting
+204) before it navigates. No retries or timeouts were added or raised.
+
+**A second, separate flake found while checking.** Running the test 10 times on local WebKit
+(`--repeat-each=10`) still failed 2 of 10, at a different step: the very first
+`page.goto('/signup')` never reached its `load` event. The trace shows every finished request,
+but the page also loads **Google Fonts and Unsplash images**, and a stalled third-party request
+holds `load` open until the test times out. So the suite depended on the internet.
+- **Fix:** a new `e2e/support/test.js` exports the suite's `test` with one automatic fixture,
+  which answers `fonts.googleapis.com` (an empty stylesheet), `fonts.gstatic.com` and
+  `images.unsplash.com` (a 1×1 GIF) locally.
+- Every spec imports `test` from it. The two specs that open a second browser context call
+  `routeThirdParty()` on it.
+- After both fixes: **10 of 10** WebKit repeats pass, in 54 s instead of 4.7 min. The landing
+  spec's "no console errors" check still passes in all three browsers.
+
+**CI on the fixed commits:** recorded below.
+
+### 3. S2: password change counts toward the lockout
+
+- A wrong `currentPassword` on `POST /users/me/password` now goes through
+  `userRepo.recordFailedLogin`, like a wrong login password.
+- While the account is locked, the route answers 429 `ACCOUNT_LOCKED`, even with the right
+  current password.
+- The session already open is not ended by the lock.
+- `userRepo.findById` gained the `withLockout` option for this.
+- **Test** "S2: five wrong current passwords lock the account, the session stays, and login is
+  locked too" (I-105): 4 × 401, then 429; the right current password 429; login 429; `GET
+  /users/me` with the open session 200. It failed on `8bfcf2d`.
+- **Docs:** `docs/API.md` and `openapi.js` describe it.
+
+### Test gate after the fixes
+
+Run on this branch, Windows 11, Node v24.13.1, 21 Nov 2026. Pasted from real output.
+
+| Gate | Result | Exit |
+| --- | --- | --- |
+| backend `test:unit` | tests 157, pass 157, fail 0 | 0 |
+| backend `test:integration` | tests 105, pass 105, fail 0 | 0 |
+| backend `test:security` | tests 78, pass 78, fail 0 | 0 |
+| backend `test:coverage` | pass 340, fail 0; overall 93.83% lines / 89.47% branches; `src/services` 89.1% / 88.22%; "Coverage gate passed." | 0 |
+| frontend `lint` / `test` / `test:coverage` / `build` | clean / 79 passed (18 files) / 34.05% lines / built (main chunk 542.63 kB) | 0 |
+| `e2e` | **30 passed** (1.6 m) | 0 |
+| `npm audit --omit=dev --audit-level=high` (backend, frontend, e2e) | found 0 vulnerabilities ×3 | 0 |
+
+`TEST-CASES.md`: U-153–U-157, I-103–I-105, FI-31, FI-32. The counts are now 75 files and 449
+cases, and the traceability test passes.
+
+### CI after the fixes
+
+Filled in once the runs finish.

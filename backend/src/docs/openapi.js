@@ -412,7 +412,7 @@ export const openapi = {
       post: {
         tags: ['Auth'],
         summary: 'Accept the consent notice, create the account and log in',
-        description: 'Activates the account, stores the acceptance date, time and notice version, and sets the session cookie.',
+        description: 'Activates the account, stores the acceptance date, time and notice version, and sets the session cookie. The consent token is bound to the sign-up it was issued for: after a re-signup of the same email, an older token gets 400 "This sign-up step has expired" (the same applies to /auth/decline-consent).',
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['consentToken', 'accepted', 'version'], properties: { consentToken: { type: 'string' }, accepted: { type: 'boolean', enum: [true] }, version: { type: 'string' } } } } } },
         responses: { 200: jsonResponse('Account created and logged in', ref('User')), ...authErrors, 409: errorResponse },
       },
@@ -421,6 +421,7 @@ export const openapi = {
       post: {
         tags: ['Auth'],
         summary: 'Decline the consent notice and discard the unfinished sign-up',
+        description: 'Like /auth/consent, the token must be from the newest verification: after a re-signup an older token gets 400 and the sign-up is kept.',
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['consentToken'], properties: { consentToken: { type: 'string' } } } } } },
         responses: { 204: { description: 'Sign-up discarded' }, ...authErrors },
       },
@@ -493,7 +494,7 @@ export const openapi = {
       post: {
         tags: ['Users'],
         summary: 'Change the password while logged in',
-        description: 'Checks the current password, then ends every other session and sets a new cookie for this one.',
+        description: 'Checks the current password, then ends every other session and sets a new cookie for this one. A wrong current password counts toward the login lockout; while the account is locked this answers 429 ACCOUNT_LOCKED.',
         security: userSecurity,
         requestBody: {
           required: true,
