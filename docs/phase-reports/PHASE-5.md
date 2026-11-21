@@ -195,7 +195,21 @@ Run on this branch, Windows 11, Node v24.13.1, 21 Nov 2026. Pasted from real out
 
 ### CI
 
-Filled in below once the PR's run finishes.
+**First run failed on one test I wrote.** Run
+[44916113151](https://github.com/SignPak/SignPakCommons/actions/runs/44916113151) on
+`91dfa12`: the backend, E2E (21 passed), audit and deploy-file jobs passed. The frontend job
+failed on FI-18, "C3: the filters reach the API" (59 of 60 passed).
+- **Cause:** the test changed two filters back to back, which put two requests in flight, and
+  then checked that the *last* request to reach the mock had the final filters. On the slower
+  CI runner the two arrived in the other order.
+- **The page itself is correct.** Each effect's cleanup discards the older answer, so only the
+  latest filters' results are shown.
+- **Fix (test only):** change one filter at a time and wait for each request. The assertions
+  now check that a request with exactly those filters was made, not that it arrived last.
+  Five local runs in a row pass. Nothing was skipped or loosened: every filter combination is
+  still asserted, and the final check that the general message disappears is unchanged.
+
+The result on the fixed commit follows.
 
 ## How to verify by hand
 

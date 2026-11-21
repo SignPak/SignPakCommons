@@ -60,11 +60,15 @@ describe('Admin → Messages against a mocked API', () => {
   it('C3: the filters reach the API', async () => {
     render(<MemoryRouter><AdminMessages /></MemoryRouter>)
     await screen.findByTestId(`message-${REQUEST_ID}`)
+    // One filter at a time, each waiting for its own request: two changes in quick succession
+    // put two requests in flight, and they may reach the mock in either order (the page itself
+    // ignores the older answer).
     fireEvent.change(screen.getByLabelText('Topic'), { target: { value: 'recording-deletion' } })
-    await waitFor(() => expect(seenQueries.at(-1)).toEqual({ limit: '100', status: 'open', topic: 'recording-deletion' }))
+    await waitFor(() => expect(seenQueries).toContainEqual({ limit: '100', status: 'open', topic: 'recording-deletion' }))
     fireEvent.change(screen.getByLabelText('Verified'), { target: { value: 'false' } })
+    await waitFor(() => expect(seenQueries).toContainEqual({ limit: '100', status: 'open', topic: 'recording-deletion', verified: 'false' }))
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: '' } })
-    await waitFor(() => expect(seenQueries.at(-1)).toEqual({ limit: '100', topic: 'recording-deletion', verified: 'false' }))
+    await waitFor(() => expect(seenQueries).toContainEqual({ limit: '100', topic: 'recording-deletion', verified: 'false' }))
     await waitFor(() => expect(screen.queryByTestId(`message-${GENERAL_ID}`)).toBeNull())
   })
 
