@@ -498,9 +498,14 @@ Tests:
    - Add an `auditService.record()` helper and call it from the services, not the controllers.
 3. Add `GET /admin/audit` (paginated, filter by actor and action) and a simple **Admin → Activity** page.
 4. Log login attempts to the server log at `info` level: email hash, success or failure, IP. No passwords.
+5. **Fix carried over from Phase 5 verification: `DeletionLog.accountDeleted` must only be true for an account that was actually deleted.**
+   - Today `userService.remove(..., { withRecordings: true })` calls `removeAllForUser`, which writes the `DeletionLog` with `accountDeleted: true` *before* `deleteAccount()` runs. If `deleteAccount()` then throws, the log claims an account deletion that never happened.
+   - When this phase adds the deletion-log view, write `accountDeleted` only after `deleteAccount()` succeeds: create the log with `accountDeleted: false` and update it afterwards, or write the log after `deleteAccount()`.
+   - Test: an integration test that makes `deleteAccount()` fail and checks that the log says `accountDeleted: false` (and that the account still exists).
 
 Tests:
 - Unit: the promotion/demotion rules (including never demoting the last admin); `auditService.record()` keeps secrets out of `meta`.
+- Integration: `withRecordings=true` where the account deletion itself fails leaves `DeletionLog.accountDeleted` false (item 5).
 - Integration: each admin action listed above creates exactly one audit entry with the right actor; the audit list paginates and filters.
 - Frontend integration (MSW): the Activity page.
 - E2E: two different admin accounts make changes, and each change shows the right name in Activity.
