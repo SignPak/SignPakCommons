@@ -14,6 +14,7 @@ import { emailService } from './email/index.js'
 const DUMMY_HASH = bcrypt.hashSync('signpak-timing-guard', env.BCRYPT_ROUNDS)
 
 const emailTaken = () => conflict('An account with this email already exists. Log in instead.', { email: 'An account with this email already exists.' })
+const signupExpired = () => badRequest('This sign-up step has expired. Verify your email again to continue.')
 const invalidCode = () => badRequest('That code is invalid or has expired. Request a new code and try again.')
 const wrongCredentials = () => unauthorized('That email and password do not match. Check them and try again.')
 // S2 / SE-4. 429 with its own code, so a client can tell a lockout from a wrong password.
@@ -32,6 +33,10 @@ export const authService = {
    * (at most once per AUTH_OTP_RESEND_SECONDS), with the same answer as a new sign-up. The
    * password is asked for again with the code (verifyEmail), so whoever finishes the sign-up
    * is the person who chose it.
+   *
+   * The update is conditional on the account still being unfinished and at the version read
+   * here: if a consent lands while the password is being hashed, the consent wins and this
+   * answers 409 without touching the account.
    */
   async register({ email, firstName, surname, password }) {
     const existing = await userRepo.findByEmail(email, { withOtp: true })
@@ -39,14 +44,14 @@ export const authService = {
     const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
     const signupExpiresAt = new Date(Date.now() + SIGNUP_TTL_MS)
     if (existing) {
-      // B3: bumping the version voids any consent token handed out before this re-signup.
-      Object.assign(existing, { firstName, surname, passwordHash, signupExpiresAt, authVersion: (existing.authVersion || 0) + 1 })
-      const sentAt = existing.emailVerificationSentAt?.getTime() || 0
-      if (existing.emailVerificationCodeHash && Date.now() - sentAt < env.AUTH_OTP_RESEND_SECONDS * 1000) {
-        await userRepo.save(existing) // the code sent a moment ago still works
-        return { email: existing.email, verificationEmailSent: true }
+      // B3: the update bumps the version, which voids any consent token handed out before it.
+      const updated = await userRepo.updatePendingSignup(existing._id, existing.authVersion || 0, { firstName, surname, passwordHash, signupExpiresAt })
+      if (!updated) throw emailTaken() // finished (or signed up again) while the password was hashing
+      const sentAt = updated.emailVerificationSentAt?.getTime() || 0
+      if (updated.emailVerificationCodeHash && Date.now() - sentAt < env.AUTH_OTP_RESEND_SECONDS * 1000) {
+        return { email: updated.email, verificationEmailSent: true } // the code sent a moment ago still works
       }
-      return { email: existing.email, verificationEmailSent: await this.issueOtp(existing, 'email-verification') }
+      return { email: updated.email, verificationEmailSent: await this.issueOtp(updated, 'email-verification') }
     }
     try {
       const user = await userRepo.create({ email, firstName, surname, passwordHash, role: ROLES.USER, emailVerified: false, signupExpiresAt })
@@ -115,31 +120,33 @@ export const authService = {
    * The unfinished sign-up a consent token belongs to. The token must still match the account's
    * version (B3): after a re-signup only a token from the newest verification can finish or
    * cancel it. That covers completeSignup and declineSignup.
+   *
+   * This read is only a fast check: a re-signup can still land after it. What decides is the
+   * conditional write in completeSignup and declineSignup, which matches only an account that is
+   * still unfinished and still at the token's version.
    */
   async pendingSignup(consentToken) {
     const claims = verifyConsentToken(consentToken)
     const user = claims ? await userRepo.findById(claims.userId) : null
-    if (!user || user.emailVerified || user.role !== ROLES.USER || (user.authVersion || 0) !== claims.v) {
-      throw badRequest('This sign-up step has expired. Verify your email again to continue.')
-    }
+    if (!user || user.emailVerified || user.role !== ROLES.USER || (user.authVersion || 0) !== claims.v) throw signupExpired()
     return user
   },
 
   /** Finishes sign-up: records the consent (date, time, version), activates the account and starts a session. */
   async completeSignup({ consentToken, version }) {
     if (version !== CONSENT_VERSION) throw conflict('The consent notice was updated. Reload the page and read the current version.')
-    const user = await this.pendingSignup(consentToken)
-    user.emailVerified = true
-    user.signupExpiresAt = null // S9: a finished sign-up never expires
-    user.consent = { acceptedAt: new Date(), version: CONSENT_VERSION }
-    await userRepo.save(user)
+    const pending = await this.pendingSignup(consentToken)
+    // B3: only if it is still the sign-up the token was issued for. Clears the S9 expiry too.
+    const user = await userRepo.completePendingSignup(pending._id, pending.authVersion || 0, { consent: { acceptedAt: new Date(), version: CONSENT_VERSION } })
+    if (!user) throw signupExpired()
     return { user, token: signToken(user.id, user.authVersion || 0) }
   },
 
   /** Declining consent means no account: the unfinished sign-up is removed. */
   async declineSignup({ consentToken }) {
-    const user = await this.pendingSignup(consentToken)
-    await userRepo.remove(user._id)
+    const pending = await this.pendingSignup(consentToken)
+    const { deletedCount } = await userRepo.removePendingSignup(pending._id, pending.authVersion || 0)
+    if (!deletedCount) throw signupExpired() // B3: signed up again (or finished) meanwhile
   },
 
   /**

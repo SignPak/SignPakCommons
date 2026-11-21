@@ -24,13 +24,13 @@ Counts as of **Phase 6** (backend 1.0.12, frontend 1.0.14):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 28 | 157 |
-| Integration (backend) | `backend/tests/integration/` | 15 | 105 |
+| Unit (backend) | `backend/tests/unit/` | 29 | 161 |
+| Integration (backend) | `backend/tests/integration/` | 15 | 110 |
 | Security (backend) | `backend/tests/security/` | 8 | 78 |
 | Unit (frontend) | `frontend/test/unit/` | 12 | 42 |
 | Integration (frontend) | `frontend/test/integration/` | 6 | 37 |
 | End-to-end | `e2e/tests/` | 6 | 30 (10 tests × 3 browsers) |
-| **Total** | | **75** | **449** |
+| **Total** | | **76** | **458** |
 
 The backend security count is per-route: the access matrix produces one case per route (54
 today) plus the completeness check; the hook suite adds three, the production-error suite
@@ -198,6 +198,10 @@ suite four, the admin-deletion suite two and the JWT suite six. Frontend cases c
 | U-155 | `consentToken.test.js` | B3: pendingSignup accepts a token for the current version | FR13.1, SE-9 | B3 | unit |
 | U-156 | `consentToken.test.js` | B3: pendingSignup refuses a token from before a re-signup (mismatched v) | FR13.1, SE-9 | B3 | unit |
 | U-157 | `consentToken.test.js` | B3: a token without v (issued before this change) counts as version 0 | FR13.1, SE-9 | B3 | unit |
+| U-158 | `pendingSignupRepo.test.js` | B3: versionMatch(0) also matches an account with no authVersion field; other versions match exactly | FR13.1, SE-9 | B3 | unit |
+| U-159 | `pendingSignupRepo.test.js` | B3: updatePendingSignup only updates an unfinished user sign-up at the expected version, bumps the version and selects the code fields | FR13.1, SE-9 | B3 | unit |
+| U-160 | `pendingSignupRepo.test.js` | B3: completePendingSignup only finishes an unfinished user sign-up at the token's version | FR13.1, SE-9 | B3 | unit |
+| U-161 | `pendingSignupRepo.test.js` | B3: removePendingSignup deletes only an unfinished user sign-up at the token's version | FR13.1, SE-9 | B3 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -311,6 +315,11 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-103 | `api-account-security.test.js` | B3: a consent token from before a re-signup is refused, and the other person never gets an account | FR13.1, SE-9 | B3 | integration |
 | I-104 | `api-account-security.test.js` | B3: declining with a token from before a re-signup is refused and the sign-up is kept | FR13.1, SE-9 | B3 | integration |
 | I-105 | `api-account-security.test.js` | S2: five wrong current passwords lock the account, the session stays, and login is locked too | SE-4 | S2 | integration |
+| I-106 | `api-account-security.test.js` | B3: consent that lands while a re-signup is hashing wins; the re-signup gets 409 and changes nothing | FR13.1, SE-9 | B3 | integration |
+| I-107 | `api-account-security.test.js` | B3: a re-signup that commits between consent's check and its write wins; consent gets 400 | FR13.1, SE-9 | B3 | integration |
+| I-108 | `api-account-security.test.js` | B3: a re-signup that commits between decline's check and its delete wins; decline gets 400 and the sign-up is kept | FR13.1, SE-9 | B3 | integration |
+| I-109 | `api-account-security.test.js` | B3: stress, 10 re-signups racing consent: exactly one wins every time and the other person never logs in | FR13.1, SE-9 | B3 | integration |
+| I-110 | `api-account-security.test.js` | B3: the conditional writes treat an account with no authVersion field as version 0 | FR13.1, SE-9 | B3 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -464,7 +473,7 @@ Drive upload`) and a row here.
 | S1 | **Covered in Phase 3** (U-90, U-91, FU-24; the whole suite re-run on the patched versions). The CI audit job is now required. | 3 |
 | C2, S4 | **Covered in Phase 4** (U-92–U-123, I-39 adjusted, I-57–I-72, S-14–S-17, the two new access-matrix routes, FU-25–FU-28, FI-05–FI-16, E-05, E-06). | 4 |
 | C3 | **Covered in Phase 5** (U-124–U-140, I-73–I-85, S-18, S-19, the four new access-matrix routes, FU-29–FU-34, FI-17–FI-21, E-07). | 5 |
-| S2, S6, S9, B2, B3, B4 | **Covered in Phase 6** (U-141–U-157, I-86–I-105, S-20–S-25, the new access-matrix route, FU-35–FU-42, FI-22–FI-32, E-08–E-10). | 6 |
+| S2, S6, S9, B2, B3, B4 | **Covered in Phase 6** (U-141–U-161, I-86–I-110, S-20–S-25, the new access-matrix route, FU-35–FU-42, FI-22–FI-32, E-08–E-10). | 6 |
 | S7 | admin list promotion/demotion and the activity log | 7 |
 | B5, B7 | submissions export (CSV/JSON) and paginated admin data | 8 |
 | S8, S10 | CSP and security headers, `X-Request-Id` validation, axe checks | 9 |

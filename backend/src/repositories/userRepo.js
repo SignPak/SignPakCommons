@@ -1,6 +1,12 @@
 import { SIGNUP_TTL_MS, User } from '../models/User.js'
 
 const LOCKOUT_FIELDS = '+failedLoginCount +lockedUntil'
+const OTP_FIELDS = '+emailVerificationCodeHash +emailVerificationExpiresAt +emailVerificationAttempts +emailVerificationSentAt +passwordResetCodeHash +passwordResetExpiresAt +passwordResetAttempts +passwordResetSentAt'
+
+/** B3: matches an authVersion exactly; version 0 also matches an account that has no authVersion field. */
+export const versionMatch = (version) => (version ? version : { $in: [0, null] })
+// B3: an unfinished user sign-up that is still at the version the caller checked.
+const pendingAt = (id, version) => ({ _id: id, emailVerified: false, role: 'user', authVersion: versionMatch(version) })
 
 export const userRepo = {
   findById: (id, { withPassword = false, withLockout = false } = {}) => {
@@ -13,7 +19,7 @@ export const userRepo = {
     const query = User.findOne({ email: email.trim().toLowerCase() })
     if (withPassword) query.select('+passwordHash')
     if (withLockout) query.select(LOCKOUT_FIELDS)
-    if (withOtp) query.select('+emailVerificationCodeHash +emailVerificationExpiresAt +emailVerificationAttempts +emailVerificationSentAt +passwordResetCodeHash +passwordResetExpiresAt +passwordResetAttempts +passwordResetSentAt')
+    if (withOtp) query.select(OTP_FIELDS)
     return query
   },
   findManyByIds: (ids) => User.find({ _id: { $in: ids } }),
@@ -27,6 +33,26 @@ export const userRepo = {
   countVerified: (role) => User.countDocuments({ role, emailVerified: true }),
   countActiveAdmins: () => User.countDocuments({ role: 'admin', status: 'active' }),
   remove: (id) => User.deleteOne({ _id: id }),
+
+  /*
+   * B3: a re-signup and a consent or decline for the same unfinished sign-up are each one
+   * conditional write on emailVerified and authVersion, so only one of them can win. Each
+   * returns null (or deletedCount 0) when the account was finished or changed meanwhile.
+   */
+  /** Re-signup: new details, and the version bump voids every consent token issued before it. */
+  updatePendingSignup: (id, expectedVersion, fields) => User.findOneAndUpdate(
+    pendingAt(id, expectedVersion),
+    { $set: fields, $inc: { authVersion: 1 } },
+    { new: true },
+  ).select(OTP_FIELDS),
+  /** Consent: finishes the sign-up the token was issued for. */
+  completePendingSignup: (id, version, { consent }) => User.findOneAndUpdate(
+    pendingAt(id, version),
+    { $set: { emailVerified: true, consent, signupExpiresAt: null } },
+    { new: true },
+  ),
+  /** Decline: removes the sign-up the token was issued for. */
+  removePendingSignup: (id, version) => User.deleteOne(pendingAt(id, version)),
 
   /**
    * S2: counts one wrong password. A lock that has run out starts a fresh count. Reaching

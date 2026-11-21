@@ -385,7 +385,7 @@ export const openapi = {
       post: {
         tags: ['Auth'],
         summary: 'Create an unverified account and send a code',
-        description: 'For an email whose sign-up was never finished, the same 201: names and password are updated, the 24-hour expiry restarts and the code is resent (at most once per AUTH_OTP_RESEND_SECONDS). A finished account gets 409.',
+        description: 'For an email whose sign-up was never finished, the same 201: names and password are updated, the 24-hour expiry restarts and the code is resent (at most once per AUTH_OTP_RESEND_SECONDS). A finished account gets 409, including one finished by a consent that lands while this request is running.',
         requestBody: { required: true, content: { 'application/json': { schema: ref('SignupInput') } } },
         responses: { 201: jsonResponse('Account pending email verification', ref('User')), ...authErrors },
       },
@@ -412,7 +412,7 @@ export const openapi = {
       post: {
         tags: ['Auth'],
         summary: 'Accept the consent notice, create the account and log in',
-        description: 'Activates the account, stores the acceptance date, time and notice version, and sets the session cookie. The consent token is bound to the sign-up it was issued for: after a re-signup of the same email, an older token gets 400 "This sign-up step has expired" (the same applies to /auth/decline-consent).',
+        description: 'Activates the account, stores the acceptance date, time and notice version, and sets the session cookie. The consent token is bound to the sign-up it was issued for: after a re-signup of the same email, an older token gets 400 "This sign-up step has expired" (the same applies to /auth/decline-consent). The account is finished in one conditional write, so a racing re-signup and this consent cannot both succeed.',
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['consentToken', 'accepted', 'version'], properties: { consentToken: { type: 'string' }, accepted: { type: 'boolean', enum: [true] }, version: { type: 'string' } } } } } },
         responses: { 200: jsonResponse('Account created and logged in', ref('User')), ...authErrors, 409: errorResponse },
       },

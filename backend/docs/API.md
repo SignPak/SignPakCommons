@@ -45,7 +45,11 @@ session version, and the consent token carries the version it was issued for (cl
 a token from before a re-signup is refused by `POST /auth/consent` and `POST
 /auth/decline-consent` with 400 "This sign-up step has expired. Verify your email again to
 continue." So nobody can slip their own details in between someone else's verification
-and consent. Unfinished sign-ups are deleted 24
+and consent. The re-signup and the consent (or decline) are each a single conditional write
+on "still unfinished, still at this version", so when they race exactly one wins: a consent
+that lands while a re-signup is still hashing the password finishes the account and the
+re-signup gets 409 "An account with this email already exists."; a re-signup that lands
+first makes the consent (or decline) 400 as above. Unfinished sign-ups are deleted 24
 hours after the latest sign-up (S9, a TTL index on `signupExpiresAt` limited to
 unverified contributor accounts).
 

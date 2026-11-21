@@ -296,6 +296,8 @@ checks that were already true):
 The requirement column is FR13.1 and SE-9 (the API only honours a token that's still valid for
 that sign-up).
 
+That fix still left a race, found in the second verification and fixed under item 4.
+
 ### 2. CI red on `8bfcf2d`: a flaky E2E test
 
 **Which test:** from the `playwright-report` artifact of run 44921498965, it's **WebKit only**,
@@ -344,30 +346,77 @@ holds `load` open until the test times out. So the suite depended on the interne
   /users/me` with the open session 200. It failed on `8bfcf2d`.
 - **Docs:** `docs/API.md` and `openapi.js` describe it.
 
+**CI on fixes 1–3:** `2266986` (runs 44926288161 push, 44926294659 pull_request) and the
+docs-only `0abde74` after it (runs 44926637757 push, 44926642474 pull_request) were green on
+all five jobs.
+
+### 4. B3: a re-signup racing consent or decline (second verification, blocker)
+
+**What you found:** the version check and the write were separate steps.
+- `register()` read the pending account, hashed the password (about 250 ms at 12 rounds), then
+  saved only the paths it changed.
+- `completeSignup()` read the account, checked `v`, then saved.
+- A consent that landed inside register's bcrypt window passed the check and marked the account
+  verified. Register's save then wrote the other person's `passwordHash` and `authVersion` onto
+  the now-verified account.
+- Your reproduction on `0abde74` (`Promise.all([re-signup, consent])`) ended with consent 200
+  and the other person's login 200 in 10 of 10 iterations.
+
+**Fix (your approach):** both sides are now one conditional, atomic write on `emailVerified`
+and `authVersion`, so only one can win.
+- **`userRepo.updatePendingSignup(id, expectedVersion, fields)`:** `findOneAndUpdate({ _id,
+  emailVerified: false, role: 'user', authVersion: versionMatch(expectedVersion) }, { $set:
+  fields, $inc: { authVersion: 1 } }, { new: true })`, with the code fields selected.
+  `register()` calls it after hashing, with the version it read. `null` means the account was
+  finished or changed meanwhile, which gives the existing 409 "An account with this email already
+  exists." Otherwise it sends the code, or skips it inside the resend window, on the returned
+  document as before.
+- **`userRepo.completePendingSignup(id, v, { consent })`:** the same filter, `$set: {
+  emailVerified: true, consent, signupExpiresAt: null }`. `completeSignup` uses it; `null` gives
+  the existing 400 "This sign-up step has expired. Verify your email again to continue."
+- **`userRepo.removePendingSignup(id, v)`:** `deleteOne` with the same filter. `declineSignup`
+  uses it; `deletedCount` 0 gives the same 400.
+- **`versionMatch(0)`** is `{ $in: [0, null] }`, so it also matches an account with no
+  `authVersion` field. Any other version matches exactly.
+- **`pendingSignup()`** keeps its read only as a fast check (a bad, stale or finished token is
+  still refused before any write). The conditional write is what decides.
+- **Docs:** the B3 notes in `docs/API.md`, and `openapi.js` (`/auth/signup`, `/auth/consent`).
+
+**Tests** (failing first: the four race tests failed on `0abde74`, and the repo unit tests
+failed because the functions didn't exist yet):
+
+| Level | Test | Row |
+| --- | --- | --- |
+| Integration | Consent lands while the re-signup is held inside `bcrypt.hash` (a `mock.method` that waits for a promise the test releases). Consent 200, re-signup 409, the owner logs in with her password, the other person can't, and the account keeps the owner's name. On `0abde74`: re-signup 201 | I-106 |
+| Integration | The reverse order. Consent is held right after `pendingSignup`'s read (it has already checked `v`), the re-signup commits (201), then consent carries on. Consent 400 with no cookie, the account stays unverified, and neither password logs in. On `0abde74`: consent 200. (The plain sequential version, re-signup then consent, is I-103.) | I-107 |
+| Integration | The same for decline: held after its check, re-signup commits, decline 400 and the sign-up is kept. On `0abde74`: decline 204 and the account was deleted | I-108 |
+| Integration | Stress: 10 iterations of `Promise.all([re-signup, consent])` on fresh emails. Even iterations hash at the production cost (12 rounds), odd ones at the test cost. Each time exactly one wins (consent 200 + re-signup 409, or consent 400 + re-signup 201), the other person's login is never 200, and the owner's login, `emailVerified` and the name match the winner. On `0abde74`: iteration 0 had consent 200 and re-signup 201 | I-109 |
+| Integration | Against the real database: an account with the `authVersion` field removed is matched by version 0 and not by 1, and the update bumps it to 1 | I-110 |
+| Unit | `pendingSignupRepo.test.js`: `versionMatch(0)` (and `undefined`) is `{ $in: [0, null] }`, other versions exact; the exact filter, update and options of `updatePendingSignup` (with the code fields selected), `completePendingSignup` and `removePendingSignup` | U-158–U-161 |
+
+The existing B3, S9 and consent tests (I-96–I-104, the consent suite, U-153–U-157) pass
+unchanged.
+
 ### Test gate after the fixes
 
-Run on this branch, Windows 11, Node v24.13.1, 21 Nov 2026. Pasted from real output.
+Re-run after fix 4, on this branch, Windows 11, Node v24.13.1, 21 Nov 2026. Pasted from real
+output.
 
 | Gate | Result | Exit |
 | --- | --- | --- |
-| backend `test:unit` | tests 157, pass 157, fail 0 | 0 |
-| backend `test:integration` | tests 105, pass 105, fail 0 | 0 |
+| backend `test:unit` | tests 161, pass 161, fail 0 | 0 |
+| backend `test:integration` | tests 110, pass 110, fail 0 | 0 |
 | backend `test:security` | tests 78, pass 78, fail 0 | 0 |
-| backend `test:coverage` | pass 340, fail 0; overall 93.83% lines / 89.47% branches; `src/services` 89.1% / 88.22%; "Coverage gate passed." | 0 |
+| backend `test:coverage` | pass 349, fail 0; overall 93.88% lines / 89.61% branches; `src/services` 89.14% / 88.39%; "Coverage gate passed." | 0 |
 | frontend `lint` / `test` / `test:coverage` / `build` | clean / 79 passed (18 files) / 34.05% lines / built (main chunk 542.63 kB) | 0 |
-| `e2e` | **30 passed** (1.6 m) | 0 |
+| `e2e` | **30 passed** (1.7 m) | 0 |
 | `npm audit --omit=dev --audit-level=high` (backend, frontend, e2e) | found 0 vulnerabilities ×3 | 0 |
 
-`TEST-CASES.md`: U-153–U-157, I-103–I-105, FI-31, FI-32. The counts are now 75 files and 449
+`TEST-CASES.md`: U-153–U-161, I-103–I-110, FI-31, FI-32. The counts are now 76 files and 458
 cases, and the traceability test passes.
 
 ### CI after the fixes
 
-The fixes are in `2266986`. Both of its runs are green on all five jobs (Backend, Frontend,
-End-to-end, Dependency audit, Deploy files):
-- [44926288161](https://github.com/SignPak/SignPakCommons/actions/runs/44926288161) (push)
-- [44926294659](https://github.com/SignPak/SignPakCommons/actions/runs/44926294659) (pull_request)
-
-This report is pushed in one more docs-only commit after that. Its own two runs, the final
-commit's result, are given in the hand-off message on the PR, since a commit can't contain its
-own CI result.
+Fix 4 and this report are pushed in one commit, so that commit is the last one on the branch.
+Its two CI runs are given in the hand-off message and in a comment on PR #36, since a commit
+can't contain its own CI result.

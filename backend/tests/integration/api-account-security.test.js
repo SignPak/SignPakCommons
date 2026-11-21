@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
-import { after, before, describe, test } from 'node:test'
+import { after, afterEach, before, describe, mock, test } from 'node:test'
+import bcrypt from 'bcrypt'
 import { Client } from '../support/helpers.js'
 import { useApiContext } from '../support/apiContext.js'
 
@@ -263,6 +264,145 @@ describe('B3: a re-signup between verify and consent (fixes after verification)'
     assert.equal(declined.status, 400)
     assert.equal(declined.body.error.message, 'This sign-up step has expired. Verify your email again to continue.')
     assert.equal(await users().countDocuments({ email: 'decline.b3@example.com' }), 1, 'the pending sign-up is not removed')
+  })
+})
+
+describe('B3: a re-signup racing consent or decline (second fixes after verification)', () => {
+  const EXPIRED = 'This sign-up step has expired. Verify your email again to continue.'
+  const consent = async (client, consentToken) => {
+    const { CONSENT_VERSION } = await import('../../src/config/constants.js')
+    return client.post('/auth/consent', { consentToken, accepted: true, version: CONSENT_VERSION })
+  }
+  // The owner signs up and verifies, so she holds a consent token for the current version.
+  const ownerWithToken = async (email) => {
+    const owner = new Client(base)
+    assert.equal((await signup(owner, email, { firstName: 'Owner', surname: 'Real', password: 'ownerpass1' })).status, 201)
+    const verified = await owner.post('/auth/verify-email', { email, code: code(email), password: 'ownerpass1' })
+    assert.equal(verified.status, 200)
+    return { owner, token: verified.body.data.consentToken }
+  }
+  const attackerSignup = (email) => signup(new Client(base), email, { firstName: 'Mallory', surname: 'Other', password: 'attacker1' })
+  // A gate: `entered` resolves when the held call reaches hold(), and release() lets it carry on.
+  const gate = () => {
+    let reached, release
+    const entered = new Promise((resolve) => { reached = resolve })
+    const opened = new Promise((resolve) => { release = resolve })
+    return { entered, release, hold: async () => { reached(); await opened } }
+  }
+  // Holds the first userRepo.findById (the fast check in pendingSignup) after it has read the account.
+  const holdFirstFindById = (held) => {
+    const realFindById = userRepo.findById
+    let first = true
+    mock.method(userRepo, 'findById', async (...args) => {
+      const doc = await realFindById.apply(userRepo, args)
+      if (first) { first = false; await held.hold() }
+      return doc
+    })
+  }
+  let userRepo
+  before(async () => { ({ userRepo } = await import('../../src/repositories/userRepo.js')) })
+  afterEach(() => mock.restoreAll())
+
+  test('B3: consent that lands while a re-signup is hashing wins; the re-signup gets 409 and changes nothing', async () => {
+    const email = 'race.consent@example.com'
+    const { owner, token } = await ownerWithToken(email)
+    const realHash = bcrypt.hash
+    const held = gate()
+    mock.method(bcrypt, 'hash', async (...args) => { await held.hold(); return realHash.apply(bcrypt, args) })
+
+    const resignup = attackerSignup(email) // reads the pending account, then waits inside bcrypt.hash
+    await held.entered
+    const accepted = await consent(owner, token)
+    held.release()
+    const again = await resignup
+
+    assert.equal(accepted.status, 200)
+    assert.equal(again.status, 409)
+    assert.equal(again.body.error.message, 'An account with this email already exists. Log in instead.')
+    mock.restoreAll()
+    assert.equal((await login(new Client(base), email, 'ownerpass1')).status, 200, 'the owner logs in with her password')
+    assert.equal((await login(new Client(base), email, 'attacker1')).status, 401, 'the other person cannot')
+    const doc = await users().findOne({ email }).lean()
+    assert.equal(doc.firstName, 'Owner')
+    assert.equal(doc.surname, 'Real')
+    assert.equal(doc.emailVerified, true)
+  })
+
+  test('B3: a re-signup that commits between consent\'s check and its write wins; consent gets 400', async () => {
+    const email = 'race.resignup@example.com'
+    const { owner, token } = await ownerWithToken(email)
+    const held = gate()
+    holdFirstFindById(held)
+
+    const consenting = consent(owner, token) // has read the account and checked v, then waits
+    await held.entered
+    assert.equal((await attackerSignup(email)).status, 201, 'the re-signup commits first')
+    held.release()
+    const res = await consenting
+
+    assert.equal(res.status, 400)
+    assert.equal(res.body.error.message, EXPIRED)
+    assert.equal(res.setCookie.length, 0, 'no session is started')
+    mock.restoreAll()
+    const doc = await users().findOne({ email }).lean()
+    assert.equal(doc.emailVerified, false, 'the account is not finished')
+    assert.equal((await login(new Client(base), email, 'ownerpass1')).status, 401, 'the owner cannot log in')
+    assert.equal((await login(new Client(base), email, 'attacker1')).status, 401, 'nor can the other person')
+  })
+
+  test('B3: a re-signup that commits between decline\'s check and its delete wins; decline gets 400 and the sign-up is kept', async () => {
+    const email = 'race.decline@example.com'
+    const { owner, token } = await ownerWithToken(email)
+    const held = gate()
+    holdFirstFindById(held)
+
+    const declining = owner.post('/auth/decline-consent', { consentToken: token })
+    await held.entered
+    assert.equal((await attackerSignup(email)).status, 201, 'the re-signup commits first')
+    held.release()
+    const res = await declining
+
+    assert.equal(res.status, 400)
+    assert.equal(res.body.error.message, EXPIRED)
+    mock.restoreAll()
+    assert.equal(await users().countDocuments({ email }), 1, 'the pending sign-up is kept')
+  })
+
+  test('B3: stress, 10 re-signups racing consent: exactly one wins every time and the other person never logs in', async () => {
+    const realHash = bcrypt.hash
+    for (let i = 0; i < 10; i += 1) {
+      const email = `race.stress${i}@example.com`
+      const { owner, token } = await ownerWithToken(email)
+      // Even iterations hash at the production cost (12 rounds, about 250 ms), odd ones at the
+      // test cost, so more than one interleaving gets exercised.
+      if (i % 2 === 0) mock.method(bcrypt, 'hash', (password) => realHash.call(bcrypt, password, 12))
+      const [again, accepted] = await Promise.all([attackerSignup(email), consent(owner, token)])
+      mock.restoreAll()
+
+      const consentWon = accepted.status === 200 && again.status === 409
+      const resignupWon = accepted.status === 400 && again.status === 201
+      assert.ok(consentWon !== resignupWon, `iteration ${i}: consent ${accepted.status}, re-signup ${again.status}`)
+      assert.notEqual((await login(new Client(base), email, 'attacker1')).status, 200, `iteration ${i}: the other person logged in`)
+      assert.equal((await login(new Client(base), email, 'ownerpass1')).status, consentWon ? 200 : 401, `iteration ${i}: owner login`)
+      const doc = await users().findOne({ email }).lean()
+      assert.equal(doc.emailVerified, consentWon, `iteration ${i}: emailVerified`)
+      assert.equal(doc.firstName, consentWon ? 'Owner' : 'Mallory', `iteration ${i}: name`)
+    }
+  })
+
+  test('B3: the conditional writes treat an account with no authVersion field as version 0', async () => {
+    const email = 'noversion@example.com'
+    assert.equal((await signup(new Client(base), email)).status, 201)
+    const unsetVersion = () => users().collection.updateOne({ email }, { $unset: { authVersion: '' } })
+    await unsetVersion()
+    const { _id } = await users().findOne({ email }).lean()
+
+    assert.equal(await userRepo.completePendingSignup(_id, 1, { consent: { acceptedAt: new Date(), version: 'x' } }), null, 'version 1 does not match')
+    const updated = await userRepo.updatePendingSignup(_id, 0, { firstName: 'Matched' })
+    assert.equal(updated.firstName, 'Matched', 'version 0 matches the missing field')
+    assert.equal(updated.authVersion, 1, 'the update bumps the version')
+    await unsetVersion()
+    assert.equal((await userRepo.removePendingSignup(_id, 0)).deletedCount, 1)
   })
 })
 
