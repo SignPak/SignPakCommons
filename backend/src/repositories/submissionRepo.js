@@ -33,6 +33,40 @@ export const submissionRepo = {
   countsByVideo: () => Submission.aggregate([{ $group: { _id: '$video', count: { $sum: 1 } } }]),
 
   /**
+   * B7: the dashboard's counts for the submissions matching `match` (already cast: aggregate does
+   * not cast ids): per UTC day, per video, per contributor, and the total, in one pass.
+   */
+  async statsFor(match) {
+    const [result] = await Submission.aggregate([
+      { $match: match },
+      { $facet: {
+        byDay: [{ $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, count: { $sum: 1 } } }],
+        byVideo: [{ $group: { _id: '$video', count: { $sum: 1 } } }],
+        byUser: [{ $group: { _id: '$user', count: { $sum: 1 } } }],
+        total: [{ $count: 'count' }],
+      } },
+    ])
+    return { byDay: result.byDay, byVideo: result.byVideo, byUser: result.byUser, total: result.total[0]?.count ?? 0 }
+  },
+  recentMatching: (match, limit) => Submission.find(match).sort({ createdAt: -1, _id: -1 }).limit(limit),
+
+  /**
+   * B5/B7: one page of the submissions matching `filter`, newest first. The cursor is the last
+   * `_id` of the previous page, as in pageForUser, so pages stay stable while rows are deleted.
+   */
+  async page(filter, { limit, cursor }) {
+    const pageFilter = cursor ? { $and: [filter, { _id: { $lt: cursor } }] } : filter
+    const [rows, total] = await Promise.all([
+      Submission.find(pageFilter).sort({ _id: -1 }).limit(limit + 1),
+      Submission.countDocuments(filter),
+    ])
+    const items = rows.slice(0, limit)
+    return { items, total, nextCursor: rows.length > limit ? String(items.at(-1)._id) : null }
+  },
+  /** B5: every submission matching `filter`, oldest first, read as a stream for the export. */
+  exportCursor: (filter) => Submission.find(filter).sort({ _id: 1 }).lean().cursor(),
+
+  /**
    * Atomically tries to start a cooldown window for (user, video). Returns true if this call
    * won (no other submission for this pair is currently inside its cooldown), false if one
    * already is. Race-safe under concurrent requests: the conditional filter plus the unique

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { emailField } from './common.js'
+import { emailField, objectId } from './common.js'
 
 export const contactSchema = z.object({
   topic: z.enum(['general', 'partnership', 'recording-deletion']).default('general'),
@@ -13,6 +13,11 @@ export const contactCodeSchema = z.object({
   code: z.string({ error: 'Enter the six-digit code from your email.' }).trim().regex(/^\d{6}$/, 'Enter the six-digit code from your email.'),
 })
 
-export const statsQuerySchema = z.object({ days: z.coerce.number().int().min(7).max(90).default(14) })
+// B7: the dashboard's range and its optional contributor and category filters.
+export const statsQuerySchema = z.object({
+  days: z.coerce.number().int().min(7).max(90).default(14),
+  userId: objectId('contributor').optional(),
+  categoryId: objectId('category').optional(),
+})
 
 export const limitQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) })

@@ -69,6 +69,23 @@ be retried. **Mark done**, **Reject** and **Reopen** set the message status. The
 **Delete**; every confirmation names the number of recordings, read from
 `GET /admin/users/:id/submissions?limit=1`.
 
+**Admin → Dashboard** (`src/pages/admin/AdminDashboard.jsx`, B7) renders only from
+`GET /admin/stats?days=&userId=&categoryId=`: the key numbers, the per-day chart, categories,
+top videos and contributors, and recent submissions are counted on the server. The contributor
+filter is a search (`src/components/ContributorSearch.jsx`, `GET /admin/users?role=user&q=`),
+not a list of every account.
+
+**Admin → Submissions** (`src/pages/admin/AdminSubmissions.jsx`, B5) lists every submission from
+`GET /admin/submissions`, filtered by category, video, contributor and dates, with **Load more**
+following the cursor. **Download CSV** and **Download JSON** are plain links to
+`GET /admin/submissions/export` with the same filters, so the browser streams the file to disk.
+
+**Admin → Users** loads accounts a page at a time with a name/email search. An admin's
+library (`LibraryProvider`) loads only their own submissions (`GET /submissions?mine=true`);
+**Admin → Categories** reads each category's recording count from `/admin/stats`
+(`totalsByCategory`). The admin queries are checked with Zod before sending
+(`src/utils/adminQueries.js`).
+
 **Admin → Activity** (`src/pages/admin/AdminActivity.jsx`, S7) shows the activity log from
 `GET /admin/audit`, 25 entries a page, newest first: when, which admin (or "System" for the
 startup admin sync), the action as a readable label, what it was done to and the details.

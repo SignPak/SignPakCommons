@@ -33,7 +33,8 @@ afterEach(() => mock.restoreAll())
 describe('Phase 7 item 5: DeletionLog.accountDeleted', () => {
   test('Phase 7 item 5: the log is marked accountDeleted only after the account is deleted', async () => {
     await userService.remove('user-1', ADMIN, { withRecordings: true })
-    assert.deepEqual(steps, ['recordings', 'deleted-account', 'remove-user', 'mark log-1', 'audit user.delete'])
+    // Phase 8 item 6 put the user removal before the DeletedAccount record.
+    assert.deepEqual(steps, ['recordings', 'remove-user', 'deleted-account', 'mark log-1', 'audit user.delete'])
   })
 
   test('Phase 7 item 5: when the account deletion fails, the log is never marked', async () => {
@@ -45,6 +46,6 @@ describe('Phase 7 item 5: DeletionLog.accountDeleted', () => {
 
   test('Phase 7 item 5: a plain account deletion writes no deletion log', async () => {
     await userService.remove('user-1', ADMIN, {})
-    assert.deepEqual(steps, ['deleted-account', 'remove-user', 'audit user.delete'])
+    assert.deepEqual(steps, ['remove-user', 'deleted-account', 'audit user.delete'])
   })
 })

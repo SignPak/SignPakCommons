@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Field from '../../components/Field'
 import { Alert, Badge, Button, Eyebrow } from '../../components/ui'
 import { TONES, TONE_LABELS } from '../../config/constants'
 import { useLibrary } from '../../context/LibraryContext'
+import { api } from '../../services/api'
 import { formatTime } from '../../utils/format'
 
 const NEW_CATEGORY = { label: '', copy: '', tone: TONES[0] }
@@ -64,15 +65,32 @@ export default function AdminCategories() {
   </section>
 }
 
+/**
+ * B7: a category's all-time recording count, from GET /admin/stats (`totalsByCategory`), now
+ * that an admin's library no longer holds everyone's submissions. Null while loading or if the
+ * stats can't be read.
+ */
+function useCategoryRecordingCount(categoryId) {
+  const [counts, setCounts] = useState(null)
+  useEffect(() => {
+    let active = true
+    api.admin.stats({ days: 7 })
+      .then((stats) => { if (active) setCounts(new Map(stats.totalsByCategory.map((item) => [item.categoryId, item.count]))) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
+  return counts ? (counts.get(categoryId) ?? 0) : null
+}
+
 function CategoryDetail({ category, onDeleted }) {
-  const { videos, submissions, editCategory, deleteCategory, editVideo } = useLibrary()
+  const { videos, editCategory, deleteCategory, editVideo } = useLibrary()
+  const recordingCount = useCategoryRecordingCount(category.id)
   const [draft, setDraft] = useState({ label: category.label, copy: category.copy, tone: category.tone, archived: !!category.archived })
   const [saved, setSaved] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const assigned = videos.filter((video) => video.categoryId === category.id).sort((a, b) => (a.order || 0) - (b.order || 0))
   const change = (event) => { const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value; setSaved(false); setDraft((current) => ({ ...current, [event.target.name]: value })) }
 
-  const categorySubmissionCount = submissions.filter((item) => assigned.some((video) => video.id === item.videoId)).length
   const publishedCount = assigned.filter((video) => video.status === 'published').length
 
   const unassign = (video) => editVideo(video.id, { categoryId: null })
@@ -83,7 +101,7 @@ function CategoryDetail({ category, onDeleted }) {
     <div className="category-stats">
       <span><b>{assigned.length}</b> videos</span>
       <span><b>{publishedCount}</b> published</span>
-      <span><b>{categorySubmissionCount}</b> recordings</span>
+      <span><b>{recordingCount ?? '…'}</b> recordings</span>
     </div>
     <div className="category-edit">
       <Field label="Name" name="label" value={draft.label} onChange={change} />

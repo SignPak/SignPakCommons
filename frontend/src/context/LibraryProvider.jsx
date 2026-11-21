@@ -10,12 +10,13 @@ import { useUploadQueue } from './UploadQueueContext'
 const EMPTY = { ready: false, ownerId: null, categories: [], videos: [], submissions: [] }
 const SUBMISSION_COOLDOWN_MS = Number(import.meta.env.VITE_SUBMISSION_COOLDOWN_MS || 30_000)
 
+// B7: everyone's library holds only their own submissions; admins read the totals from
+// /admin/stats and browse submissions page by page in Admin → Submissions.
 function loadLibrary(user) {
-  const includeAll = user?.role === 'admin'
   return Promise.all([
     api.categories.list(),
     api.videos.list(),
-    user ? api.submissions.list(user.id, includeAll) : Promise.resolve([]),
+    user ? api.submissions.list({ mine: true }) : Promise.resolve([]),
   ])
 }
 

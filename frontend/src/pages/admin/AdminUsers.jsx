@@ -6,10 +6,18 @@ import { api } from '../../services/api'
 import { formatDate } from '../../utils/format'
 
 const emptyRestriction = { type: 'ip', value: '', reason: '' }
+// B7: accounts are loaded a page at a time and can be searched by name or email.
+const PAGE_SIZE = 50
+const SEARCH_DEBOUNCE_MS = 250
 
 export default function AdminUsers() {
   const { user: currentUser } = useAuth()
   const [users, setUsers] = useState([])
+  const [total, setTotal] = useState(0)
+  const [nextCursor, setNextCursor] = useState(null)
+  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  const [loadingMore, setLoadingMore] = useState(false)
   const [restrictions, setRestrictions] = useState([])
   const [form, setForm] = useState(emptyRestriction)
   const [loading, setLoading] = useState(true)
@@ -19,17 +27,37 @@ export default function AdminUsers() {
 
   useEffect(() => {
     let active = true
-    Promise.all([api.users.list(), api.admin.restrictions()])
-      .then(([userList, restrictionList]) => {
-        if (active) {
-          setUsers(userList)
-          setRestrictions(restrictionList)
-        }
-      })
+    api.admin.restrictions()
+      .then((restrictionList) => { if (active) setRestrictions(restrictionList) })
       .catch((cause) => { if (active) setError(cause.message || 'Unable to load access controls.') })
-      .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [])
+
+  // The search waits for a pause in typing before it asks the API.
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search.trim()), search ? SEARCH_DEBOUNCE_MS : 0)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    let active = true
+    api.users.page({ limit: PAGE_SIZE, q: query || undefined })
+      .then((page) => { if (active) { setUsers(page.items); setTotal(page.total); setNextCursor(page.nextCursor) } })
+      .catch((cause) => { if (active) setError(cause.message || 'Unable to load accounts.') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [query])
+
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const page = await api.users.page({ limit: PAGE_SIZE, cursor: nextCursor, q: query || undefined })
+      setUsers((items) => [...items, ...page.items])
+      setTotal(page.total)
+      setNextCursor(page.nextCursor)
+    } catch (cause) { setError(cause.message || 'Unable to load more accounts.') }
+    finally { setLoadingMore(false) }
+  }
 
   async function changeStatus(target) {
     const status = target.status === 'suspended' ? 'active' : 'suspended'
@@ -61,6 +89,7 @@ export default function AdminUsers() {
       if (!window.confirm(question)) return
       await api.users.remove(target.id, { withRecordings })
       setUsers((items) => items.filter((item) => item.id !== target.id))
+      setTotal((count) => Math.max(0, count - 1))
       setNotice(withRecordings ? `${name} and their ${recordings(count)} were deleted.` : `${name} was deleted. Their recordings are kept.`)
     } catch (cause) { setError(cause.message || 'Unable to delete this account.') }
     finally { setBusyId('') }
@@ -111,7 +140,10 @@ export default function AdminUsers() {
     {notice && <Alert tone="success">{notice}</Alert>}
 
     <section className="panel">
-      <SectionHeading eyebrow="Accounts" title="Manage users." action={<span className="panel-note">{users.length} accounts</span>} />
+      <SectionHeading eyebrow="Accounts" title="Manage users." action={<span className="panel-note">{total} {total === 1 ? 'account' : 'accounts'}</span>} />
+      <div className="admin-filters">
+        <Field type="search" label="Search accounts" placeholder="Name or email" value={search} onChange={(event) => { setLoading(true); setSearch(event.target.value) }} />
+      </div>
       {loading ? <p className="empty-note">Loading accounts...</p> : users.length ? <div className="table-wrap">
         <table className="table admin-user-table">
           <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last device</th><th>Joined</th><th>Actions</th></tr></thead>
@@ -132,6 +164,10 @@ export default function AdminUsers() {
           </tr>)}</tbody>
         </table>
       </div> : <p className="empty-note">No accounts found.</p>}
+      {nextCursor && !loading && <div className="admin-load-more">
+        <span className="panel-note">Showing {users.length} of {total}</span>
+        <Button variant="outline" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load more'}</Button>
+      </div>}
     </section>
 
     <section className="admin-split admin-access-grid">

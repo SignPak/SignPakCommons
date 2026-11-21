@@ -12,11 +12,15 @@ import { submissionService } from './submissionService.js'
 /**
  * C3: account deletion keeps the recordings, so remember the account by its email hash. A later
  * deletion request can then be matched to the recordings it left behind.
+ *
+ * Phase 8 item 6: the account is removed first. Only then is the DeletedAccount record written,
+ * so a failed removal never leaves a "deleted" record for a live account. If the record (or the
+ * cooldown clean-up) fails after that, it is logged and not thrown: the account is already gone.
  */
 async function deleteAccount(user, by) {
-  await deletedAccountRepo.create({ userId: user._id, emailHash: hashEmail(user.email), by })
-  await submissionRepo.clearCooldownsForUser(user._id)
   await userRepo.remove(user._id)
+  await attemptCleanup('record the deleted account', () => deletedAccountRepo.create({ userId: user._id, emailHash: hashEmail(user.email), by }), { userId: String(user._id) })
+  await attemptCleanup('clear the cooldowns of a deleted account', () => submissionRepo.clearCooldownsForUser(user._id), { userId: String(user._id) })
 }
 
 export const userService = {
@@ -37,9 +41,18 @@ export const userService = {
   },
 
   listContributors: () => userRepo.list({ role: ROLES.USER }),
-  async listAll() {
+  /**
+   * GET /admin/users. B7: with `limit` it answers one page, `{ items, nextCursor, total }`,
+   * filtered by `role` and the `q` search; without it, every account as before.
+   */
+  async listAll({ limit, cursor, role, q } = {}) {
+    const shape = (user) => ({ ...user.toJSON(), lastDeviceId: user.lastDeviceId })
+    if (limit) {
+      const page = await userRepo.page({ role, q, limit, cursor, includeDeviceIds: true })
+      return { ...page, items: page.items.map(shape) }
+    }
     const users = await userRepo.list({ includeDeviceIds: true })
-    return users.map((user) => ({ ...user.toJSON(), lastDeviceId: user.lastDeviceId }))
+    return users.map(shape)
   },
 
   async updateStatus(id, actor, { status, reason = '' }) {

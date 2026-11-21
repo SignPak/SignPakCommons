@@ -203,6 +203,12 @@ OAuth refresh token expired or was revoked, usually because the consent screen w
   AVIF) and 3GP/3G2 major brands are refused; listed video brands are accepted; an unknown
   major brand only passes if it declares a listed video brand as compatible.
 - Access restrictions store hashed identifiers and expose only short hints.
+- B5: the ML export (`GET /admin/submissions/export`) streams from a MongoDB cursor, row by
+  row, so its size is not limited by memory. It holds ids, the stored-file pointer, trim, mirror
+  and time, never names or emails. `scripts/prepare-dataset.js` turns it into trimmed clips on a
+  team machine (see `docs/DATASET.md`); the server never runs ffmpeg.
+- B7: the admin dashboard is built from `GET /admin/stats` (MongoDB aggregations), and admin
+  lists page with a cursor (`_id`), so no admin page downloads every submission or account.
 - Every admin action is written to the activity log (`AuditLog`, S7) by the service that
   performs it, through `auditService.record()`, which keeps secrets and email addresses out
   of `meta`. Login attempts are logged at `info` with the email's keyed hash, the outcome and

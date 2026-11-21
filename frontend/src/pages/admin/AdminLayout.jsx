@@ -4,7 +4,7 @@ import { paths } from '../../routes/appRoutes'
 import { useAuth } from '../../context/AuthContext'
 import { greeting } from '../../utils/format'
 
-const tabs = [['/admin', 'Dashboard', true], ['/admin/users', 'Users', false], ['/admin/videos', 'Videos', false], ['/admin/categories', 'Categories', false], ['/admin/messages', 'Messages', false], ['/admin/activity', 'Activity', false]]
+const tabs = [['/admin', 'Dashboard', true], ['/admin/users', 'Users', false], ['/admin/videos', 'Videos', false], ['/admin/categories', 'Categories', false], ['/admin/submissions', 'Submissions', false], ['/admin/messages', 'Messages', false], ['/admin/activity', 'Activity', false]]
 
 export default function AdminLayout() {
   const { user } = useAuth()

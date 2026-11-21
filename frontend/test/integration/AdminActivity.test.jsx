@@ -26,11 +26,17 @@ beforeEach(() => {
   seenQueries = []
   total = 2
   server.use(
-    http.get('*/api/v1/admin/users', () => HttpResponse.json({ data: [
-      { id: NIDA, firstName: 'Nida', surname: 'Admin', role: 'admin', email: 'nida@example.com', status: 'active' },
-      { id: OMAR, firstName: 'Omar', surname: 'Admin', role: 'admin', email: 'omar@example.com', status: 'active' },
-      { id: 'd'.repeat(24), firstName: 'Sara', surname: 'Ahmed', role: 'user', email: 'sara@example.com', status: 'active' },
-    ] })),
+    // B7 (Phase 8): the page asks for one page of admins (?role=admin&limit=), as the API answers it.
+    http.get('*/api/v1/admin/users', ({ request }) => {
+      const role = new URL(request.url).searchParams.get('role')
+      const everyone = [
+        { id: NIDA, firstName: 'Nida', surname: 'Admin', role: 'admin', email: 'nida@example.com', status: 'active' },
+        { id: OMAR, firstName: 'Omar', surname: 'Admin', role: 'admin', email: 'omar@example.com', status: 'active' },
+        { id: 'd'.repeat(24), firstName: 'Sara', surname: 'Ahmed', role: 'user', email: 'sara@example.com', status: 'active' },
+      ]
+      const items = role ? everyone.filter((user) => user.role === role) : everyone
+      return HttpResponse.json({ data: { items, nextCursor: null, total: items.length } })
+    }),
     http.get('*/api/v1/admin/audit', ({ request }) => {
       const query = Object.fromEntries(new URL(request.url).searchParams)
       seenQueries.push(query)

@@ -26,4 +26,5 @@ export const AUDIT_ACTIONS = [
   'restriction.create', 'restriction.delete',
   'message.status',
   'admin.promote', 'admin.demote',
+  'submissions.export',
 ]

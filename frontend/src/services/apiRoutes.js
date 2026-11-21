@@ -31,7 +31,7 @@ export const apiRoutes = {
     removeMe: () => `${API_BASE}/users/me`,
     consent: () => `${API_BASE}/users/me/consent`,
     password: () => `${API_BASE}/users/me/password`,
-    list: () => `${API_BASE}/admin/users`,
+    list: ({ limit, cursor, role, q } = {}) => `${API_BASE}/admin/users${qs({ limit, cursor, role, q })}`,
     update: (id) => `${API_BASE}/admin/users/${id}`,
     remove: (id, { withRecordings } = {}) => `${API_BASE}/admin/users/${id}${qs({ withRecordings: withRecordings ? 'true' : undefined })}`,
   },
@@ -61,7 +61,7 @@ export const apiRoutes = {
   },
 
   submissions: {
-    list: () => `${API_BASE}/submissions`,
+    list: ({ mine, limit, cursor } = {}) => `${API_BASE}/submissions${qs({ mine, limit, cursor })}`,
     create: () => `${API_BASE}/submissions`,
     recording: (id) => `${API_BASE}/submissions/${id}/recording`,
   },
@@ -77,13 +77,16 @@ export const apiRoutes = {
     restrictions: () => `${API_BASE}/admin/restrictions`,
     createRestriction: () => `${API_BASE}/admin/restrictions`,
     removeRestriction: (id) => `${API_BASE}/admin/restrictions/${id}`,
-    stats: (days) => `${API_BASE}/admin/stats${qs({ days })}`,
+    stats: ({ days, userId, categoryId } = {}) => `${API_BASE}/admin/stats${qs({ days, userId, categoryId })}`,
     messages: ({ limit, topic, status, verified } = {}) => `${API_BASE}/admin/messages${qs({ limit, topic, status, verified })}`,
     message: (id) => `${API_BASE}/admin/messages/${encodeURIComponent(id)}`,
     // C3: deletion requests.
     userSubmissions: (userId, { limit, cursor } = {}) => `${API_BASE}/admin/users/${encodeURIComponent(userId)}/submissions${qs({ limit, cursor })}`,
     removeUserSubmissions: (userId, { requestMessageId } = {}) => `${API_BASE}/admin/users/${encodeURIComponent(userId)}/submissions${qs({ requestMessageId })}`,
     deletionLookup: ({ messageId, email } = {}) => `${API_BASE}/admin/deletion-lookup${qs({ messageId, email })}`,
+    // B5: every submission, a page at a time, and the export for the ML team.
+    submissions: ({ categoryId, videoId, userId, from, to, limit, cursor } = {}) => `${API_BASE}/admin/submissions${qs({ categoryId, videoId, userId, from, to, limit, cursor })}`,
+    exportSubmissions: ({ categoryId, videoId, userId, from, to, format } = {}) => `${API_BASE}/admin/submissions/export${qs({ format, categoryId, videoId, userId, from, to })}`,
     // S7: the activity log.
     audit: ({ page, limit, actor, action } = {}) => `${API_BASE}/admin/audit${qs({ page, limit, actor, action })}`,
   },

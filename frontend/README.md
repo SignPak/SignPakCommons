@@ -43,6 +43,7 @@ backend separately, or set `VITE_API_ORIGIN` to another API origin.
 | `/admin/users` | Admin | Account controls, including deleting a contributor's recordings, or the account and its recordings together. |
 | `/admin/videos` | Admin | Manage reference videos and the demo video. |
 | `/admin/categories` | Admin | Manage categories. |
+| `/admin/submissions` | Admin | Every submission with filters, and the ML export as CSV or JSON (B5). |
 | `/admin/messages` | Admin | The contact inbox: filter messages, and act on a deletion request (find the contributor, delete their recordings, mark it done or rejected). |
 | `/admin/activity` | Admin | The activity log: who did what and when, filtered by admin and action (S7). |
 

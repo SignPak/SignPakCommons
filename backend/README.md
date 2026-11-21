@@ -88,6 +88,7 @@ All paths are under `/api/v1`.
 | `POST /contact` | Signed-in account or recording-deletion request | Other topics require the account email; deletion requests can be submitted without signing in at any time. |
 | `POST /contact/:id/verify`, `POST /contact/:id/resend` | Anyone | Confirm a signed-out deletion request with the emailed six-digit code, or ask for a new one (once a minute). |
 | `/admin/users*`, `/admin/restrictions*`, `/admin/stats`, `/admin/messages*`, `/admin/deletion-lookup` | Admin | Account moderation, access restrictions, statistics, the inbox, and acting on deletion requests (find the contributor, delete their recordings, mark the request done). |
+| `GET /admin/submissions`, `GET /admin/submissions/export` | Admin | Browse every submission with filters, and download the ML export as CSV or JSON (B5). See [DATASET.md](docs/DATASET.md) for turning it into trimmed clips. |
 | `GET /admin/audit` | Admin | The activity log: who did what and when, a page at a time, filtered by admin or action (S7). |
 
 See [API.md](docs/API.md) for the complete route table, limits, visibility, and

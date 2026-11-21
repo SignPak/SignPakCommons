@@ -531,7 +531,7 @@ Tests:
    - Change `AdminDashboard.jsx` to use `GET /admin/stats?days=`. Add optional `userId` and `categoryId` filters to that endpoint so the page's current filters keep working.
    - For admins, stop `LibraryProvider` from loading every submission.
    - Paginate `GET /admin/users` and the admin `GET /submissions`.
-6. **Fix carried over from Phase 7 verification: `deleteAccount()` must not leave a `DeletedAccount` record for a live account.**
+6. **Fix carried over from Phase 7 verification: `deleteAccount()` must not leave a `DeletedAccount` record for a live account.** *(Done in Phase 8: the user is removed first; I-149, U-200–U-202.)*
    - Today `deleteAccount()` in `userService` writes `DeletedAccount` *before* `userRepo.remove()`. If the removal fails, a `DeletedAccount` record exists for an account that still exists, and the deletion lookup lists it as both current and deleted.
    - Fix: remove the user first, then write `DeletedAccount`. If that write fails, log it with `attemptCleanup`-style logging (the account is already gone).
 

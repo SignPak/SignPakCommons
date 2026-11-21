@@ -56,6 +56,37 @@ export const deletionLookupQuerySchema = z.object({
   message: 'Give either an email address or a message ID.',
 })
 
+// B5: the admin submissions list and the export share these filters. Dates are YYYY-MM-DD (UTC).
+const submissionFilters = {
+  categoryId: objectId('category').optional(),
+  videoId: objectId('video').optional(),
+  userId: objectId('contributor').optional(),
+  from: z.iso.date('Use a date like 2026-11-22.').optional(),
+  to: z.iso.date('Use a date like 2026-11-22.').optional(),
+}
+const fromBeforeTo = (query, context) => {
+  if (query.from && query.to && query.from > query.to) context.addIssue({ code: 'custom', path: ['to'], message: 'The end date must be on or after the start date.' })
+}
+
+export const adminSubmissionsQuerySchema = z.object({
+  ...submissionFilters,
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: objectId('cursor').optional(),
+}).superRefine(fromBeforeTo)
+
+export const exportSubmissionsQuerySchema = z.object({
+  ...submissionFilters,
+  format: z.enum(['csv', 'json'], { error: 'Choose csv or json.' }),
+}).superRefine(fromBeforeTo)
+
+// B7: GET /admin/users pages only when `limit` is given; without it, the full array as before.
+export const usersQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: objectId('cursor').optional(),
+  role: z.enum(['user', 'admin']).optional(),
+  q: z.string().trim().max(100).optional(),
+})
+
 // S7: the activity log, a page at a time, filtered by admin ("system" for the startup sync) and action.
 export const auditQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

@@ -135,6 +135,24 @@ describe('C3: deleting a contributor\'s recordings', () => {
     assert.equal(await mongoose.models.User.countDocuments({ _id: id }), 1, 'the account still exists')
   })
 
+  test('Phase 8 item 6: when removing the account fails, no DeletedAccount record is left and the lookup shows only the current account', async () => {
+    const { id, email } = await contributorWith('item6', 1)
+    const { userRepo } = await import('../../src/repositories/userRepo.js')
+    mock.method(userRepo, 'remove', async () => { throw new Error('database write failed') })
+    let res
+    try {
+      res = await admin.delete(`/admin/users/${id}`)
+    } finally {
+      mock.restoreAll()
+    }
+    assert.equal(res.status, 500)
+    assert.equal(await mongoose.models.User.countDocuments({ _id: id }), 1, 'the account still exists')
+    assert.equal(await mongoose.models.DeletedAccount.countDocuments({ userId: id }), 0, 'no record of a deletion that did not happen')
+    const lookup = await admin.get(`/admin/deletion-lookup?email=${encodeURIComponent(email)}`)
+    assert.equal(lookup.status, 200)
+    assert.deepEqual(lookup.body.data.matches.map((match) => [match.kind, match.userId]), [['user', id]])
+  })
+
   test('C3: plain account deletion still keeps the recordings, and records the account', async () => {
     const { id } = await contributorWith('hira', 1)
     assert.equal((await admin.delete(`/admin/users/${id}`)).status, 204)
