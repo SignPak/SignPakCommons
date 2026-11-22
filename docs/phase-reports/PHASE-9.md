@@ -254,7 +254,7 @@ All new tests are named with their ID.
 | `e2e/support/test.js` | `routeThirdParty` became `prepareContext` (third-party routes plus the CSP watcher); the Unsplash route is gone | The photo is self-hosted |
 | `account-security`, `admin-activity`, `admin-deletion`, `admin-export` specs | call `prepareContext` on their second context | So those contexts are checked against the CSP too |
 | `account-security.spec.js` `logIn()` | waits for the login heading before typing | A race the lazy pages exposed; see below |
-| `cross-host-cookie.spec.js` | waits for the login heading in step 4, and step 5 runs in a separate context | Both explained below |
+| `cross-host-cookie.spec.js` | waits for the login heading in step 4, and step 5 makes its request from the cross-host build reached by IP (`http://127.0.0.1:4174`, added to the E2E API's CORS list in `playwright.config.js`) | Both explained below |
 | `backend/tests/unit/traceability.test.js` | the allowed requirement IDs gain `QA-20`, and the no-requirement notes gain "browser hardening", "bundle size" and "deploy updates" (also added to the legend in `TEST-CASES.md`) | These tests have no FR or SE requirement. It still checks every row the same way. |
 
 **The login race:** WebKit failed S6 in 1 of 3 runs.
@@ -268,9 +268,17 @@ All new tests are named with their ID.
 **Cross-host step 5** is the "different site doesn't get the cookie" control.
 - **What broke:** it used to `fetch` the API from the 127.0.0.1 build, whose CSP now blocks
   that request before any cookie question arises.
-- **The fix:** it now runs in a context with Playwright's `bypassCSP`, holding a copy of the
-  cookies with their `SameSite=Lax` attribute. The browser must still not send them cross-site,
-  so it proves the same thing.
+- **The fix:** the request now comes from the cross-host build reached by IP,
+  `http://127.0.0.1:4174`. That build's CSP allows `connect-src http://api.localtest.me:5099`,
+  and 127.0.0.1 is a different site from `api.localtest.me`. It runs in the same context, with
+  the real cookie, which the browser must not send cross-site. The only config change is that
+  origin in the E2E API's CORS list (`E2E_CLIENT_ORIGIN` in `playwright.config.js`), so the
+  answer is readable.
+- **First attempt, replaced:** a separate context with Playwright's `bypassCSP` and copied
+  cookies. It passed locally, but there WebKit skips this step (Windows WebKit ignores SameSite).
+  On CI's Linux WebKit the CSP was still enforced for `fetch` ("Refused to connect … connect-src"),
+  so the first push failed C4 in WebKit. This is the one red test in the first CI run; the fix
+  above is the root cause, not a retry.
 - **Why not a page Playwright serves itself:** Chromium treats such a page as public and blocks
   its requests to a loopback host (Private Network Access).
 

@@ -26,6 +26,9 @@ export const crossHost = {
   apiHostname: 'api.localtest.me',
   api: `http://api.localtest.me:${API_PORT}`,
   site: `http://commons.localtest.me:${CROSS_HOST_WEB_PORT}`,
+  // The same build reached by IP: a different *site* from api.localtest.me whose CSP still
+  // allows connecting to it (the C4 negative control in cross-host-cookie.spec.js).
+  otherSite: `http://127.0.0.1:${CROSS_HOST_WEB_PORT}`,
 }
 
 export default defineConfig({
@@ -78,7 +81,7 @@ export default defineConfig({
       env: {
         E2E_API_PORT: String(API_PORT),
         E2E_API_HOST: '::', // dual-stack: localtest.me also resolves to ::1
-        E2E_CLIENT_ORIGIN: `${webOrigin},http://localhost:${WEB_PORT},${crossHost.site}`,
+        E2E_CLIENT_ORIGIN: `${webOrigin},http://localhost:${WEB_PORT},${crossHost.site},${crossHost.otherSite}`,
       },
     },
     {
