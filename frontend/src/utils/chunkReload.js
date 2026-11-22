@@ -5,11 +5,12 @@
  * that as a `vite:preloadError` event on window; this handler reloads the page once so the new
  * build is fetched.
  *
- * Loop guard: the time of the reload is kept in sessionStorage. If another preloadError comes
- * within RELOAD_WINDOW_MS of it, the chunk is really missing (or the network is down), so the
- * error goes through to the page's error boundary instead (components/PageErrorBoundary.jsx).
- * When sessionStorage is blocked the page still reloads once per page load; it cannot tell a
- * reload loop from a first failure then, which only matters if a chunk stays missing.
+ * Loop guard: the time of the reload is kept in sessionStorage and in history.state (the current
+ * history entry's state survives a reload and needs no storage, so it still works with site data
+ * blocked). The newer of the two counts. If another preloadError comes within RELOAD_WINDOW_MS of
+ * it, the chunk is really missing (or the network is down), so the error goes through to the
+ * page's error boundary instead (components/PageErrorBoundary.jsx). If neither place can be
+ * written, the handler does not reload at all: one Reload button beats a reload loop.
  *
  * A failure while the page is being left (after `beforeunload`) is ignored: Firefox aborts the
  * page's pending imports when a navigation starts, and reloading then would cancel it.
@@ -33,25 +34,60 @@ function defaultStorage() {
   try { return window.sessionStorage } catch { return null }
 }
 
-function readStamp(storage) {
+function validStamp(raw) {
+  if (raw === null || raw === undefined) return null
+  const value = Number(raw)
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
+function readStorageStamp(storage) {
+  try { return validStamp(storage?.getItem(RELOAD_KEY)) } catch { return null }
+}
+
+function readHistoryStamp(history) {
+  try { return validStamp(history?.state?.[RELOAD_KEY]) } catch { return null }
+}
+
+/** The newer valid stamp of the two places, or null. */
+function readStamp(storage, history) {
+  const stamps = [readStorageStamp(storage), readHistoryStamp(history)].filter((stamp) => stamp !== null)
+  return stamps.length ? Math.max(...stamps) : null
+}
+
+/** True if the stamp was stored. */
+function writeStorageStamp(storage, time) {
+  if (!storage) return false
+  try { storage.setItem(RELOAD_KEY, String(time)); return true } catch { return false }
+}
+
+/** True if the stamp was stored. Keeps the entry's other state (React Router's usr, key and idx). */
+function writeHistoryStamp(history, time) {
+  if (!history) return false
   try {
-    const value = Number(storage?.getItem(RELOAD_KEY))
-    return Number.isFinite(value) && value > 0 ? value : null
+    const current = history.state && typeof history.state === 'object' ? history.state : {}
+    history.replaceState({ ...current, [RELOAD_KEY]: time }, '')
+    return true
   } catch {
-    return null
+    return false
   }
 }
 
-function writeStamp(storage, time) {
-  try { storage?.setItem(RELOAD_KEY, String(time)) } catch { /* blocked storage: reload anyway */ }
+/** Calls `get`, or gives null if it throws (reading window.sessionStorage can). */
+function orNull(get) {
+  try { return get() ?? null } catch { return null }
+}
+
+function defaultHistory() {
+  try { return window.history } catch { return null }
 }
 
 /**
- * Returns the `vite:preloadError` listener. `storage`, `reload` and `now` are injectable for
- * the unit tests.
+ * Returns the `vite:preloadError` listener. `getStorage`, `getHistory`, `reload`, `now` and
+ * `isLeaving` are injectable for the unit tests.
  */
 export function createPreloadErrorHandler({
   getStorage = defaultStorage,
+  getHistory = defaultHistory,
   reload = () => window.location.reload(),
   now = () => Date.now(),
   isLeaving = () => false,
@@ -60,14 +96,19 @@ export function createPreloadErrorHandler({
   return function handlePreloadError(event) {
     // The page is on its way out: the import was aborted, not missing. Let the navigation happen.
     if (isLeaving()) return false
-    const storage = getStorage()
+    const storage = orNull(getStorage)
+    const history = orNull(getHistory)
     const time = now()
-    const last = readStamp(storage)
+    const last = readStamp(storage, history)
     const recentReload = last !== null && time >= last && time - last < RELOAD_WINDOW_MS
     if (reloadedThisPage || recentReload) return false
+    // Both writes always run. With neither stored, the reloaded page could not tell this reload
+    // from a first failure, so don't reload: let the error through.
+    const storedInStorage = writeStorageStamp(storage, time)
+    const storedInHistory = writeHistoryStamp(history, time)
+    if (!storedInStorage && !storedInHistory) return false
     reloadedThisPage = true
     reloading = true
-    writeStamp(storage, time)
     event.preventDefault()
     reload()
     return true

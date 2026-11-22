@@ -16,7 +16,7 @@
 | S8 | **Fixed, ticked** | A CSP and three other security headers in `vercel.json` and `vite preview`. The ffmpeg core is served by the site from `/ffmpeg`. Every E2E test runs under the CSP. |
 | S10 | **Fixed, ticked** | `X-Request-Id` is kept only if it matches `^[A-Za-z0-9-]{1,64}$`. The `X-Device-ID` weakness is documented. |
 | Leftover: unused `blobStore.js` | **Ticked** | Removed. Keeping notifications per browser is the settled decision, now also in `MODULE-REFERENCE.md`. |
-| Leftover: main bundle 526 KB | **Ticked** | Main chunk **268.37 kB** (it was 560.03 kB). CI fails above 300 kB. |
+| Leftover: main bundle 526 KB | **Ticked** | Main chunk **268.95 kB** (it was 560.03 kB). CI fails above 300 kB. |
 | FIX-PLAN item 5: react-snap | **Done** | Removed. The full frontend audit drops from 23 advisories (14 high, 3 critical) to 3 moderate (eslint). |
 | FIX-PLAN item 6: accessibility | **Done** | axe finds no serious or critical problem in either theme. Four problems were fixed (below). |
 | Added before hand-off: stale chunks after a deploy | **Done** | A tab opened before a deploy reloads once when an old page chunk is gone, and shows an error (no loop) if it is still missing. |
@@ -115,7 +115,7 @@ During the work (asked when lazy pages weren't enough):
 | Admin pages and editor lazy | 447.37 kB |
 | Every page but landing lazy | 355.36 kB |
 | Zod with its schemas | 266.70 kB |
-| With the stale-chunk handler and error boundary (final) | **268.37 kB** |
+| With the stale-chunk handler and error boundary (final, with the `history.state` fix) | **268.95 kB** |
 
 ### Stale chunks after a deploy (added before hand-off, as you asked)
 
@@ -126,10 +126,12 @@ before the deploy then gets "Failed to fetch dynamically imported module" on its
   `vite:preloadError` event (Vite 8 fires it for a failed dynamic import as well as a failed
   preload; checked in the built preload helper):
   - **First failure:** `event.preventDefault()`, then `location.reload()` once, so the new build
-    is fetched. The time goes into sessionStorage (`signpak:chunk-reload-at`).
+    is fetched. The time goes into sessionStorage and `history.state` (`signpak:chunk-reload-at`;
+    see "Fixes after verification").
   - **Loop guard:** another failure within 10 s of that reload is let through. It also never
     reloads twice from the same page.
-  - **Blocked sessionStorage:** every access is in `try`/`catch`; the page still reloads once.
+  - **Blocked sessionStorage:** every access is in `try`/`catch`. `history.state` then guards
+    against a loop; with neither available it doesn't reload.
   - **Leaving the page:** a failure in the 3 s after `beforeunload` is ignored, and `pageshow`
     (back/forward cache) clears that. The first full E2E run found this: Firefox aborts the old
     page's pending imports as soon as a navigation or reload starts, which fires
@@ -293,7 +295,7 @@ All new tests are named with their ID.
 2. **The editor's axe check runs in Chromium only.** Chromium is the only project with a fake
    camera to record with. It is a planned `test.skip` with that reason.
 
-`TEST-CASES.md` now lists 106 files and 642 cases.
+`TEST-CASES.md` lists 106 files and 652 cases after the fixes after verification (642 at first hand-off).
 
 ## Test gate results
 
@@ -304,10 +306,10 @@ All new tests are named with their ID.
 | Backend `test:security` | 81 passed, 0 failed, 0 skipped |
 | Backend `test:coverage` | 452 passed; 94.67% lines, 90.34% branches (floors 85% / 75%); services 90.81% / 89.18%, middlewares 98.38% / 88.16%, utils 99.48% / 93.96% (floors 80% / 75%) |
 | Frontend `lint` | clean |
-| Frontend `test` | 124 passed (26 files) |
-| Frontend `test:coverage` | 45.24% lines, 43.12% statements, 40.07% branches, 39.41% functions (all floors met; up from 40.5% lines) |
-| Frontend `build` + `check:bundle` | main chunk 268.37 kB (limit 300 kB) |
-| E2E | 64 passed, 2 skipped (the editor's axe check outside Chromium), 3 browsers, all under the CSP |
+| Frontend `test` | 128 passed (26 files) |
+| Frontend `test:coverage` | 45.58% lines, 43.58% statements, 40.59% branches, 39.87% functions (all floors met; up from 40.5% lines) |
+| Frontend `build` + `check:bundle` | main chunk 268.95 kB (limit 300 kB) |
+| E2E | 70 passed, 2 skipped (the editor's axe check outside Chromium), 3 browsers, all under the CSP |
 | `npm audit --omit=dev --audit-level=high` | backend 0, frontend 0, e2e 0 |
 | Full frontend audit (dev included) | 3 moderate (eslint, @eslint/config-array, minimatch); before: 23 (14 high, 3 critical); no react-snap, `mkdirp` or `minimist` |
 
@@ -325,7 +327,7 @@ commit can't contain its own CI result.
 2. Switch to dark, reload: there is no flash of the light theme. The sign-in page shows its photo.
 3. **Admin → Videos:** pick a clip and "Apply changes". The network tab shows
    `/ffmpeg/ffmpeg-core.wasm` loaded from the site, and nothing from jsDelivr.
-4. **Bundle:** `npm run check:bundle` prints 268.37 kB. Opening an admin page loads its own chunk.
+4. **Bundle:** `npm run check:bundle` prints 268.95 kB. Opening an admin page loads its own chunk.
 5. **Request id:** `curl -H 'X-Request-Id: a b' …/api/v1/health -i` returns a UUID, not "a b".
 6. **Stale chunks:** in the preview, sign in and stay on `/home`. In DevTools, block the request
    URL `*ProfileDashboard-*` (Network → Block request URL) and click My space. The page reloads
@@ -354,9 +356,50 @@ commit can't contain its own CI result.
    host on each play.
 4. **WebKit and the video tool on Windows** are covered only on CI's Linux WebKit. See the
    limitation above.
-5. **Stale chunks with sessionStorage blocked:** the page can't remember that it just reloaded,
-   so a chunk that stays missing reloads once per page load. That only happens with site data
-   blocked and a chunk that is really gone; with sessionStorage available there is no loop
-   (E-22).
 5. **A page's first visit** downloads its chunk, which shows a short "Loading…" line on a slow
    connection.
+
+## Fixes after verification
+
+### Endless reload loop with sessionStorage blocked (blocker)
+
+You reproduced it on `c3975f9` in Chromium: with reading `window.sessionStorage` throwing a
+`SecurityError` and the My space chunk kept at 404, there were 62 page loads in 8 s. Without
+storage the guard couldn't remember its reload, and `reloadedThisPage` starts over on every load.
+
+**Fix (your decision):** the stamp is also kept in `history.state`, which survives a reload and
+needs no storage.
+- **Before reloading,** `chunkReload.js` writes the time to both places, each in `try`/`catch`:
+  sessionStorage as before, and `history.replaceState({ ...(history.state ?? {}), [RELOAD_KEY]: time }, '')`.
+  Spreading the current state keeps React Router's `usr`, `key` and `idx`. (A non-object state
+  is replaced by `{}` before the spread.)
+- **`readStamp`** takes the newer valid value of the two.
+- **Both unavailable:** if neither write succeeds, it doesn't reload. The error goes through to
+  `PageErrorBoundary`.
+- **Getting** `window.sessionStorage` or `window.history` is also guarded, for a getter that
+  throws.
+- **Docs:** the comments, `frontend/docs/architecture.md` and this report are updated. The known
+  risk "reloads once per page load with sessionStorage blocked" is removed; it no longer applies.
+
+**Tests (all failed first against `c3975f9`):**
+
+| Level | Test | Row | Against `c3975f9` |
+| --- | --- | --- | --- |
+| Unit | blocked storage and a stamp from 2 s ago in `history.state`: no reload, the error goes through | FU-75 | failed (reloaded) |
+| Unit | blocked storage and an empty `history.state`: reloads once and writes the stamp there, keeping `usr`/`key`/`idx`; the reloaded page then doesn't reload | FU-76 | failed |
+| Unit | neither storage nor `history.state` (`replaceState` throws too): no reload | FU-77 | failed (reloaded) |
+| Unit | the newer of the two stamps counts | FU-78 | failed |
+| E2E, 3 browsers | your scenario: sign up, an init script makes reading `window.sessionStorage` throw, reload, the chunk kept at 404, click My space → exactly one reload, then "This page could not be loaded." with Reload, the stamp in `history.state`, and no second reload within 3 s | E-23 | failed in Chromium (the error never appeared: the loop) |
+| E2E, 3 browsers | the same with the 404 only once → one reload, then the page opens | E-24 | passed (the old code did reload once; this guards the fix against over-correcting) |
+
+**An existing test isolated, not weakened.** `Stale chunks: blocked sessionStorage still reloads
+once` (FU-68) runs two scenarios one after the other. Its first half now leaves its stamp in
+jsdom's `history.state`, so the second half (a throwing `window.sessionStorage` getter) saw a
+"recent reload". That is the fix working. The test now clears `history.state` between the halves,
+as a fresh tab would have it, and every assertion is unchanged. The test file's `afterEach` also
+clears `history.state`.
+
+`TEST-CASES.md` now lists 106 files and 652 cases.
+
+**Gate after the fix:** the "Test gate results" table above holds the numbers for the final
+commit. CI for the final commit is in the hand-off message and a PR comment.

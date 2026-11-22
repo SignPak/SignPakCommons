@@ -30,10 +30,10 @@ Counts as of **Phase 9** (backend 1.0.15, frontend 1.0.17):
 | Unit (backend) | `backend/tests/unit/` | 38 | 209 |
 | Integration (backend) | `backend/tests/integration/` | 22 | 162 |
 | Security (backend) | `backend/tests/security/` | 8 | 81 |
-| Unit (frontend) | `frontend/test/unit/` | 17 | 74 |
+| Unit (frontend) | `frontend/test/unit/` | 17 | 78 |
 | Integration (frontend) | `frontend/test/integration/` | 9 | 50 |
-| End-to-end | `e2e/tests/` | 12 | 66 (22 tests × 3 browsers; the editor's axe check runs in Chromium only) |
-| **Total** | | **106** | **642** |
+| End-to-end | `e2e/tests/` | 12 | 72 (24 tests × 3 browsers; the editor's axe check runs in Chromium only) |
+| **Total** | | **106** | **652** |
 
 The backend security count is per-route: the access matrix produces one case per route (57
 today) plus the completeness check; the hook suite adds three, the production-error suite
@@ -537,6 +537,10 @@ a new route cannot be added without an access decision.
 | FU-72 | `PageErrorBoundary.test.jsx` | Stale chunks: a page that could not be loaded shows the error and a Reload button | — (deploy updates, no SRS requirement) | — | unit |
 | FU-73 | `PageErrorBoundary.test.jsx` | Stale chunks: going to another page clears the error | — (deploy updates, no SRS requirement) | — | unit |
 | FU-74 | `PageErrorBoundary.test.jsx` | Stale chunks: while the reload for a new build is pending, the loading line shows instead of the error | — (deploy updates, no SRS requirement) | — | unit |
+| FU-75 | `chunkReload.test.js` | Stale chunks: blocked storage and a reload stamp from 2 s ago in history.state: no reload, the error goes through | — (deploy updates, no SRS requirement) | — | unit |
+| FU-76 | `chunkReload.test.js` | Stale chunks: blocked storage and an empty history.state: reloads once and writes the stamp to history.state | — (deploy updates, no SRS requirement) | — | unit |
+| FU-77 | `chunkReload.test.js` | Stale chunks: with neither storage nor history.state available it does not reload at all | — (deploy updates, no SRS requirement) | — | unit |
+| FU-78 | `chunkReload.test.js` | Stale chunks: the newer of the two stamps counts | — (deploy updates, no SRS requirement) | — | unit |
 
 ## 5. Frontend integration tests — `frontend/test/integration/`
 
@@ -619,6 +623,8 @@ API with an in-memory database.
 | E-20 | `accessibility.spec.js` | QA-20: every admin tab has no serious problems | QA-20 | — | E2E |
 | E-21 | `stale-chunks.spec.js` | Stale chunks: a page chunk that is gone after a deploy reloads the page once, and the page then opens | — (deploy updates, no SRS requirement) | — | E2E |
 | E-22 | `stale-chunks.spec.js` | Stale chunks: a chunk that stays missing shows the error after one reload instead of reloading forever | — (deploy updates, no SRS requirement) | — | E2E |
+| E-23 | `stale-chunks.spec.js` | Stale chunks: with sessionStorage blocked, a chunk that stays missing reloads once, then shows the error | — (deploy updates, no SRS requirement) | — | E2E |
+| E-24 | `stale-chunks.spec.js` | Stale chunks: with sessionStorage blocked, a chunk missing once reloads once, then the page opens | — (deploy updates, no SRS requirement) | — | E2E |
 
 ## 7. Gaps to close in later phases
 

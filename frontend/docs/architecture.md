@@ -300,12 +300,17 @@ module"). Vite reports this as a `vite:preloadError` event on `window`. `src/uti
 (installed first thing in `src/main.jsx`) handles it:
 
 - On the first failure it calls `event.preventDefault()` and reloads the page once, so the new
-  build is fetched. The time of that reload goes into sessionStorage (`signpak:chunk-reload-at`).
+  build is fetched. The time of that reload goes into sessionStorage and into the current history
+  entry's `history.state` (both under `signpak:chunk-reload-at`). `history.state` survives a
+  reload and needs no storage; the entry's other state (React Router's `usr`, `key`, `idx`) is
+  kept. The newer of the two stamps counts.
 - If another failure comes within 10 seconds of that reload, the chunk is really missing (or the
   network is down). The error is let through, and `components/PageErrorBoundary.jsx` (around the
   `<Suspense>` in both layouts) shows "This page could not be loaded. Reload to try again." with a
   Reload button. The header stays, and going to another page clears the error.
-- Blocked sessionStorage is caught; the page then still reloads once per page load.
+- Blocked sessionStorage is caught, and `history.state` alone then guards against a loop. If
+  neither can be written, the handler doesn't reload at all and the error screen shows: one Reload
+  button beats a reload loop.
 - A failure in the 3 seconds after `beforeunload` is ignored. Firefox aborts a page's pending
   imports as soon as a navigation or reload starts, and reloading then would cancel the visitor's
   own navigation. `pageshow` (back from the back/forward cache) clears that state.

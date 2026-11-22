@@ -14,9 +14,18 @@ function memoryStorage() {
   return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) }
 }
 
+const blockedStorage = () => { throw new DOMException('blocked', 'SecurityError') }
+
+/** A history entry like the browser's: replaceState keeps the state across a reload. */
+function memoryHistory(state = null) {
+  const history = { state, replaceState: (next) => { history.state = next } }
+  return history
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
   sessionStorage.clear()
+  window.history.replaceState(null, '')
   resetChunkReloadState()
 })
 
@@ -82,7 +91,9 @@ describe('stale chunk reload', () => {
     expect(handle(preloadError())).toBe(false)
     expect(reload).toHaveBeenCalledTimes(1)
 
-    // Reading window.sessionStorage itself throws when site data is blocked.
+    // Reading window.sessionStorage itself throws when site data is blocked. A fresh tab: the
+    // reload above left its stamp in this history entry's state.
+    window.history.replaceState(null, '')
     vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(() => { throw new DOMException('blocked', 'SecurityError') })
     const reloadToo = vi.fn()
     const noStorage = createPreloadErrorHandler({ reload: reloadToo })
@@ -103,6 +114,55 @@ describe('stale chunk reload', () => {
     expect(event.defaultPrevented).toBe(true)
     expect(reload).toHaveBeenCalledTimes(1)
     expect(sessionStorage.getItem(RELOAD_KEY)).toBe('70000')
+  })
+
+  it('Stale chunks: blocked storage and a reload stamp from 2 s ago in history.state: no reload, the error goes through', () => {
+    const reload = vi.fn()
+    const history = memoryHistory({ usr: null, key: 'abc', idx: 1, [RELOAD_KEY]: 48_000 })
+    const event = preloadError()
+    expect(createPreloadErrorHandler({ getStorage: blockedStorage, getHistory: () => history, reload, now: () => 50_000 })(event)).toBe(false)
+    expect(reload).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it('Stale chunks: blocked storage and an empty history.state: reloads once and writes the stamp to history.state', () => {
+    const reload = vi.fn()
+    // React Router's own state on the entry must survive.
+    const history = memoryHistory({ usr: null, key: 'abc', idx: 1 })
+    const event = preloadError()
+    expect(createPreloadErrorHandler({ getStorage: blockedStorage, getHistory: () => history, reload, now: () => 50_000 })(event)).toBe(true)
+    expect(reload).toHaveBeenCalledTimes(1)
+    expect(event.defaultPrevented).toBe(true)
+    expect(history.state).toEqual({ usr: null, key: 'abc', idx: 1, [RELOAD_KEY]: 50_000 })
+
+    // The reloaded page (a fresh handler, same history entry) does not reload again.
+    resetChunkReloadState()
+    const again = preloadError()
+    expect(createPreloadErrorHandler({ getStorage: blockedStorage, getHistory: () => history, reload, now: () => 51_000 })(again)).toBe(false)
+    expect(again.defaultPrevented).toBe(false)
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('Stale chunks: with neither storage nor history.state available it does not reload at all', () => {
+    const reload = vi.fn()
+    const history = { state: null, replaceState: () => { throw new DOMException('blocked', 'SecurityError') } }
+    const event = preloadError()
+    expect(createPreloadErrorHandler({ getStorage: blockedStorage, getHistory: () => history, reload, now: () => 50_000 })(event)).toBe(false)
+    expect(reload).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+    expect(isReloadingForNewBuild()).toBe(false)
+  })
+
+  it('Stale chunks: the newer of the two stamps counts', () => {
+    const reload = vi.fn()
+    const storage = memoryStorage()
+    storage.setItem(RELOAD_KEY, '10000')
+    const history = memoryHistory({ [RELOAD_KEY]: 45_000 })
+    expect(createPreloadErrorHandler({ getStorage: () => storage, getHistory: () => history, reload, now: () => 50_000 })(preloadError())).toBe(false)
+    history.state = { [RELOAD_KEY]: 10_000 }
+    storage.setItem(RELOAD_KEY, '45000')
+    expect(createPreloadErrorHandler({ getStorage: () => storage, getHistory: () => history, reload, now: () => 50_000 })(preloadError())).toBe(false)
+    expect(reload).not.toHaveBeenCalled()
   })
 
   it('Stale chunks: an import aborted because the visitor is leaving the page does not reload', () => {
