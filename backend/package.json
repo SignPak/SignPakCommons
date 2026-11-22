@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "SignPakCommons API: Express, Node.js and MongoDB",
   "main": "server.js",
   "scripts": {
@@ -40,6 +40,7 @@
   },
   "devDependencies": {
     "c8": "^12.0.0",
+    "ffmpeg-static": "^5.3.0",
     "mongodb-memory-server": "^10.1.4",
     "nodemon": "^3.1.9"
   }

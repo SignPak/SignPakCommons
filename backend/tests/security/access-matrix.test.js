@@ -96,6 +96,9 @@ const matrix = {
   'GET /api/v1/admin/stats': [401, 403, 401, OPEN],
   // S7: the activity log is for admins only.
   'GET /api/v1/admin/audit': [401, 403, 401, OPEN],
+  // B5: the submissions list and the ML export are for admins only.
+  'GET /api/v1/admin/submissions': [401, 403, 401, OPEN],
+  'GET /api/v1/admin/submissions/export': [401, 403, 401, OPEN],
   'GET /api/v1/admin/messages': [401, 403, 401, OPEN],
   'PATCH /api/v1/admin/messages/:id': [401, 403, 401, OPEN],
 }

@@ -120,10 +120,10 @@ All paths below are relative to `/api/v1`.
 | GET | `/demo-video/file` | Public | Stream the current demo video. |
 | POST | `/demo-video` | Admin | Create or replace the public demo video. |
 | DELETE | `/demo-video` | Admin | Delete the demo video. |
-| GET | `/submissions` | Authenticated user | List own submissions; admins can list all. |
+| GET | `/submissions` | Authenticated user | List own submissions; admins can list all, or only their own with `?mine=true`. With `?limit=` (1–100) and `?cursor=` the answer is one page, `{ items, nextCursor, total }`; without them, the whole array (deprecated for admins: use `/admin/submissions`). |
 | POST | `/submissions` | Authenticated user | Create an append-only recording submission. |
 | POST | `/contact` | Signed-in account or recording-deletion request | Other topics require the account email; deletion requests can be submitted without signing in before or after account deletion, at any time. |
-| GET | `/admin/users` | Admin | List accounts. |
+| GET | `/admin/users` | Admin | List accounts. With `?limit=` (1–100), `?cursor=`, `?role=` (`user`, `admin`) and `?q=` (the start of a first name, surname or email, case-insensitive, matched literally) the answer is one page, `{ items, nextCursor, total }`, oldest first; without `limit`, every account as before (deprecated). |
 | PATCH | `/admin/users/:id` | Admin | Change an account's active/suspended status. |
 | DELETE | `/admin/users/:id` | Admin | Delete an account and its cooldown claims; submitted recordings and contribution data remain stored. With `?withRecordings=true` the recordings are deleted first (C3), and the account is kept (409) if any file can't be deleted. |
 | GET | `/admin/users/:id/submissions` | Admin | One page of a contributor's submissions, newest first: `?limit=` (1–100, default 20) and `?cursor=` (the previous page's `nextCursor`). Returns `{ items, total, nextCursor }`. Works for a deleted account's id. |
@@ -132,7 +132,9 @@ All paths below are relative to `/api/v1`.
 | GET | `/admin/restrictions` | Admin | List active device and IP restrictions. |
 | POST | `/admin/restrictions` | Admin | Create a permanent device or IP restriction. |
 | DELETE | `/admin/restrictions/:id` | Admin | Remove a restriction. |
-| GET | `/admin/stats` | Admin | Read dashboard totals, activity, and recent submissions. |
+| GET | `/admin/stats` | Admin | The dashboard's numbers (B7): `?days=` (7–90, default 14), optional `?userId=` and `?categoryId=`. Returns `totals` and `totalsByCategory` (all-time), and for the range and filters `activity` (per UTC day), `byCategory`, `summary` (`recordings`, `activeContributors`, `videosRecorded`, `topCategory`), `topVideos` (6), `topContributors` (5) and `recent` (6). |
+| GET | `/admin/submissions` | Admin | Every submission (B5), newest first, filtered by `?categoryId=`, `?videoId=`, `?userId=`, `?from=` and `?to=` (`YYYY-MM-DD`, UTC, `to` inclusive), a page at a time: `?limit=` (1–100, default 50) and `?cursor=`. Returns `{ items, nextCursor, total }`; each item has the export columns plus `contributorName`. |
+| GET | `/admin/submissions/export` | Admin | The ML export (B5), streamed: `?format=csv` or `json`, with the same filters. Columns, in order: `submissionId, userId, videoId, videoTitle, categoryId, categoryLabel, driveFileId, archivePath, mimeType, size, duration, trimStart, trimEnd, mirrored, submittedAt, storageDriver`. No names or emails. CSV is RFC 4180, UTF-8 with a BOM; JSON is an array. Sent as an attachment, `signpak-submissions-YYYY-MM-DD.<format>`. Writes one `submissions.export` activity entry. A cancelled download closes its database cursor at once. |
 | GET | `/admin/audit` | Admin | The activity log (S7), newest first: `?page=` (default 1), `?limit=` (1–100, default 50), `?actor=` (an admin's id, or `system`), `?action=` (one of the actions below). Returns `{ entries, page, limit, total }`. |
 | GET | `/admin/messages` | Admin | List retained contact messages, newest first. Query: `limit` (1–200, default 50), `topic`, `status` (`open`, `done`, `rejected`), `verified` (`true`/`false`). |
 | PATCH | `/admin/messages/:id` | Admin | Set `{ status }`: `done` and `rejected` record `handledAt` and `handledBy`; `open` clears them. |
@@ -161,7 +163,9 @@ The only way submissions are deleted is an admin acting on such a request:
    **keeps its document**, so calling the route again finishes the job.
 3. Every call writes a `DeletionLog`: `userId`, the email hash (never the email), the
    numbers deleted and failed, `accountDeleted`, `requestMessageId`, the admin's id and
-   the time. It is append-only, with one exception: `accountDeleted` is written `false`
+   the time. (Deleting an account removes the user first and only then records the
+   `DeletedAccount`, so a failed removal never leaves a "deleted" record for a live account.)
+   It is append-only, with one exception: `accountDeleted` is written `false`
    and set to `true` only once `DELETE /admin/users/:id?withRecordings=true` has really
    deleted the account, so the log never claims a deletion that failed.
 4. `PATCH /admin/messages/:id { "status": "done" }` closes the request.
@@ -189,6 +193,7 @@ address (`auditService.sanitizeMeta`). The actions:
 | `restriction.create`, `restriction.delete` | An IP or device restriction is added or removed (`meta.hint` only, never the IP or device id). |
 | `message.status` | A contact message is marked done, rejected or open. |
 | `admin.promote`, `admin.demote` | The startup sync changed an account's role (actor: system). |
+| `submissions.export` | An admin downloaded the export (`meta.format` and the filters). |
 
 `GET /admin/audit` returns each entry as `{ id, actor: { id, name }, action, targetType,
 targetId, meta, at }`. The name is looked up when the log is read: "System" for the startup

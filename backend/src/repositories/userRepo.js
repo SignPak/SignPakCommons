@@ -1,6 +1,8 @@
 import { SIGNUP_TTL_MS, User } from '../models/User.js'
 
 const LOCKOUT_FIELDS = '+failedLoginCount +lockedUntil'
+// B7: a search term is matched literally, never as a regular expression.
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const OTP_FIELDS = '+emailVerificationCodeHash +emailVerificationExpiresAt +emailVerificationAttempts +emailVerificationSentAt +passwordResetCodeHash +passwordResetExpiresAt +passwordResetAttempts +passwordResetSentAt'
 
 /** B3: matches an authVersion exactly; version 0 also matches an account that has no authVersion field. */
@@ -23,6 +25,24 @@ export const userRepo = {
     return query
   },
   findManyByIds: (ids) => User.find({ _id: { $in: ids } }),
+  /**
+   * B7: one page of accounts, oldest first. `q` matches the start of the first name, surname or
+   * email, case-insensitively and literally (regex characters are escaped).
+   */
+  async page({ role, q, limit, cursor, includeDeviceIds = false }) {
+    const filter = {}
+    if (role) filter.role = role
+    if (q) {
+      const prefix = new RegExp(`^${escapeRegex(q)}`, 'i')
+      filter.$or = [{ firstName: prefix }, { surname: prefix }, { email: prefix }]
+    }
+    const pageFilter = cursor ? { ...filter, _id: { $gt: cursor } } : filter
+    const query = User.find(pageFilter).sort({ _id: 1 }).limit(limit + 1)
+    if (includeDeviceIds) query.select('+lastDeviceId')
+    const [rows, total] = await Promise.all([query, User.countDocuments(filter)])
+    const items = rows.slice(0, limit)
+    return { items, total, nextCursor: rows.length > limit ? String(items.at(-1)._id) : null }
+  },
   /** S7: the accounts with these (lowercased) emails. */
   findByEmails: (emails) => User.find({ email: { $in: emails } }),
   listAdmins: () => User.find({ role: 'admin' }).sort({ createdAt: 1 }),

@@ -19,6 +19,7 @@ export const AUDIT_ACTION_LABELS = {
   'message.status': 'Changed a message status',
   'admin.promote': 'Made an admin',
   'admin.demote': 'Removed an admin',
+  'submissions.export': 'Exported submissions',
 }
 
 const objectId = /^[a-f\d]{24}$/i
@@ -33,7 +34,7 @@ export const auditQuerySchema = z.object({
 
 const META_LABELS = {
   title: 'Title', label: 'Name', status: 'Status', changed: 'Changed', reason: 'Reason', type: 'Type', hint: 'Identifier',
-  topic: 'Topic', deleted: 'Deleted', failed: 'Failed', withRecordings: 'With recordings', requestMessageId: 'Request',
+  topic: 'Topic', format: 'Format', categoryId: 'Category', videoId: 'Video', userId: 'Contributor', from: 'From', to: 'To', deleted: 'Deleted', failed: 'Failed', withRecordings: 'With recordings', requestMessageId: 'Request',
 }
 
 /** The details column: the entry's meta as short "Label: value" pairs. */

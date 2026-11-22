@@ -21,8 +21,9 @@ export default function AdminActivity() {
 
   useEffect(() => {
     let active = true
-    api.users.list()
-      .then((users) => { if (active) setAdmins(users.filter((user) => user.role === 'admin')) })
+    // B7: only the admins, not every account.
+    api.users.page({ role: 'admin', limit: 100 })
+      .then((page) => { if (active) setAdmins(page.items) })
       .catch(() => {}) // the filter still offers "All admins" and "System"
     return () => { active = false }
   }, [])

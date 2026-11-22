@@ -15,13 +15,13 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 | FR13.3 Reference video playback | Done | |
 | FR13.4 Camera recording in the browser | Done | Video only, no audio. |
 | FR13.5 Review, record again or delete before submitting | Done | |
-| FR13.6 Trim and mirror | Partly | Stored only as metadata. The file on Drive is untrimmed and unmirrored. |
+| FR13.6 Trim and mirror | Done (Phase 8) | Stored as metadata; the Drive file is the raw recording. The ML export carries trim and mirror, and `scripts/prepare-dataset.js` applies them with ffmpeg on a team machine (B5). |
 | FR13.7 10 min / 100 MB limits | Done | Checked on both frontend and backend. |
 | FR13.8 Drive storage and DB details | Done | Temp files leak (see C5). |
 | FR13.9 30 s cooldown | Done | Atomic claim in `submissionRepo.claimCooldown`. |
 | FR13.10 Coverage count, GitHub/LinkedIn | Done | |
 | FR13.11 Admin videos, posters, categories, demo video | Done | |
-| FR13.12 Stats, suspend/delete, IP/device restriction | Done | Dashboard stats are worked out in the browser (see B7). |
+| FR13.12 Stats, suspend/delete, IP/device restriction | Done | Dashboard stats come from `GET /admin/stats` (B7, Phase 8). |
 | FR13.13 Deletion request through the contact form | **Works (Phases 4 and 5)** | The form sends and deletion requests are verified (C2, S4). An admin finds the contributor from Admin → Messages, deletes their recordings from storage and MongoDB, and marks the request done (C3). |
 | OR-19 Consent notice | Done | Version `2026-10-15`, the same on frontend and backend. |
 
@@ -69,15 +69,15 @@ The local copy at `C:\Abdullah\Not Backed up\MCS 7th sem\FYP-I\Projects\SignPakC
 - [x] **B2. Contributor counts include unfinished sign-ups.** *(Phase 6: `countVerified` in both stats services.)* `countByRole(USER)` in `publicStatsService` and `statsService` also counts unverified accounts. Filter on `emailVerified: true`.
 - [x] **B3. Signing up again with a pending email is a dead end.** *(Phase 6: re-signup updates the details, restarts the expiry and resends the code (60 s limit), with the same 201. The verify step now also asks for the sign-up password, so a re-signup by someone else can't hand the owner a password they didn't choose.)* It returns 409 "already exists, log in", and login then says "verify your email". Either resend the code and send the user to verification, or replace the old pending account.
 - [x] **B4. Refreshing the consent page loses the token.** *(Phase 6: kept in `sessionStorage` with its expiry; cleared on accept or decline.)* `Consent.jsx` keeps `consentToken` only in `location.state`. Keep it in `sessionStorage`.
-- [ ] **B5. Trim and mirror aren't applied to the files.** Drive holds the raw WebM (often without duration information), and trim and mirror exist only in MongoDB. Add an export (CSV/JSON) for the ML team: user, video, category, Drive file ID, trimStart, trimEnd, mirrored, duration, date. Optionally fix the WebM duration information.
+- [x] **B5. Trim and mirror aren't applied to the files.** *(Phase 8: `GET /admin/submissions/export?format=csv|json`, streamed, with ids, the Drive file id, trim, mirror, duration and date, no names or emails; Admin → Submissions with filters and download buttons; `scripts/prepare-dataset.js` downloads each file and applies trim and mirror with ffmpeg (`docs/DATASET.md`). The WebM duration information is not rewritten: the script cuts by computed length instead.)* Drive holds the raw WebM (often without duration information), and trim and mirror exist only in MongoDB. Add an export (CSV/JSON) for the ML team: user, video, category, Drive file ID, trimStart, trimEnd, mirrored, duration, date. Optionally fix the WebM duration information.
 - [x] **B6. The file check is too loose.** *(Phase 2: brand allowlist; M4A/HEIC/AVIF/3GP refused; an unknown major brand passes only with a listed compatible brand.)* `sniffVideo` in `backend/src/utils/files.js` accepts any `ftyp` file (m4a, heic, 3gp) as MP4. Check the brand against a list of video brands.
-- [ ] **B7. The admin dashboard won't scale.** `AdminDashboard.jsx` downloads every submission and every user and calculates the stats in the browser; the `/admin/stats` endpoint exists but isn't used. Use the endpoint, and add pagination to `/admin/users` and `/submissions` (admin).
+- [x] **B7. The admin dashboard won't scale.** *(Phase 8: the dashboard renders from `GET /admin/stats` (new `userId`/`categoryId` filters, aggregations on the server); the contributor filter is a search; admins' library loads only their own submissions; `GET /admin/users` and `GET /submissions` page with `?limit`/`?cursor`, and the new `GET /admin/submissions` pages by cursor.)* `AdminDashboard.jsx` downloads every submission and every user and calculates the stats in the browser; the `/admin/stats` endpoint exists but isn't used. Use the endpoint, and add pagination to `/admin/users` and `/submissions` (admin).
 - [x] **B8. Duplicate Drive folders.** *(Phase 2: `folderIdFor` shares the in-flight lookup; a failed lookup is retried.)* Two uploads at the same moment can create duplicate folders (the in-memory cache in `folderIdFor`). Low priority.
 
 ## Unfinished parts and leftovers
 
 - [x] There is no admin page for contact messages. *(Phase 5: Admin → Messages, with topic/status/verified filters and done/rejected/reopen.)* The `GET /admin/messages` endpoint exists but nothing uses it.
-- [ ] There is no admin page to browse or export submissions (this ties in with B5).
+- [x] There is no admin page to browse or export submissions (this ties in with B5). *(Phase 8: Admin → Submissions.)*
 - [x] There is no way to change the password while logged in; only reset by email works. *(Phase 6: `POST /users/me/password` and a form on the profile page.)*
 - [x] `SITE_URL` in `frontend/src/seo/seoCatalog.mjs` is still `https://signpakcommons.example`, so the sitemap and robots file are wrong. *(Phase 1: defaults to `https://commons.signpak.tech` (D2), overridable with the `SITE_URL` env var; sitemap and robots.txt now name the real site.)*
 - [ ] Remove the unused `frontend/src/utils/blobStore.js`. Notifications are only stored in the browser (`api.notifications`); decide whether that is enough.

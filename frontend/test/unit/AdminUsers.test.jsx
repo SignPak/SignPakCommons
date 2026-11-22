@@ -6,7 +6,7 @@ import AdminUsers from '../../src/pages/admin/AdminUsers'
 
 const { api } = vi.hoisted(() => ({
   api: {
-    users: { list: vi.fn(), setStatus: vi.fn(), remove: vi.fn() },
+    users: { list: vi.fn(), page: vi.fn(), setStatus: vi.fn(), remove: vi.fn() },
     admin: { restrictions: vi.fn(), userSubmissions: vi.fn(), removeUserSubmissions: vi.fn() },
   },
 }))
@@ -20,6 +20,8 @@ let confirm
 
 beforeEach(() => {
   api.users.list.mockResolvedValue([SARA])
+  // B7 (Phase 8): the page loads accounts a page at a time.
+  api.users.page.mockResolvedValue({ items: [SARA], nextCursor: null, total: 1 })
   api.admin.restrictions.mockResolvedValue([])
   api.admin.userSubmissions.mockResolvedValue({ items: [], total: 3, nextCursor: null })
   api.admin.removeUserSubmissions.mockResolvedValue({ deleted: 3, failed: [] })

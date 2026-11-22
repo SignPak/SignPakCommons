@@ -20,19 +20,19 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 7** (backend 1.0.13, frontend 1.0.15):
+Counts as of **Phase 8, after the verification fixes** (backend 1.0.14, frontend 1.0.16):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 33 | 182 |
-| Integration (backend) | `backend/tests/integration/` | 16 | 125 |
-| Security (backend) | `backend/tests/security/` | 8 | 79 |
+| Unit (backend) | `backend/tests/unit/` | 37 | 206 |
+| Integration (backend) | `backend/tests/integration/` | 21 | 159 |
+| Security (backend) | `backend/tests/security/` | 8 | 81 |
 | Unit (frontend) | `frontend/test/unit/` | 12 | 42 |
-| Integration (frontend) | `frontend/test/integration/` | 7 | 42 |
-| End-to-end | `e2e/tests/` | 7 | 33 (11 tests × 3 browsers) |
-| **Total** | | **83** | **503** |
+| Integration (frontend) | `frontend/test/integration/` | 9 | 50 |
+| End-to-end | `e2e/tests/` | 8 | 36 (12 tests × 3 browsers) |
+| **Total** | | **95** | **574** |
 
-The backend security count is per-route: the access matrix produces one case per route (55
+The backend security count is per-route: the access matrix produces one case per route (57
 today) plus the completeness check; the hook suite adds three, the production-error suite
 three, the listen-address suite two, the upload-type suite three, the contact-verification
 suite four, the admin-deletion suite two and the JWT suite six. Frontend cases count each `it.each` row separately.
@@ -223,6 +223,30 @@ suite four, the admin-deletion suite two and the JWT suite six. Frontend cases c
 | U-180 | `accountDeletionLog.test.js` | Phase 7 item 5: the log is marked accountDeleted only after the account is deleted | FR13.13 | C3 | unit |
 | U-181 | `accountDeletionLog.test.js` | Phase 7 item 5: when the account deletion fails, the log is never marked | FR13.13 | C3 | unit |
 | U-182 | `accountDeletionLog.test.js` | Phase 7 item 5: a plain account deletion writes no deletion log | FR13.13 | C3 | unit |
+| U-183 | `csv.test.js` | B5: plain values are written as they are | FR13.6, FR13.8 | B5 | unit |
+| U-184 | `csv.test.js` | B5: a comma, a quote or a line break is quoted, and quotes are doubled | FR13.6, FR13.8 | B5 | unit |
+| U-185 | `csv.test.js` | B5: Urdu text is kept exactly, and quoted only when it holds a comma | FR13.6, FR13.8 | B5 | unit |
+| U-186 | `csv.test.js` | B5: null and undefined are empty; numbers and booleans are written plainly | FR13.6, FR13.8 | B5 | unit |
+| U-187 | `csv.test.js` | B5: a row ends with CRLF, and the file starts with a UTF-8 BOM so Excel reads Urdu correctly | FR13.6, FR13.8 | B5 | unit |
+| U-188 | `statsBuckets.test.js` | B7: one entry per day, and a day with no submissions is 0 | FR13.12 | B7 | unit |
+| U-189 | `statsBuckets.test.js` | B7: submissions are counted on their UTC day, across the midnight boundary | FR13.12 | B7 | unit |
+| U-190 | `statsBuckets.test.js` | B7: dates before the first day or after the last are left out | FR13.12 | B7 | unit |
+| U-191 | `statsBuckets.test.js` | B7: the number of entries is the number of days asked for | FR13.12 | B7 | unit |
+| U-192 | `prepareDataset.test.js` | B5: a trim seeks to trimStart and keeps trimEnd - trimStart seconds, without audio | FR13.6 | B5 | unit |
+| U-193 | `prepareDataset.test.js` | B5: a mirrored recording is flipped horizontally | FR13.6 | B5 | unit |
+| U-194 | `prepareDataset.test.js` | B5: decimal trims keep millisecond precision and no floating-point noise | FR13.6 | B5 | unit |
+| U-195 | `prepareDataset.test.js` | B5: a trim that is empty or reversed is refused | FR13.6 | B5 | unit |
+| U-196 | `prepareDataset.test.js` | B5: the output is <category>/<video>/<submissionId>.mp4 with safe folder names | FR13.6 | B5 | unit |
+| U-197 | `prepareDataset.test.js` | B5: every row is downloaded and converted, and the summary counts them | FR13.6 | B5 | unit |
+| U-198 | `prepareDataset.test.js` | B5: a clip that already exists is skipped unless overwrite is set | FR13.6 | B5 | unit |
+| U-199 | `prepareDataset.test.js` | B5: a failed row is reported and the run carries on | FR13.6 | B5 | unit |
+| U-200 | `deleteAccountOrder.test.js` | Phase 8 item 6: the user is removed first, then the DeletedAccount record is written | FR13.13 | C3 | unit |
+| U-201 | `deleteAccountOrder.test.js` | Phase 8 item 6: when the removal fails, no DeletedAccount record is written | FR13.13 | C3 | unit |
+| U-202 | `deleteAccountOrder.test.js` | Phase 8 item 6: a failed DeletedAccount write after the removal is logged, not thrown | FR13.13 | C3 | unit |
+| U-203 | `prepareDataset.test.js` | B5: FFMPEG_PATH wins over everything, as an override | FR13.6 | B5 | unit |
+| U-204 | `prepareDataset.test.js` | B5: without FFMPEG_PATH, the ffmpeg-static binary when it is installed and on disk | FR13.6 | B5 | unit |
+| U-205 | `prepareDataset.test.js` | B5: falls back to ffmpeg on PATH when ffmpeg-static is missing, unsupported or not downloaded | FR13.6 | B5 | unit |
+| U-206 | `prepareDataset.test.js` | B5: the not-found message says npm install is enough, and names a broken FFMPEG_PATH | FR13.6 | B5 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -356,6 +380,40 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-123 | `api-admin-audit.test.js` | S7: an admin who has since been deleted is shown as a deleted account | FR13.12, SE-1 | S7 | integration |
 | I-124 | `api-admin-audit.test.js` | S7: no entry holds an email address | FR13.12, SE-1 | S7 | integration |
 | I-125 | `api-admin-deletion.test.js` | Phase 7 item 5: when the account deletion itself fails, DeletionLog.accountDeleted stays false and the account is kept | FR13.13 | C3 | integration |
+| I-126 | `api-admin-submissions.test.js` | B5: lists every submission newest first, with the export fields and the contributor name for the table | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-127 | `api-admin-submissions.test.js` | B5: filters by category, video, contributor and date range | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-128 | `api-admin-submissions.test.js` | B5: cursor paging returns every row exactly once, even when a row is deleted between pages | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-129 | `api-admin-submissions.test.js` | B5: bad filters are refused with 422 | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-130 | `api-admin-submissions.test.js` | B5: the CSV has exactly the export columns, one row per submission, and survives Urdu, commas and quotes | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-131 | `api-admin-submissions.test.js` | B5: the JSON export is an array of objects with the same columns, and honours the filters | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-132 | `api-admin-submissions.test.js` | B5: neither export holds a name or an email address | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-133 | `api-admin-submissions.test.js` | B5: an export with no matching rows is just the header, or an empty array | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-134 | `api-admin-submissions.test.js` | B5: each export writes one activity entry with the format and the filters | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-135 | `api-admin-submissions.test.js` | B5: an unknown format or a bad filter is refused with 422 | FR13.6, FR13.8, SE-1 | B5 | integration |
+| I-136 | `api-admin-stats.test.js` | B7: the summary, activity, categories, top lists and recent list cover the chosen days | FR13.12 | B7 | integration |
+| I-137 | `api-admin-stats.test.js` | B7: userId narrows everything to one contributor | FR13.12 | B7 | integration |
+| I-138 | `api-admin-stats.test.js` | B7: categoryId narrows everything to one category, and the other categories show 0 | FR13.12 | B7 | integration |
+| I-139 | `api-admin-stats.test.js` | B7: the existing fields are still there, and totals stay all-time | FR13.12 | B7 | integration |
+| I-140 | `api-admin-stats.test.js` | B7: an empty range gives zeros and no top category | FR13.12 | B7 | integration |
+| I-141 | `api-admin-stats.test.js` | B7: bad filters are refused with 422 | FR13.12 | B7 | integration |
+| I-142 | `api-admin-users-paging.test.js` | B7: without limit the answer is the full array, as before | FR13.12, SE-6 | B7 | integration |
+| I-143 | `api-admin-users-paging.test.js` | B7: with limit, pages of { items, nextCursor, total } cover every account exactly once | FR13.12, SE-6 | B7 | integration |
+| I-144 | `api-admin-users-paging.test.js` | B7: role and a name or email search narrow the page | FR13.12, SE-6 | B7 | integration |
+| I-145 | `api-admin-users-paging.test.js` | B7: regex characters in the search are matched literally | FR13.12, SE-6 | B7 | integration |
+| I-146 | `api-admin-users-paging.test.js` | B7: bad paging values are refused with 422 | FR13.12, SE-6 | B7 | integration |
+| I-147 | `api-admin-users-paging.test.js` | B7: ?mine=true gives an admin only their own submissions; without it, everyone's as before | FR13.12, SE-6 | B7 | integration |
+| I-148 | `api-admin-users-paging.test.js` | B7: ?limit gives the paged shape; a contributor still sees only their own | FR13.12, SE-6 | B7 | integration |
+| I-149 | `api-admin-deletion.test.js` | Phase 8 item 6: when removing the account fails, no DeletedAccount record is left and the lookup shows only the current account | FR13.13 | C3 | integration |
+| I-150 | `api-admin-export-stream.test.js` | B5: the CSV is the BOM, the header and one CRLF line per row, quoted where needed, oldest first | FR13.6, FR13.8 | B5 | integration |
+| I-151 | `api-admin-export-stream.test.js` | B5: the JSON is "[", one row per line separated by commas, then "]" | FR13.6, FR13.8 | B5 | integration |
+| I-152 | `api-admin-export-stream.test.js` | B5: an empty result is the BOM and header alone, or exactly "[]" | FR13.6, FR13.8 | B5 | integration |
+| I-153 | `api-admin-export-stream.test.js` | B5: the client leaving part-way closes the MongoDB cursor within 2 s, and the next export still works | FR13.6, FR13.8 | B5 | integration |
+| I-154 | `api-admin-export-stream.test.js` | B5: a full export of every row still completes | FR13.6, FR13.8 | B5 | integration |
+| I-155 | `api-admin-export-stream.test.js` | B5: a database error part-way cuts the download, is logged as an error, and closes the cursor | FR13.6, FR13.8 | B5 | integration |
+| I-156 | `prepare-dataset.test.js` | B5: the run makes both clips at category/title/submissionId.mp4, Urdu title included | FR13.6 | B5 | integration |
+| I-157 | `prepare-dataset.test.js` | B5: each clip is trimmed to its trimStart–trimEnd: 2.00 s and 5.00 s | FR13.6 | B5 | integration |
+| I-158 | `prepare-dataset.test.js` | B5: the mirrored clip is flipped back (red box on the right); the other is not (red on the left) | FR13.6 | B5 | integration |
+| I-159 | `prepare-dataset.test.js` | B5: the clips are H.264 MP4 without audio | FR13.6 | B5 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -482,6 +540,14 @@ Rendered with the real router, providers and API client; only the network is moc
 | FI-35 | `AdminActivity.test.jsx` | S7: the action filter sends the chosen action and goes back to page 1 | FR13.12, SE-1 | S7 | integration |
 | FI-36 | `AdminActivity.test.jsx` | S7: Previous and Next page through the log | FR13.12, SE-1 | S7 | integration |
 | FI-37 | `AdminActivity.test.jsx` | S7: an empty log and a failed request each show a message | FR13.12, SE-1 | S7 | integration |
+| FI-38 | `AdminSubmissions.test.jsx` | B5: lists submissions with trim, mirror and the contributor, and Load more follows the cursor | FR13.6, FR13.8 | B5 | integration |
+| FI-39 | `AdminSubmissions.test.jsx` | B5: the category, video and date filters reach the API, and a new category clears the video | FR13.6, FR13.8 | B5 | integration |
+| FI-40 | `AdminSubmissions.test.jsx` | B5: the contributor search filters by the chosen contributor | FR13.6, FR13.8 | B5 | integration |
+| FI-41 | `AdminSubmissions.test.jsx` | B5: Download CSV and Download JSON link to the export with the current filters | FR13.6, FR13.8 | B5 | integration |
+| FI-42 | `AdminSubmissions.test.jsx` | B5: an end date before the start date is flagged and nothing is requested | FR13.6, FR13.8 | B5 | integration |
+| FI-43 | `AdminDashboard.test.jsx` | B7: renders the key numbers, chart, categories, top lists and recent list from /admin/stats only | FR13.12 | B7 | integration |
+| FI-44 | `AdminDashboard.test.jsx` | B7: the days, category and contributor filters reach the stats query | FR13.12 | B7 | integration |
+| FI-45 | `AdminDashboard.test.jsx` | B7: an empty range shows the empty notes, and a failed request shows an error | FR13.12 | B7 | integration |
 
 ## 6. End-to-end tests — `e2e/tests/`
 
@@ -501,6 +567,7 @@ API with an in-memory database.
 | E-09 | `account-security.spec.js` | S6: resetting the password on another device logs out the old session | SE-2, SE-9 | S6 | E2E |
 | E-10 | `account-security.spec.js` | B4: reloading the consent page keeps the visitor on it, and accepting still works | FR13.1, OR-19 | B4 | E2E |
 | E-11 | `admin-activity.spec.js` | S7: two admins each make a change, and Activity shows the right name for each | FR13.12, SE-1 | S7 | E2E |
+| E-12 | `admin-export.spec.js` | B5: an admin downloads the CSV export, and its rows match the submissions made | FR13.6, FR13.8 | B5 | E2E |
 
 ## 7. Gaps to close in later phases
 
@@ -517,7 +584,7 @@ Drive upload`) and a row here.
 | C3 | **Covered in Phase 5** (U-124–U-140, I-73–I-85, S-18, S-19, the four new access-matrix routes, FU-29–FU-34, FI-17–FI-21, E-07). | 5 |
 | S2, S6, S9, B2, B3, B4 | **Covered in Phase 6** (U-141–U-161, I-86–I-110, S-20–S-25, the new access-matrix route, FU-35–FU-42, FI-22–FI-32, E-08–E-10). | 6 |
 | S7 | **Covered in Phase 7** (U-162–U-182, U-133 changed for item 5, I-111–I-125, the new access-matrix route, FI-33–FI-37, E-11). | 7 |
-| B5, B7 | submissions export (CSV/JSON) and paginated admin data | 8 |
+| B5, B7 | **Covered in Phase 8** (U-183–U-202, U-180 and U-182 reordered for item 6, I-126–I-149, the two new access-matrix routes, FI-38–FI-45, E-12; after verification U-203–U-206 and I-150–I-159). The dataset script is run for real with ffmpeg on local files (I-156–I-159); Drive downloads are covered by unit tests only. | 8 |
 | S8, S10 | CSP and security headers, `X-Request-Id` validation, axe checks | 9 |
 | all | final traceability check: every FR13.x and checklist ID has a test | 10 |
 

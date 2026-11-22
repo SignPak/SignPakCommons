@@ -17,7 +17,7 @@ export const userController = {
     setAuthCookie(res, await authService.changePassword(req.user, req.body))
     noContent(res)
   }),
-  list: asyncHandler(async (req, res) => ok(res, await userService.listAll())),
+  list: asyncHandler(async (req, res) => ok(res, await userService.listAll(req.query))),
   updateStatus: asyncHandler(async (req, res) => ok(res, await userService.updateStatus(req.params.id, req.user, req.body))),
   remove: asyncHandler(async (req, res) => { await userService.remove(req.params.id, req.user, req.query); noContent(res) }),
 }

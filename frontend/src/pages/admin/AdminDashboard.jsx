@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import ContributorSearch from '../../components/ContributorSearch'
 import Field from '../../components/Field'
 import { Badge, SectionHeading } from '../../components/ui'
 import { useLibrary } from '../../context/LibraryContext'
@@ -6,7 +7,6 @@ import { api } from '../../services/api'
 import { formatDate } from '../../utils/format'
 
 const DAY_OPTIONS = [7, 14, 30, 60, 90]
-const DAY_MS = 24 * 60 * 60 * 1000
 
 function ActivityChart({ counts, labels }) {
   const width = 600
@@ -25,111 +25,75 @@ function ActivityChart({ counts, labels }) {
   </figure>
 }
 
+// "2026-11-22" (a UTC day from the API) -> "Nov 22".
+const dayLabel = (date) => new Date(`${date}T00:00:00.000Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+
+/**
+ * Admin → Dashboard. B7: everything on it comes from GET /admin/stats, worked out on the server
+ * for the chosen days, contributor and category; the page no longer loads every submission or
+ * every account. Days are UTC days.
+ */
 export default function AdminDashboard() {
-  const { categories, videos, submissions } = useLibrary()
-  const [users, setUsers] = useState([])
-  const [usersError, setUsersError] = useState('')
-  const [usersLoading, setUsersLoading] = useState(true)
+  const { categories } = useLibrary()
   const [days, setDays] = useState(14)
-  const [selectedContributor, setSelectedContributor] = useState('all')
+  const [contributor, setContributor] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [stats, setStats] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
-    api.users.list()
-      .then((list) => { if (active) { setUsers(list); setUsersError('') } })
-      .catch(() => { if (active) setUsersError('Unable to load contributor data right now. Try refreshing the page.') })
-      .finally(() => { if (active) setUsersLoading(false) })
+    api.admin.stats({ days, userId: contributor?.id, categoryId: selectedCategory === 'all' ? undefined : selectedCategory })
+      .then((data) => { if (active) { setStats(data); setError('') } })
+      .catch((cause) => { if (active) setError(cause.message || 'Unable to load the dashboard right now. Try refreshing the page.') })
+      .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [])
+  }, [days, contributor, selectedCategory])
 
-  const contributors = users.filter((user) => user.role === 'user')
-  const startOfToday = new Date().setHours(0, 0, 0, 0)
-  const rangeStart = startOfToday - (days - 1) * DAY_MS
-
-  const filteredSubmissions = useMemo(() => submissions.filter((item) => {
-    if (item.submittedAt < rangeStart) return false
-    if (selectedContributor !== 'all' && item.userId !== selectedContributor) return false
-    if (selectedCategory !== 'all') {
-      const video = videos.find((entry) => entry.id === item.videoId)
-      return video?.categoryId === selectedCategory
-    }
-    return true
-  }), [rangeStart, selectedCategory, selectedContributor, submissions, videos])
-
-  const counts = Array.from({ length: days }, (_, index) => {
-    const from = startOfToday - (days - 1 - index) * DAY_MS
-    return filteredSubmissions.filter((item) => item.submittedAt >= from && item.submittedAt < from + DAY_MS).length
-  })
-
-  const labels = counts.map((_, index) => new Date(startOfToday - (days - 1 - index) * DAY_MS).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
-
-  const perCategory = categories.map((category) => {
-    const ids = new Set(videos.filter((video) => video.status === 'published' && video.categoryId === category.id).map((video) => video.id))
-    const count = filteredSubmissions.filter((item) => ids.has(item.videoId)).length
-    return { category, count, totalVideos: ids.size }
-  })
-
-  const topCount = Math.max(1, ...perCategory.map((item) => item.count))
-  const recent = [...filteredSubmissions].sort((a, b) => b.submittedAt - a.submittedAt).slice(0, 6)
-
-  const topVideos = videos
-    .filter((video) => video.status === 'published' && (selectedCategory === 'all' || video.categoryId === selectedCategory))
-    .map((video) => ({
-      video,
-      count: filteredSubmissions.filter((item) => item.videoId === video.id).length,
-      category: categories.find((entry) => entry.id === video.categoryId),
-    }))
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count || a.video.title.localeCompare(b.video.title))
-    .slice(0, 6)
-
-  const contributorStats = contributors
-    .map((user) => ({
-      user,
-      count: filteredSubmissions.filter((item) => item.userId === user.id).length,
-    }))
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
-
-  const stats = [
-    ['Active contributors', new Set(filteredSubmissions.map((item) => item.userId)).size],
-    ['Videos recorded', new Set(filteredSubmissions.map((item) => item.videoId)).size],
-    ['Recordings submitted', filteredSubmissions.length],
-    ['Top category', perCategory.reduce((winner, item) => (item.count > winner.count ? item : winner), { category: { label: '—' }, count: 0 }).category.label],
+  const reload = (change) => { setLoading(true); change() }
+  const counts = stats?.activity.map((day) => day.count) ?? []
+  const labels = stats?.activity.map((day) => dayLabel(day.date)) ?? []
+  const byCategory = stats?.byCategory ?? []
+  const topCount = Math.max(1, ...byCategory.map((item) => item.count))
+  const summary = stats?.summary
+  const cards = [
+    ['Active contributors', summary?.activeContributors ?? '—'],
+    ['Videos recorded', summary?.videosRecorded ?? '—'],
+    ['Recordings submitted', summary?.recordings ?? '—'],
+    ['Top category', summary ? (summary.topCategory?.label ?? '—') : '—'],
   ]
+  const topVideos = stats?.topVideos ?? []
+  const topContributors = stats?.topContributors ?? []
+  const recent = stats?.recent ?? []
 
   return <>
-    {usersError && <div className="admin-alert"><p className="alert alert-error">{usersError} <button type="button" className="inline-link" onClick={() => window.location.reload()}>Refresh</button></p></div>}
+    {error && <div className="admin-alert"><p className="alert alert-error">{error} <button type="button" className="inline-link" onClick={() => window.location.reload()}>Refresh</button></p></div>}
 
     <div className="admin-filters">
-      <Field as="select" label="Contributor" value={selectedContributor} onChange={(event) => setSelectedContributor(event.target.value)}>
-        <option value="all">All contributors</option>
-        {contributors.map((user) => <option key={user.id} value={user.id}>{user.firstName} {user.surname}</option>)}
-      </Field>
-      <Field as="select" label="Days" value={days} onChange={(event) => setDays(Number(event.target.value))}>
+      <ContributorSearch value={contributor} onChange={(value) => reload(() => setContributor(value))} />
+      <Field as="select" label="Days" value={days} onChange={(event) => { const value = Number(event.target.value); reload(() => setDays(value)) }}>
         {DAY_OPTIONS.map((value) => <option key={value} value={value}>Last {value} days</option>)}
       </Field>
-      <Field as="select" label="Category" value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
+      <Field as="select" label="Category" value={selectedCategory} onChange={(event) => { const { value } = event.target; reload(() => setSelectedCategory(value)) }}>
         <option value="all">All categories</option>
         {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
       </Field>
     </div>
 
     <section className="stat-grid" aria-label="Key numbers">
-      {stats.map(([label, value, note]) => <div key={label} className="stat-card"><span>{label}</span><b className="display">{value}</b><small>{note}</small></div>)}
+      {cards.map(([label, value]) => <div key={label} className="stat-card"><span>{label}</span><b className="display">{value}</b></div>)}
     </section>
 
     <section className="admin-split">
       <div className="panel">
-        <SectionHeading eyebrow="Activity" title="Contributions in motion." action={<span className="panel-note">Last {days} days</span>} />
-        {usersLoading ? <div className="skeleton-chart" aria-label="Loading contributions data" /> : <ActivityChart counts={counts} labels={labels} />}
+        <SectionHeading eyebrow="Activity" title="Contributions in motion." action={<span className="panel-note">Last {days} days (UTC)</span>} />
+        {loading || !stats ? <div className="skeleton-chart" aria-label="Loading contributions data" /> : <ActivityChart counts={counts} labels={labels} />}
       </div>
       <div className="panel">
         <SectionHeading eyebrow="By category" title="Which categories are active?" />
         <ul className="bar-list">
-          {perCategory.length ? perCategory.map(({ category, count }) => <li key={category.id}><span>{category.label}</span><div className="bar-track"><span className={`bar-fill tone-${category.tone}`} style={{ width: `${(count / topCount) * 100}%` }} /></div><b>{count}</b></li>) : <li className="empty-note">No categories yet.</li>}
+          {byCategory.length ? byCategory.map((item) => <li key={item.categoryId}><span>{item.label}</span><div className="bar-track"><span className={`bar-fill tone-${item.tone}`} style={{ width: `${(item.count / topCount) * 100}%` }} /></div><b>{item.count}</b></li>) : <li className="empty-note">No categories yet.</li>}
         </ul>
         <p className="panel-copy micro-copy">{selectedCategory === 'all' ? 'This shows the category mix across the selected range.' : `Category focus: ${categories.find((entry) => entry.id === selectedCategory)?.label || 'Selected category'}.`}</p>
       </div>
@@ -140,15 +104,15 @@ export default function AdminDashboard() {
         <SectionHeading eyebrow="Engagement" title="Top videos." />
         {topVideos.length
           ? <ul className="bar-list smooth-list">
-              {topVideos.map(({ video, count, category }) => <li key={video.id}><span>{video.title}</span><div className="bar-track"><span className={`bar-fill tone-${category?.tone || 'blue'}`} style={{ width: `${Math.max(12, (count / Math.max(1, topVideos[0].count)) * 100)}%` }} /></div><b>{count}</b></li>)}
+              {topVideos.map((item) => <li key={item.videoId}><span>{item.title}</span><div className="bar-track"><span className={`bar-fill tone-${item.tone || 'blue'}`} style={{ width: `${Math.max(12, (item.count / Math.max(1, topVideos[0].count)) * 100)}%` }} /></div><b>{item.count}</b></li>)}
             </ul>
           : <p className="empty-note">No recorded videos in this range yet.</p>}
       </div>
       <div className="panel">
         <SectionHeading eyebrow="Contributors" title="Who is recording the most?" />
-        {contributorStats.length
+        {topContributors.length
           ? <ul className="bar-list smooth-list">
-              {contributorStats.map(({ user, count }) => <li key={user.id}><span>{user.firstName} {user.surname}</span><div className="bar-track"><span className="bar-fill tone-cyan" style={{ width: `${Math.max(12, (count / Math.max(1, contributorStats[0].count)) * 100)}%` }} /></div><b>{count}</b></li>)}
+              {topContributors.map((item) => <li key={item.userId}><span>{item.name}</span><div className="bar-track"><span className="bar-fill tone-cyan" style={{ width: `${Math.max(12, (item.count / Math.max(1, topContributors[0].count)) * 100)}%` }} /></div><b>{item.count}</b></li>)}
             </ul>
           : <p className="empty-note">No contributor activity in this view.</p>}
       </div>
@@ -159,15 +123,10 @@ export default function AdminDashboard() {
       {recent.length
         ? <div className="table-wrap"><table className="table">
           <thead><tr><th>Contributor</th><th>Video</th><th>Category</th><th>Submitted</th><th><span className="sr-only">Status</span></th></tr></thead>
-          <tbody>{recent.map((item) => {
-            const contributor = users.find((user) => user.id === item.userId)
-            const video = videos.find((entry) => entry.id === item.videoId)
-            const category = categories.find((entry) => entry.id === video?.categoryId)
-            return <tr key={item.id}>
-              <td>{contributor ? `${contributor.firstName} ${contributor.surname}` : 'Unknown contributor'}</td>
-              <td>{video?.title || 'Removed video'}</td><td>{category?.label || '—'}</td><td>{formatDate(item.submittedAt)}</td><td><Badge tone="success">Done</Badge></td>
-            </tr>
-          })}</tbody>
+          <tbody>{recent.map((item) => <tr key={item.id}>
+            <td>{item.contributor?.name || 'Unknown contributor'}</td>
+            <td>{item.video?.title || 'Removed video'}</td><td>{item.category?.label || '—'}</td><td>{formatDate(item.submittedAt)}</td><td><Badge tone="success">Done</Badge></td>
+          </tr>)}</tbody>
         </table></div>
         : <p className="empty-note">No submissions match this filter. Try a broader date range or a different contributor.</p>}
     </section>

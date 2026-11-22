@@ -1,6 +1,11 @@
 import { AUDIT_ACTIONS } from '../config/constants.js'
 
 const ref = (name) => ({ $ref: `#/components/schemas/${name}` })
+// B5/B7: the paged answer of the list routes.
+const pageOf = (items) => ({ type: 'object', properties: { items: { type: 'array', items }, nextCursor: { type: 'string', nullable: true }, total: { type: 'integer' } } })
+// B5: the filters shared by the admin submissions list and the export.
+const submissionFilterParameters = ['categoryId', 'videoId', 'userId'].map((name) => ({ name, in: 'query', schema: { type: 'string' } }))
+  .concat(['from', 'to'].map((name) => ({ name, in: 'query', schema: { type: 'string', format: 'date' } })))
 const envelope = (schema = {}) => ({
   type: 'object',
   required: ['data'],
@@ -653,9 +658,14 @@ export const openapi = {
       get: {
         tags: ['Submissions'],
         summary: 'List the current user submissions',
-        description: 'Contributors receive their own submissions; admins receive all submissions and archive metadata.',
+        description: 'Contributors receive their own submissions; admins receive all submissions and archive metadata, or only their own with mine=true. With limit (and cursor) the answer is one page, { items, nextCursor, total }; without it, the whole array (deprecated for admins: use /admin/submissions).',
         security: userSecurity,
-        responses: { 200: jsonResponse('Submissions', { type: 'array', items: ref('Submission') }), 401: errorResponse },
+        parameters: [
+          { name: 'mine', in: 'query', schema: { type: 'string', enum: ['true', 'false'] } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+          { name: 'cursor', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { 200: jsonResponse('Submissions, or one page of them', { oneOf: [{ type: 'array', items: ref('Submission') }, pageOf(ref('Submission'))] }), 401: errorResponse, 422: errorResponse },
       },
       post: {
         tags: ['Submissions'],
@@ -708,8 +718,15 @@ export const openapi = {
       get: {
         tags: ['Admin'],
         summary: 'List all users',
+        description: 'With limit the answer is one page, { items, nextCursor, total }, oldest first, filtered by role and q (the start of a first name, surname or email, case-insensitive, matched literally). Without limit, every account (deprecated).',
         security: adminSecurity,
-        responses: { 200: jsonResponse('Users', { type: 'array', items: ref('User') }), ...adminErrors },
+        parameters: [
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+          { name: 'cursor', in: 'query', schema: { type: 'string' } },
+          { name: 'role', in: 'query', schema: { type: 'string', enum: ['user', 'admin'] } },
+          { name: 'q', in: 'query', schema: { type: 'string', maxLength: 100 } },
+        ],
+        responses: { 200: jsonResponse('Users, or one page of them', { oneOf: [{ type: 'array', items: ref('User') }, pageOf(ref('User'))] }), ...adminErrors, 422: errorResponse },
       },
     },
     '/admin/users/{id}': {
@@ -871,9 +888,40 @@ export const openapi = {
       get: {
         tags: ['Admin'],
         summary: 'Get dashboard statistics',
+        description: 'totals and totalsByCategory are all-time; activity (per UTC day), byCategory, summary, topVideos, topContributors and recent cover the range and the optional userId and categoryId filters.',
         security: adminSecurity,
-        parameters: [{ name: 'days', in: 'query', schema: { type: 'integer', minimum: 7, maximum: 90, default: 14 } }],
+        parameters: [
+          { name: 'days', in: 'query', schema: { type: 'integer', minimum: 7, maximum: 90, default: 14 } },
+          { name: 'userId', in: 'query', schema: { type: 'string' } },
+          { name: 'categoryId', in: 'query', schema: { type: 'string' } },
+        ],
         responses: { 200: jsonResponse('Statistics', { type: 'object' }), ...adminErrors },
+      },
+    },
+    '/admin/submissions': {
+      get: {
+        tags: ['Admin'],
+        summary: 'List submissions, filtered, a page at a time (B5)',
+        security: adminSecurity,
+        parameters: [...submissionFilterParameters,
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 50 } },
+          { name: 'cursor', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { 200: jsonResponse('One page of submissions: the export columns plus contributorName', pageOf({ type: 'object' })), ...adminErrors, 422: errorResponse },
+      },
+    },
+    '/admin/submissions/export': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Export submissions for the ML team (B5)',
+        description: 'Streamed CSV (RFC 4180, UTF-8 with BOM) or a JSON array, as an attachment. Columns, in order: submissionId, userId, videoId, videoTitle, categoryId, categoryLabel, driveFileId, archivePath, mimeType, size, duration, trimStart, trimEnd, mirrored, submittedAt, storageDriver. No names or emails.',
+        security: adminSecurity,
+        parameters: [{ name: 'format', in: 'query', required: true, schema: { type: 'string', enum: ['csv', 'json'] } }, ...submissionFilterParameters],
+        responses: {
+          200: { description: 'The export file', content: { 'text/csv': { schema: { type: 'string' } }, 'application/json': { schema: { type: 'array', items: { type: 'object' } } } } },
+          ...adminErrors,
+          422: errorResponse,
+        },
       },
     },
     '/admin/audit': {

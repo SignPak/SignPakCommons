@@ -11,6 +11,7 @@ import {
   verifyEmailSchema,
 } from '../utils/authSchemas'
 import { auditQuerySchema } from '../utils/auditLog'
+import { adminSubmissionsQuerySchema, exportQuerySchema, statsQuerySchema, usersPageQuerySchema } from '../utils/adminQueries'
 import { validateApiInput } from '../utils/validateApiInput'
 
 const PREFIX = 'signpak:v1:'
@@ -236,6 +237,11 @@ export const api = {
       await request(apiRoutes.users.password(), json('POST', input))
     },
     async list() { return normalizeList(await request(apiRoutes.users.list())) },
+    /** B7: one page of accounts, `{ items, nextCursor, total }`, filtered by role and a name or email search. */
+    async page(query = {}) {
+      const page = await request(apiRoutes.users.list(validateApiInput(usersPageQuerySchema, query)))
+      return { ...page, items: normalizeList(page.items) }
+    },
     async setStatus(id, patch) { return normalize(await request(apiRoutes.users.update(id), json('PATCH', patch))) },
     // C3: withRecordings also deletes the contributor's recordings (the account is kept if any fail).
     async remove(id, { withRecordings = false } = {}) { await request(apiRoutes.users.remove(id, { withRecordings }), { method: 'DELETE' }) },
@@ -251,6 +257,12 @@ export const api = {
     async userSubmissions(userId, page = {}) { return request(apiRoutes.admin.userSubmissions(userId, page)) },
     async removeUserSubmissions(userId, options = {}) { return request(apiRoutes.admin.removeUserSubmissions(userId, options), { method: 'DELETE' }) },
     async deletionLookup(query) { return request(apiRoutes.admin.deletionLookup(query)) },
+    /** B7: the dashboard's numbers for `days`, optionally for one contributor or category. */
+    async stats(query = {}) { return request(apiRoutes.admin.stats(validateApiInput(statsQuerySchema, query))) },
+    /** B5: one page of submissions with the export fields and the contributor's name. */
+    async submissions(query = {}) { return request(apiRoutes.admin.submissions(validateApiInput(adminSubmissionsQuerySchema, query))) },
+    /** B5: the export's URL. A plain link, so the browser streams the file to disk. */
+    exportUrl(query) { return apiRoutes.admin.exportSubmissions(validateApiInput(exportQuerySchema, query)) },
     /** S7: one page of the activity log, `{ entries, page, limit, total }`, newest first. */
     async audit(query = {}) { return request(apiRoutes.admin.audit(validateApiInput(auditQuerySchema, query))) },
   },
@@ -336,7 +348,8 @@ export const api = {
   },
 
   submissions: {
-    async list() { return normalizeList(await request(apiRoutes.submissions.list())) },
+    // B7: `mine` makes an admin's list their own only (the library); contributors always get their own.
+    async list(query = {}) { return normalizeList(await request(apiRoutes.submissions.list(query))) },
     /** Same as create(), but reports upload progress (0-1) and can be aborted with `signal`. */
     async upload({ recording, videoId, trimStart, trimEnd, mirrored, duration, onProgress, signal }) {
       const body = new FormData()

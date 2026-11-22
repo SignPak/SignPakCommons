@@ -119,4 +119,16 @@
   .assign-list b { @apply block font-ui text-base font-bold text-heading; }
   .assign-list small { @apply text-sm text-muted; }
   .assign-list button { @apply shrink-0 rounded-full px-3 py-1.5 text-sm font-bold text-accent-ink underline underline-offset-4 hover:bg-panel; }
+  /* B7: contributor search (dashboard, submissions). */
+  .contributor-search { @apply relative; }
+  .contributor-matches { @apply absolute inset-x-0 top-full z-10 mt-1 max-h-64 list-none overflow-auto rounded-2xl border border-line bg-surface p-1 shadow-soft; }
+  .contributor-matches:empty { @apply hidden; }
+  .contributor-matches button { @apply m-0 flex w-full flex-col items-start rounded-xl px-3 py-2 text-left no-underline hover:bg-panel; }
+  .contributor-matches small { @apply font-normal text-muted; }
+  .contributor-chosen { @apply flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-4; }
+  .contributor-chosen .btn { @apply min-h-9 px-3 py-1.5 text-xs; }
+  /* B5: Admin -> Submissions. */
+  .admin-submission-table { min-width: 60rem; }
+  .admin-downloads { @apply flex flex-wrap gap-2; }
+  .admin-load-more { @apply mt-4 flex items-center justify-between gap-3; }
 }

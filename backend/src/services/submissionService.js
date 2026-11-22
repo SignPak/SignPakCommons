@@ -22,6 +22,66 @@ function assertTrimIsSane({ trimStart, trimEnd, duration }) {
   if (trimEnd > duration + TRIM_TOLERANCE_SECONDS) throw validationError({ trimEnd: 'The trim end is past the end of the recording.' })
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** B5: the export's columns, in order. No names, no emails; `userId` is the raw account id. */
+export const EXPORT_COLUMNS = [
+  'submissionId', 'userId', 'videoId', 'videoTitle', 'categoryId', 'categoryLabel',
+  'driveFileId', 'archivePath', 'mimeType', 'size', 'duration',
+  'trimStart', 'trimEnd', 'mirrored', 'submittedAt', 'storageDriver',
+]
+
+/** One export row from a submission (a lean document) and the video and category maps. */
+function exportRow(submission, videos, categories) {
+  const video = videos.get(String(submission.video))
+  const categoryId = video?.category ? String(video.category) : null
+  const category = categoryId ? categories.get(categoryId) : null
+  const recording = submission.recording || {}
+  return {
+    submissionId: String(submission._id),
+    userId: String(submission.user),
+    videoId: String(submission.video),
+    videoTitle: video?.title ?? null,
+    categoryId,
+    categoryLabel: category?.label ?? null,
+    driveFileId: recording.key ?? null,
+    archivePath: recording.archivePath ?? null,
+    mimeType: recording.mimeType ?? null,
+    size: recording.size ?? null,
+    duration: submission.duration,
+    trimStart: submission.trimStart,
+    trimEnd: submission.trimEnd,
+    mirrored: Boolean(submission.mirrored),
+    submittedAt: new Date(submission.createdAt).toISOString(),
+    storageDriver: recording.driver ?? null,
+  }
+}
+
+async function lookupMaps() {
+  const [videos, categories] = await Promise.all([videoRepo.titlesAndCategories(), categoryRepo.list()])
+  return { videos: new Map(videos.map((video) => [video.id, video])), categories: new Map(categories.map((category) => [category.id, category])) }
+}
+
+/**
+ * B5: the MongoDB filter for the admin list and the export. `to` is inclusive to the end of that
+ * UTC day. A category becomes the ids of its videos (videos can move between categories, so this
+ * is the video's current category).
+ */
+async function submissionFilter({ categoryId, videoId, userId, from, to } = {}) {
+  const filter = {}
+  if (userId) filter.user = userId
+  if (categoryId) {
+    const ids = await videoRepo.idsInCategory(categoryId)
+    filter.video = { $in: videoId ? ids.filter((id) => id === videoId) : ids }
+  } else if (videoId) filter.video = videoId
+  if (from || to) {
+    filter.createdAt = {}
+    if (from) filter.createdAt.$gte = new Date(`${from}T00:00:00.000Z`)
+    if (to) filter.createdAt.$lt = new Date(new Date(`${to}T00:00:00.000Z`).getTime() + DAY_MS)
+  }
+  return filter
+}
+
 export const submissionService = {
   /**
    * This is a data-collection tool, not a one-shot quiz: a contributor can submit a video
@@ -73,15 +133,61 @@ export const submissionService = {
     }
   },
 
-  /** Contributors see their own submissions; admins see all of them. */
-  async list(user) {
+  /**
+   * Contributors see their own submissions; admins see all of them, or only their own with
+   * `mine` (B7: an admin's library). With `limit` the answer is one page,
+   * `{ items, nextCursor, total }`; without it, the whole array as before.
+   */
+  async list(user, { mine = false, limit, cursor } = {}) {
     const isAdmin = user.role === ROLES.ADMIN
-    const submissions = await submissionRepo.list(isAdmin ? {} : { userId: user._id })
-    return submissions.map((submission) => {
+    const ownOnly = !isAdmin || mine
+    const shape = (submission) => {
       const result = submission.toJSON()
       if (!isAdmin) delete result.archivePath
       return result
-    })
+    }
+    if (limit) {
+      const page = await submissionRepo.page(ownOnly ? { user: user._id } : {}, { limit, cursor })
+      return { ...page, items: page.items.map(shape) }
+    }
+    const submissions = await submissionRepo.list(ownOnly ? { userId: user._id } : {})
+    return submissions.map(shape)
+  },
+
+  /**
+   * B5: GET /admin/submissions. One page of the export rows, newest first, each with the
+   * contributor's name for the admin table (the export itself never has names).
+   */
+  async adminPage({ limit, cursor, ...filters }) {
+    const [page, maps] = await Promise.all([submissionRepo.page(await submissionFilter(filters), { limit, cursor }), lookupMaps()])
+    const users = new Map((await userRepo.findManyByIds(page.items.map((item) => item.user))).map((user) => [user.id, user]))
+    return {
+      ...page,
+      items: page.items.map((submission) => {
+        const user = users.get(String(submission.user))
+        return { ...exportRow(submission, maps.videos, maps.categories), contributorName: user ? `${user.firstName} ${user.surname}` : 'Deleted account' }
+      }),
+    }
+  },
+
+  /**
+   * B5: the rows of GET /admin/submissions/export, as an async iterable read from a database
+   * cursor, so an export of any size streams without being held in memory. Writes one
+   * submissions.export activity entry.
+   */
+  async exportRows(filters, admin, { format }) {
+    const [filter, maps] = await Promise.all([submissionFilter(filters), lookupMaps()])
+    await auditService.record({ actor: admin, action: 'submissions.export', targetType: 'submissions', meta: { format, ...filters } })
+    const cursor = submissionRepo.exportCursor(filter)
+    return (async function* rows() {
+      try {
+        for await (const submission of cursor) yield exportRow(submission, maps.videos, maps.categories)
+      } finally {
+        // Runs when the export finishes, fails, or is abandoned (the client went away and
+        // stream.pipeline closed the generator), so the MongoDB cursor never outlives it.
+        await cursor.close()
+      }
+    })()
   },
 
   /** Admin: one page of a contributor's submissions (C3: what a deletion would remove). */
