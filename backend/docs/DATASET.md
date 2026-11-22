@@ -35,13 +35,21 @@ Columns, in order:
 
 ## 2. Set up the machine
 
-- **Node 22** and this repository's `backend/` with `npm ci`.
-- **ffmpeg** with libx264:
-  - Windows: `winget install Gyan.FFmpeg`
-  - macOS: `brew install ffmpeg`
-  - Ubuntu: `sudo apt install ffmpeg`
+- **Node 22**, then in this repository's `backend/` folder:
 
-  Or point `FFMPEG_PATH` at an ffmpeg binary.
+  ```sh
+  npm install
+  ```
+
+  That is all ffmpeg needs: `npm install` brings the `ffmpeg-static` devDependency, which
+  downloads an ffmpeg build (with libx264) for Windows, macOS or Linux into `node_modules`.
+  Nothing is installed system-wide. (The server installs with `npm ci --omit=dev`, so it never
+  gets it.) Don't install with `--ignore-scripts`: that skips the download.
+
+  The script looks for ffmpeg in this order and prints which one it uses:
+  1. `FFMPEG_PATH`, if set: only an override, for a particular ffmpeg build;
+  2. the `ffmpeg-static` binary;
+  3. `ffmpeg` on `PATH`.
 - **Google credentials** for the archive Drive. Only these are needed, in the environment or in
   a `.env` in the folder you run from, not the server's whole configuration:
   - `GOOGLE_ARCHIVE_OAUTH_CLIENT_ID`, `GOOGLE_ARCHIVE_OAUTH_CLIENT_SECRET`,
@@ -68,8 +76,11 @@ Options:
 | `--overwrite` | off | Make clips again even if they exist. By default existing clips are skipped, so a stopped run can simply be started again. |
 | `--local-root` | — | For `storageDriver: local` rows: the API's `UPLOAD_DIR`. |
 
-At the end it prints how many clips were made, skipped and failed, with the reason for each
-failure, and exits with 1 if any failed.
+It first prints which ffmpeg it uses (`Using ffmpeg from ffmpeg-static: …`). At the end it
+prints how many clips were made, skipped and failed, with the reason for each failure, and exits
+with 1 if any failed. If no ffmpeg can be started, every row fails with "ffmpeg was not found.
+Run `npm install` in backend …".
+
 
 ## What each clip is
 
@@ -88,5 +99,7 @@ ffmpeg -ss <trimStart> -i <recording> -t <trimEnd − trimStart> [-vf hflip] -an
 - Folder names come from the category and video names with characters that aren't allowed in
   file names replaced, and are never `.` or `..`.
 
-`buildFfmpegArgs`, `outputPathFor` and the run loop are covered by
-`tests/unit/prepareDataset.test.js` without ffmpeg or Drive.
+`buildFfmpegArgs`, `outputPathFor`, `findFfmpeg` and the run loop are covered by
+`tests/unit/prepareDataset.test.js` without ffmpeg or Drive. `tests/integration/prepare-dataset.test.js`
+runs the script for real: ffmpeg makes a 5 s test recording, and the test checks the clips'
+folders, lengths and mirroring. It is skipped only when no ffmpeg can be found, and never on CI.

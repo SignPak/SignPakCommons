@@ -160,5 +160,7 @@ End-to-end tests live in `e2e/` at the repository root (`npm run e2e` there);
 
 ## Current limitation
 
-The backend stores submission trim and mirror metadata but does not use FFmpeg to
-probe or physically edit the uploaded recording.
+The server stores submission trim and mirror metadata but does not use FFmpeg to
+probe or physically edit the uploaded recording. For the ML team, `scripts/prepare-dataset.js`
+applies them on a team machine, with the ffmpeg that `npm install` brings (the `ffmpeg-static`
+devDependency): see `docs/DATASET.md`.

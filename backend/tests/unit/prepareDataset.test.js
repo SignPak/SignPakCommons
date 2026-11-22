@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import { describe, test } from 'node:test'
-import { buildFfmpegArgs, outputPathFor, runDataset } from '../../scripts/prepare-dataset.js'
+import { buildFfmpegArgs, ffmpegNotFoundMessage, findFfmpeg, outputPathFor, runDataset } from '../../scripts/prepare-dataset.js'
 
 /**
  * B5: the dataset script turns the export into trimmed, mirrored clips with ffmpeg. These tests
@@ -93,5 +93,34 @@ describe('B5: prepare-dataset run', () => {
     const summary = await runDataset([row({}), row({ submissionId: 'sub-2' })], deps)
     assert.equal(summary.done, 1)
     assert.deepEqual(summary.failed, [{ submissionId: 'sub-1', reason: 'Drive said 404' }])
+  })
+})
+
+describe('B5: which ffmpeg the script runs', () => {
+  const STATIC = '/repo/backend/node_modules/ffmpeg-static/ffmpeg'
+  const present = () => true
+
+  test('B5: FFMPEG_PATH wins over everything, as an override', () => {
+    let loaded = false
+    const found = findFfmpeg({ env: { FFMPEG_PATH: '/opt/ffmpeg' }, loadStatic: () => { loaded = true; return STATIC }, fileExists: present })
+    assert.deepEqual(found, { path: '/opt/ffmpeg', source: 'FFMPEG_PATH' })
+    assert.equal(loaded, false, 'ffmpeg-static is not even looked at')
+  })
+
+  test('B5: without FFMPEG_PATH, the ffmpeg-static binary when it is installed and on disk', () => {
+    assert.deepEqual(findFfmpeg({ env: {}, loadStatic: () => STATIC, fileExists: present }), { path: STATIC, source: 'ffmpeg-static' })
+  })
+
+  test('B5: falls back to ffmpeg on PATH when ffmpeg-static is missing, unsupported or not downloaded', () => {
+    const onPath = { path: 'ffmpeg', source: 'PATH' }
+    assert.deepEqual(findFfmpeg({ env: {}, loadStatic: () => null, fileExists: present }), onPath, 'not installed, or no binary for this platform')
+    assert.deepEqual(findFfmpeg({ env: {}, loadStatic: () => STATIC, fileExists: () => false }), onPath, 'installed with --ignore-scripts, so no binary')
+    assert.deepEqual(findFfmpeg({ env: { FFMPEG_PATH: '' }, loadStatic: () => null, fileExists: present }), onPath, 'an empty FFMPEG_PATH is unset')
+  })
+
+  test('B5: the not-found message says npm install is enough, and names a broken FFMPEG_PATH', () => {
+    assert.match(ffmpegNotFoundMessage({ path: 'ffmpeg', source: 'PATH' }), /Run `npm install` in backend/)
+    assert.match(ffmpegNotFoundMessage({ path: 'ffmpeg', source: 'PATH' }), /FFMPEG_PATH/)
+    assert.equal(ffmpegNotFoundMessage({ path: '/opt/ffmpeg', source: 'FFMPEG_PATH' }), 'ffmpeg was not found at FFMPEG_PATH (/opt/ffmpeg). Fix or unset FFMPEG_PATH.')
   })
 })

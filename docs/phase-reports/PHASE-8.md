@@ -53,8 +53,9 @@ All confirmed:
     so a deleted row never shifts the next page.
   - Items carry the export columns plus `contributorName` (for the admin table only).
 - **`GET /admin/submissions/export?format=csv|json`** (B5):
-  - **Streamed** from a MongoDB cursor, row by row, waiting on `drain`, so an export of any
-    size never sits in memory.
+  - **Streamed** from a MongoDB cursor, row by row, so an export of any size never sits in
+    memory. (First written as a `drain` loop, which leaked the cursor on a cancelled download;
+    now `stream.pipeline`: see "Fixes after verification", item 1.)
   - Columns, in order: `submissionId, userId, videoId, videoTitle, categoryId, categoryLabel,
     driveFileId, archivePath, mimeType, size, duration, trimStart, trimEnd, mirrored,
     submittedAt`, **plus `storageDriver`** (see the deviations).
@@ -156,7 +157,9 @@ weakened.
   page makes (`role=admin`), as the API does. The assertions are unchanged, including that a
   contributor isn't offered as an admin.
 
-**The dataset script wasn't run against real recordings:** this machine has no ffmpeg.
+**The dataset script wasn't run against real recordings:** this machine has no ffmpeg. (Since
+fixed: ffmpeg now comes with `npm install`, and a real-ffmpeg integration test runs the script.
+See "Fixes after verification", item 2.)
 - **What was checked:** the unit tests cover the ffmpeg arguments, paths and the run loop. A
   smoke run of the real script with local files and a missing ffmpeg read the file, refused a
   `..` key, reported "ffmpeg was not found" and exited 1.
@@ -231,7 +234,8 @@ In the running app:
    `/admin/users` request.
 2. **Admin → Submissions:** filter, use **Load more**, then **Download CSV**. Open it in Excel:
    Urdu titles show correctly, and there are no names or emails.
-3. **Dataset:** download the JSON and follow `backend/docs/DATASET.md` on a machine with ffmpeg.
+3. **Dataset:** download the JSON and follow `backend/docs/DATASET.md` (`npm install` in
+   `backend` is all the setup ffmpeg needs).
    A mirrored, trimmed recording comes out flipped back and cut to the trim.
 4. **Admin → Users:** search by a name or an email, and use **Load more** once there are more
    than 50 accounts.
@@ -265,3 +269,127 @@ In the running app:
    `DATASET.md` says the same about the script's credentials.
 5. **The dataset clips have no audio and are H.264.** If the ML team needs something else, it
    is one line in `buildFfmpegArgs`.
+
+## Fixes after verification
+
+### 1. A cancelled export leaked its cursor and hung the handler (blocker)
+
+**What you found on `49009ea`:** with 40,000 submissions, start a CSV export, read the first
+chunk, pause, then drop the connection. `serverStatus` `metrics.cursor.open.total` stayed at 1
+at +1 s, +3 s and +6 s.
+
+**Cause:** the handler wrote by hand and waited on `once(res, 'drain')` whenever the socket was
+full. Once the client is gone, `drain` never fires (only `close` does), so that `await` never
+settled. The handler, its row generator and the MongoDB cursor stayed open until the server
+restarted, one more for every cancelled download.
+
+**Fix (your approach):**
+- **`adminController.exportSubmissions`:**
+  - One async generator yields the BOM and header (CSV) or `[` (JSON), then each row, then
+    the closing `]`, exactly as before.
+  - It is sent with `pipeline(Readable.from(chunks()), res)` from `node:stream/promises`.
+  - `pipeline` handles backpressure. When `res` closes early, it destroys the source, which
+    ends the generators.
+- **`submissionService.exportRows`:** the row generator's `finally` runs `await cursor.close()`.
+  So the cursor closes whether the export finishes, fails or is abandoned.
+- **Logging:**
+  - A client leaving (`ERR_STREAM_PREMATURE_CLOSE`, or `ECONNRESET`/`EPIPE`) is logged at
+    `info`, "Submissions export cancelled by the client".
+  - Any other error after the headers is logged at `error`, and `pipeline` has already cut the
+    response, as before.
+  - My first version tested `req.destroyed` to spot a cancel. The new error test showed that
+    cutting the response destroys `req` as well, so a real failure was logged as a cancel. It
+    now goes by the error code only.
+- **Docs:** `docs/API.md`, `ARCHITECTURE.md` and `MODULE-REFERENCE.md`. The last one adds
+  "don't write to `res` by hand".
+
+**Tests** (new file `api-admin-export-stream.test.js`, with 40,002 rows seeded directly):
+
+| Test | Against `49009ea` | Row |
+| --- | --- | --- |
+| The CSV is exactly the BOM (as UTF-8 `ef bb bf`), the header and one CRLF line per row, with the Urdu title quoted and its quotes doubled, oldest first. | passed (pins today's output) | I-150 |
+| The JSON is exactly `[`, rows separated by `,\n`, then `\n]` | passed | I-151 |
+| An empty result is the BOM and header alone, or exactly `[]` | passed | I-152 |
+| **Your scenario.** Read the first chunk, pause, destroy the request. Within 2 s the open-cursor count is back to its value before the request, the cancel is logged at info with no error, and a following export still returns the right rows. | **failed** (1 cursor left open) | I-153 |
+| A full export of all 40,002 rows completes and leaves no cursor open | passed | I-154 |
+| A cursor that fails after one row: the download is cut (the client sees an incomplete body), the cursor's `close` is called, and one `error` log carries the cause | new path | I-155 |
+
+I-153 passed 3 of 3 runs after the fix.
+
+### 2. ffmpeg for the dataset script, with no system install
+
+- **`ffmpeg-static` 5.3.0** is a backend devDependency.
+  - It was released 2025-11-14 and is the newest release.
+  - Written with npm 10 and `--before=2026-11-08`, as in Phase 3.
+  - Its install script downloads an ffmpeg 6.1.1 build with libx264 and libvpx.
+- **Never in production:** `deploy/deploy.sh` still runs `npm ci --omit=dev` (line 19), as does
+  `deploy/README.md`.
+- **Audits:** `npm audit --omit=dev --audit-level=high` is still 0 in all three packages. The
+  backend's full audit, dev dependencies included, is the same 5 moderate advisories before and
+  after (c8 and nodemon through minimatch): ffmpeg-static adds none.
+- **`prepare-dataset.js` lookup:** the new `findFfmpeg()` tries, in order:
+  1. `FFMPEG_PATH`;
+  2. the ffmpeg-static binary, if the module resolves and its download is on disk;
+  3. `ffmpeg` on `PATH`.
+- **Script messages:**
+  - It prints which ffmpeg it uses.
+  - The not-found message is now "Run `npm install` in backend (it brings ffmpeg-static), or set
+    FFMPEG_PATH …".
+  - A broken `FFMPEG_PATH` is named as such.
+- **`DATASET.md`:** step 2 is now just `npm install` in `backend`. `FFMPEG_PATH` is documented
+  as an override, with a warning that `--ignore-scripts` skips the download. The backend README
+  says the same.
+
+**Tests:**
+
+| Level | Test | Row |
+| --- | --- | --- |
+| Unit | The lookup order: `FFMPEG_PATH` wins and ffmpeg-static isn't even loaded; then ffmpeg-static when it's on disk; then `PATH` when it's missing, unsupported or not downloaded, and when `FFMPEG_PATH` is empty. Also the two not-found messages. | U-203–U-206 |
+| Integration | `prepare-dataset.test.js` runs the real script with a real ffmpeg (details below). | I-156–I-159 |
+
+**How the integration test works:**
+1. ffmpeg makes the recording: a 5 s 64×32 VP8 WebM, blue with a red box on the left half.
+   It is put under a temporary `--local-root`.
+2. A two-row `export.json` (local storage) holds:
+   - one row trimmed 1–3 s and mirrored;
+   - one row 0–5 s, not mirrored, titled "سلام".
+3. The script runs as a child process, from the temp folder so it can't read a developer's
+   `.env`.
+
+What it checks:
+- **Folders:** exactly `Greetings/Hello/<id>.mp4` and `Greetings/سلام/<id>.mp4`.
+- **Durations,** read with `ffmpeg -i`: exactly 2.00 s and 5.00 s.
+- **Mirroring:** the first frame is decoded to raw rgb24. The mirrored clip is blue at x=8 and
+  red at x=56, and the plain clip is the reverse.
+- **Format:** H.264 with no audio stream.
+
+**When no ffmpeg is found:**
+- **Locally**, the suite is skipped, and the skip reason says where it looked.
+- **On CI** (`CI` set), a missing ffmpeg fails the file instead.
+- **On CI's machines,** `npm ci` runs ffmpeg-static's install script, because no job uses
+  `--ignore-scripts`.
+
+**Against `49009ea`:** that script ignores ffmpeg-static. Run on the same files on this machine
+(no system ffmpeg), it gave "ffmpeg was not found. Install it or set FFMPEG_PATH.", 0 made and
+1 failed, exit 1.
+
+**This closes the earlier gap:** the script has now been run against real recordings with the
+trim and mirror applied, though only local files; Drive downloads are still covered by unit
+tests only.
+
+### Gate after the fixes
+
+| Gate | Result |
+| --- | --- |
+| Backend `test:unit` | 206 passed |
+| Backend `test:integration` | 159 passed, 0 skipped (the real-ffmpeg tests ran, with ffmpeg-static) |
+| Backend `test:security` | 81 passed |
+| Backend `test:coverage` | 446 passed; overall 94.65% lines / 90.32% branches; services 90.81% / 89.19%, middlewares 98.38% / 88.16%, utils 99.47% / 93.79%; every floor met |
+| Frontend lint, `test`, `test:coverage`, `build` | lint clean; 92 tests in 21 files; 40.5% lines; built (main chunk 560.03 kB), all unchanged |
+| E2E | 36 passed (12 tests × 3 browsers) |
+| `npm audit --omit=dev --audit-level=high` | backend 0, frontend 0, e2e 0 |
+
+`TEST-CASES.md` now lists 95 files and 574 cases (U-203–U-206, I-150–I-159).
+
+The CI runs for the fixed commit are given in the hand-off message and in a PR comment, since
+a commit can't contain its own CI result.

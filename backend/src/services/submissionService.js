@@ -180,7 +180,13 @@ export const submissionService = {
     await auditService.record({ actor: admin, action: 'submissions.export', targetType: 'submissions', meta: { format, ...filters } })
     const cursor = submissionRepo.exportCursor(filter)
     return (async function* rows() {
-      for await (const submission of cursor) yield exportRow(submission, maps.videos, maps.categories)
+      try {
+        for await (const submission of cursor) yield exportRow(submission, maps.videos, maps.categories)
+      } finally {
+        // Runs when the export finishes, fails, or is abandoned (the client went away and
+        // stream.pipeline closed the generator), so the MongoDB cursor never outlives it.
+        await cursor.close()
+      }
     })()
   },
 

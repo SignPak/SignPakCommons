@@ -204,7 +204,8 @@ OAuth refresh token expired or was revoked, usually because the consent screen w
   major brand only passes if it declares a listed video brand as compatible.
 - Access restrictions store hashed identifiers and expose only short hints.
 - B5: the ML export (`GET /admin/submissions/export`) streams from a MongoDB cursor, row by
-  row, so its size is not limited by memory. It holds ids, the stored-file pointer, trim, mirror
+  row, with `stream.pipeline`, so its size is not limited by memory, and a cancelled download
+  closes the cursor at once (the row generator's `finally`). It holds ids, the stored-file pointer, trim, mirror
   and time, never names or emails. `scripts/prepare-dataset.js` turns it into trimmed clips on a
   team machine (see `docs/DATASET.md`); the server never runs ffmpeg.
 - B7: the admin dashboard is built from `GET /admin/stats` (MongoDB aggregations), and admin
