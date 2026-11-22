@@ -78,7 +78,11 @@ owning business policy.
 Application routes are mounted under `/api/v1`. JSON success responses use
 `{ "data": value }`; known and unknown failures are normalized to
 `{ "error": { "code", "message", "fields?" } }`. `204` responses have no body.
-Every request gets an `X-Request-Id` which is included in structured request logs.
+Every request gets an `X-Request-Id` which is included in structured request logs. A
+caller's own id is kept only if it matches `^[A-Za-z0-9-]{1,64}$` (`src/utils/requestId.js`,
+S10); otherwise a UUID is generated. `X-Device-ID` is also client-made (cut to 128 characters),
+so a device restriction is easy to get around by clearing the browser: the IP restriction is the
+real control, and the device id only catches the casual case.
 
 The app applies security headers with Helmet, explicit credentialed CORS, response
 compression, JSON body parsing, cookie parsing, and request logging. A global

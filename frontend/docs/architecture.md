@@ -9,8 +9,8 @@ truth for accounts, categories, reference videos, and submitted recordings.
 
 The frontend requires Node.js 20.19 or newer, as declared by
 `package.json`. Its package scripts are `dev`, `lint`, `test`, `test:unit`,
-`test:integration`, `test:coverage`, `build`, `preview`, `seo:generate`, and
-`snap`. `npm test` runs Vitest in jsdom, with React component tests written using
+`test:integration`, `test:coverage`, `build`, `check:bundle`, `preview`, `seo:generate`
+and `ffmpeg:copy`. `npm test` runs Vitest in jsdom, with React component tests written using
 Testing Library.
 
 Tests are split by level. `test/unit/` covers utilities, hooks, providers and
@@ -245,15 +245,75 @@ saved or OS preference before the first paint.
 
 `src/seo/seoCatalog.mjs` is the source for static route metadata and the
 canonical site URL. Only indexable entries in the catalog are included in the
-sitemap and React Snap route list; entries marked `noindex` are excluded. The site URL
+sitemap; entries marked `noindex` are excluded. The site URL
 comes from the `SITE_URL` environment variable: the Node SEO script reads it directly, and
 `vite.config.js` bakes the same value into the bundle as `__SITE_URL__`. Unset, it is the
 production site, `https://commons.signpak.tech` (decision D2).
 
-`npm run seo:generate` writes the sitemap, robots file, and
-`react-snap-routes.json`; it runs as part of `npm run build`. `npm run snap`
-prerenders the generated public route list into `dist/` and requires the built
-site plus an available headless Chromium executable.
+`npm run seo:generate` writes the sitemap and robots file; it runs as part of `npm run build`.
+The site is not prerendered: react-snap was removed in Phase 9 (unmaintained, and it carried
+every remaining high and critical dev-only advisory). Pages render in the browser, and each
+route's title and description are set by `src/seo/seoUtils.js`.
+
+## Security headers (S8)
+
+`config/securityHeaders.js` defines the site's headers: a Content-Security-Policy plus
+`Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff` and
+`Permissions-Policy: camera=(self), microphone=(), geolocation=()`. Vercel sends them from
+`vercel.json` (for every path); `vite preview` sends the same set (`preview.headers` in
+`vite.config.js`), so the Playwright suite runs under the real CSP and fails on any violation.
+`test/unit/securityHeaders.test.js` keeps `vercel.json` equal to the module. The dev server sends
+no CSP, because Vite injects inline styles and its HMR client.
+
+The CSP allows scripts only from the site (`'self'`, plus `'wasm-unsafe-eval'` for ffmpeg.wasm),
+with no inline script and no eval. What that requires of the code:
+
+- The theme script that runs before first paint is `public/theme-init.js`, not inline.
+- Zod runs `jitless` (`src/utils/zod.js`), so it never probes `new Function`.
+- `connect-src` is only the site and the API: the canvas poster is turned into a Blob in memory
+  (`src/utils/dataUrl.js`), and external reference videos are never fetched for the cache
+  (`isCacheableVideoUrl` in `src/utils/videoCache.js`); they play straight from their host
+  (`media-src https:`).
+- Images and fonts: Google Fonts, the API, `data:`/`blob:`; the sign-in photo is
+  `public/images/auth-background.jpg`.
+- A new third-party host needs a CSP change in `config/securityHeaders.js` and `vercel.json`.
+
+## ffmpeg.wasm (admin video tool)
+
+The admin video tool (`src/utils/processVideo.js`) loads `@ffmpeg/ffmpeg` on first use and runs
+the core from the site itself: `npm run ffmpeg:copy` (run by `prebuild` and `predev`) copies
+`ffmpeg-core.js` and the 32 MB `ffmpeg-core.wasm` from the pinned `@ffmpeg/core` package into
+`public/ffmpeg/`, which is generated and gitignored. Only admins ever download it.
+
+## Bundle size
+
+Every page except the landing page is loaded with `React.lazy` (`src/App.jsx`), under a
+`<Suspense>` in `AppLayout` and `AdminLayout`, so the header and the admin tabs stay while a page
+loads. Zod and the request schemas load with the first validated call (`src/services/api.js`)
+rather than with the main chunk. `npm run check:bundle` (`scripts/checkBundleSize.js`, run in
+CI after the build) fails when the entry chunk is over 300 kB.
+
+**Stale chunks after a deploy.** Chunk names carry a content hash, and a Vercel deploy removes
+the old ones. A tab opened before the deploy still asks for the old names when the visitor opens
+a page they haven't visited yet, and the import fails ("Failed to fetch dynamically imported
+module"). Vite reports this as a `vite:preloadError` event on `window`. `src/utils/chunkReload.js`
+(installed first thing in `src/main.jsx`) handles it:
+
+- On the first failure it calls `event.preventDefault()` and reloads the page once, so the new
+  build is fetched. The time of that reload goes into sessionStorage (`signpak:chunk-reload-at`).
+- If another failure comes within 10 seconds of that reload, the chunk is really missing (or the
+  network is down). The error is let through, and `components/PageErrorBoundary.jsx` (around the
+  `<Suspense>` in both layouts) shows "This page could not be loaded. Reload to try again." with a
+  Reload button. The header stays, and going to another page clears the error.
+- Blocked sessionStorage is caught; the page then still reloads once per page load.
+- A failure in the 3 seconds after `beforeunload` is ignored. Firefox aborts a page's pending
+  imports as soon as a navigation or reload starts, and reloading then would cancel the visitor's
+  own navigation. `pageshow` (back from the back/forward cache) clears that state.
+- While the reload is pending, the boundary keeps the loading line rather than flash the error.
+
+The boundary also catches any other error thrown while a page renders, which used to blank the
+whole app. `e2e/tests/stale-chunks.spec.js` makes a page's chunk answer 404 and checks both
+paths: one reload then the page opens, and, with the 404 kept, the error after one reload.
 
 ## Hosting and client-side routing
 
@@ -290,6 +350,9 @@ frontend/
   test/
     RecorderPanel.test.jsx  # Recorder workflow component tests
   scripts/
-    generateSeoAssets.js    # Sitemap, robots, and prerender route generation
-    runReactSnap.js         # Static route prerendering
+    generateSeoAssets.js    # Sitemap and robots generation
+    copyFfmpegCore.js       # Copies the ffmpeg.wasm core into public/ffmpeg/
+    checkBundleSize.js      # Fails when the main chunk is over 300 kB
+  config/
+    securityHeaders.js      # CSP and security headers (vercel.json, vite preview)
 ```

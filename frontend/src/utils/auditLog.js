@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from './zod'
 
 /** S7: the activity log's actions, as the admin pages show them. Matches the API's list. */
 export const AUDIT_ACTION_LABELS = {

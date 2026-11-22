@@ -1,4 +1,4 @@
-import { expect, routeThirdParty, test } from '../support/test.js'
+import { expect, prepareContext, test } from '../support/test.js'
 import { apiOrigin } from '../playwright.config.js'
 import { expectInLibrary, latestCode, signUpThroughUi, uniqueEmail } from '../support/flows.js'
 
@@ -16,6 +16,10 @@ async function resetCode(request, email) {
 }
 
 async function logIn(page, email, password) {
+  // Wait for the login page itself: pages load lazily (Phase 9), and while the next one loads
+  // React keeps showing the previous page, which may have an "Email address" field too
+  // (Forgot password does), even though the URL already says /login.
+  await expect(page.getByRole('heading', { name: 'Good to see you.' })).toBeVisible()
   await page.getByLabel('Email address').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: /log in/i }).click()
@@ -47,7 +51,7 @@ test('S6: resetting the password on another device logs out the old session', as
 
   // Another device: forgot password → code → new password.
   const otherContext = await browser.newContext()
-  await routeThirdParty(otherContext)
+  await prepareContext(otherContext)
   const other = await otherContext.newPage()
   await other.goto('/forgot-password')
   await other.getByLabel('Email address').fill(email)

@@ -54,7 +54,7 @@ export default function ContributorSearch({ label = 'Contributor', value, onChan
       value={text}
       placeholder="All contributors (type a name or email)"
       autoComplete="off"
-      aria-controls={listId}
+      aria-controls={typed ? listId : undefined} // only while the list exists (QA-20, axe)
       onChange={(event) => { setText(event.target.value); if (!event.target.value.trim()) setMatches([]) }}
     />
     {error && <small className="field-error">{error}</small>}

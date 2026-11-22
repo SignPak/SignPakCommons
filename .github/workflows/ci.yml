@@ -94,6 +94,10 @@ jobs:
       - name: Build and generate SEO assets
         run: npm run build
 
+      - name: Main chunk under 300 kB
+        # FIX-PLAN Phase 9 item 4: pages are lazy-loaded; this keeps the entry chunk small.
+        run: npm run check:bundle
+
       - name: Upload production output
         uses: actions/upload-artifact@v4
         with:
@@ -185,7 +189,8 @@ jobs:
     name: Dependency audit (high and above)
     runs-on: ubuntu-latest
     # Required since Phase 3: production dependencies must have no high or critical advisory.
-    # Dev-only tools (react-snap, test runners) are outside --omit=dev; see PHASE-3.md.
+    # Dev-only tools (test runners, linters) are outside --omit=dev; see PHASE-3.md. react-snap,
+    # which carried the high and critical dev-only advisories, was removed in Phase 9.
 
     steps:
       - name: Check out repository

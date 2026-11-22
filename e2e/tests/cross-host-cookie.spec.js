@@ -1,4 +1,4 @@
-import { expect, test } from '../support/test.js'
+import { expect, prepareContext, test } from '../support/test.js'
 import { crossHost, webOrigin } from '../playwright.config.js'
 import { expectInLibrary, signUpThroughUi, uniqueEmail } from '../support/flows.js'
 
@@ -16,7 +16,7 @@ import { expectInLibrary, signUpThroughUi, uniqueEmail } from '../support/flows.
  * the API host directly (no proxy), as on Vercel.
  */
 
-test('C4: login cookie set by api.localtest.me works on commons.localtest.me', async ({ page, context, request, browserName }, testInfo) => {
+test('C4: login cookie set by api.localtest.me works on commons.localtest.me', async ({ page, context, browser, request, browserName }, testInfo) => {
   const email = uniqueEmail(`crosshost-${testInfo.project.name}`)
   const password = 'password1'
 
@@ -58,7 +58,9 @@ test('C4: login cookie set by api.localtest.me works on commons.localtest.me', a
   await expect(page).toHaveURL(/\/login/)
   expect((await context.cookies(crossHost.api)).filter((cookie) => cookie.name === 'signpak_token')).toEqual([])
 
-  // 4. Log in again, then reload: the new cookie works across the two hosts too.
+  // 4. Log in again, then reload: the new cookie works across the two hosts too. (Wait for the
+  //    login page itself: pages load lazily since Phase 9.)
+  await expect(page.getByRole('heading', { name: 'Good to see you.' })).toBeVisible()
   await page.getByLabel('Email address').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: /log in/i }).click()
@@ -87,8 +89,17 @@ test('C4: login cookie set by api.localtest.me works on commons.localtest.me', a
     })
     return
   }
-  const otherSite = await context.newPage()
+  //    Since Phase 9 (S8) the site at 127.0.0.1 has a CSP whose connect-src would block the
+  //    request to api.localtest.me before any cookie question arises, and this control is about
+  //    cookies. So it runs in a context with Playwright's bypassCSP, holding the same cookies
+  //    (copied with their SameSite=Lax attribute): the browser must still not send them
+  //    cross-site. (A page Playwright serves itself can't stand in: Chromium treats it as
+  //    public and blocks requests to a loopback host as Private Network Access.)
+  const otherContext = await browser.newContext({ bypassCSP: true })
+  await prepareContext(otherContext)
+  await otherContext.addCookies(await context.cookies(crossHost.api))
+  const otherSite = await otherContext.newPage()
   await otherSite.goto(webOrigin)
   expect(await whoAmI(otherSite), 'cross-site: the session must not travel').toBeNull()
-  await otherSite.close()
+  await otherContext.close()
 })

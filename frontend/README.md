@@ -161,14 +161,22 @@ scattering colors through JSX. `src/index.css` imports the stylesheets in
 theme, then saves that choice in `localStorage`. An inline bootstrap in
 `index.html` applies the theme before the first paint.
 
-## SEO and prerendering
+## SEO
 
 `src/seo/seoCatalog.mjs` is the source for static page metadata and the production
 site URL: `https://commons.signpak.tech`, overridable with the `SITE_URL` environment
 variable (e.g. for a staging deployment). The build runs
-`npm run seo:generate` automatically to produce the sitemap, robots file, and
-React Snap route list. After building, `npm run snap` can prerender those public
-routes; it requires a working headless Chromium installation.
+`npm run seo:generate` automatically to produce the sitemap and robots file. The site is not
+prerendered (react-snap was removed in Phase 9).
+
+## Security headers and bundle size
+
+`vercel.json` sends a Content-Security-Policy and other security headers on every path; they
+are defined in `config/securityHeaders.js`, and `vite preview` sends the same ones, so the E2E
+suite runs under the real CSP (see `docs/architecture.md`, "Security headers"). A new third-party
+host (a font, image or script source) needs a change there. The admin video tool's ffmpeg core
+is served from `public/ffmpeg/`, copied from `@ffmpeg/core` by the build. Pages are lazy-loaded;
+`npm run check:bundle` fails when the main chunk is over 300 kB.
 
 ## Deployment
 
@@ -185,7 +193,7 @@ including Safari, iOS, Brave and private windows.
 
 The frontend package provides `npm run lint`, `npm test`, `npm run test:unit`,
 `npm run test:integration`, `npm run test:coverage`, `npm run build`,
-`npm run seo:generate`, and `npm run snap`.
+`npm run seo:generate`, `npm run ffmpeg:copy` and `npm run check:bundle`.
 
 `npm test` runs the Vitest suite in jsdom. `test/unit/` holds component, hook and
 utility tests that mock `src/services/api` directly; `test/integration/` renders

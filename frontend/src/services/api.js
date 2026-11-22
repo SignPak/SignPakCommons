@@ -1,18 +1,24 @@
 import { apiRoutes } from './apiRoutes'
-import {
-  acceptConsentRequestSchema,
-  changePasswordSchema,
-  consentRequestSchema,
-  declineConsentRequestSchema,
-  emailOnlySchema,
-  loginFormSchema,
-  resetPasswordSchema,
-  signupRequestSchema,
-  verifyEmailSchema,
-} from '../utils/authSchemas'
-import { auditQuerySchema } from '../utils/auditLog'
-import { adminSubmissionsQuerySchema, exportQuerySchema, statsQuerySchema, usersPageQuerySchema } from '../utils/adminQueries'
+import { dataUrlToBlob } from '../utils/dataUrl'
 import { validateApiInput } from '../utils/validateApiInput'
+
+// Zod and the request schemas (about 85 kB) are loaded the first time an input is validated,
+// not with the main chunk every visitor downloads (FIX-PLAN Phase 9 item 4). The pages with
+// forms import the same modules, so they are usually loaded already.
+let schemaModules = null
+function loadSchemas() {
+  if (!schemaModules) {
+    schemaModules = Promise.all([import('../utils/authSchemas'), import('../utils/auditLog'), import('../utils/adminQueries')])
+      .then((modules) => Object.assign({}, ...modules))
+      .catch((error) => { schemaModules = null; throw error }) // allow a retry after a network failure
+  }
+  return schemaModules
+}
+async function validate(schemaName, input) {
+  const schema = (await loadSchemas())[schemaName]
+  if (!schema) throw new Error(`Unknown request schema: ${schemaName}`)
+  return validateApiInput(schema, input)
+}
 
 const PREFIX = 'signpak:v1:'
 
@@ -56,7 +62,8 @@ const normalize = (value) => {
 
 const toBlob = async (value) => {
   if (value instanceof Blob) return value
-  if (typeof value === 'string' && value.startsWith('data:')) return fetch(value).then((response) => response.blob())
+  // S8: decoded in memory; the CSP's connect-src has no data:, so fetch(value) would be blocked.
+  if (typeof value === 'string' && value.startsWith('data:')) return dataUrlToBlob(value)
   return null
 }
 
@@ -189,41 +196,41 @@ export const api = {
   auth: {
     async session() { return normalize(await request(apiRoutes.auth.session())) },
     async register(values) {
-      const input = validateApiInput(signupRequestSchema, values)
+      const input = await validate('signupRequestSchema', values)
       return normalize(await request(apiRoutes.auth.signup(), json('POST', input)))
     },
     async login(email, password) {
-      const input = validateApiInput(loginFormSchema, { email, password })
+      const input = await validate('loginFormSchema', { email, password })
       return normalize(await request(apiRoutes.auth.login(), json('POST', input)))
     },
     // A valid code returns { consentToken }; the account is only created by completeSignup.
     async verifyEmail(email, code, password) {
-      const input = validateApiInput(verifyEmailSchema, { email, code, password })
+      const input = await validate('verifyEmailSchema', { email, code, password })
       return request(apiRoutes.auth.verifyEmail(), json('POST', input))
     },
     async completeSignup(consentToken, version) {
-      const input = validateApiInput(consentRequestSchema, { consentToken, accepted: true, version })
+      const input = await validate('consentRequestSchema', { consentToken, accepted: true, version })
       return normalize(await request(apiRoutes.auth.consent(), json('POST', input)))
     },
     async declineSignup(consentToken) {
-      const input = validateApiInput(declineConsentRequestSchema, { consentToken })
+      const input = await validate('declineConsentRequestSchema', { consentToken })
       await request(apiRoutes.auth.declineConsent(), json('POST', input))
     },
     async resendVerification(email) {
-      const input = validateApiInput(emailOnlySchema, { email })
+      const input = await validate('emailOnlySchema', { email })
       return request(apiRoutes.auth.resendVerification(), json('POST', input))
     },
     async forgotPassword(email) {
-      const input = validateApiInput(emailOnlySchema, { email })
+      const input = await validate('emailOnlySchema', { email })
       return request(apiRoutes.auth.forgotPassword(), json('POST', input))
     },
     async resetPassword(values) {
-      const input = validateApiInput(resetPasswordSchema, values)
+      const input = await validate('resetPasswordSchema', values)
       return request(apiRoutes.auth.resetPassword(), json('POST', input))
     },
     async logout() { await request(apiRoutes.auth.logout(), { method: 'POST' }) },
     async acceptConsent(version) {
-      const input = validateApiInput(acceptConsentRequestSchema, { accepted: true, version })
+      const input = await validate('acceptConsentRequestSchema', { accepted: true, version })
       return normalize(await request(apiRoutes.users.consent(), json('POST', input)))
     },
     async saveConnections(_userId, connections) { return normalize(await request(apiRoutes.users.me(), json('PATCH', { connections }))) },
@@ -233,13 +240,13 @@ export const api = {
     async removeMe(password) { await request(apiRoutes.users.removeMe(), json('DELETE', { password })) },
     // Ends every other session; the API sets a fresh cookie for this one.
     async changePassword(values) {
-      const input = validateApiInput(changePasswordSchema, values)
+      const input = await validate('changePasswordSchema', values)
       await request(apiRoutes.users.password(), json('POST', input))
     },
     async list() { return normalizeList(await request(apiRoutes.users.list())) },
     /** B7: one page of accounts, `{ items, nextCursor, total }`, filtered by role and a name or email search. */
     async page(query = {}) {
-      const page = await request(apiRoutes.users.list(validateApiInput(usersPageQuerySchema, query)))
+      const page = await request(apiRoutes.users.list(await validate('usersPageQuerySchema', query)))
       return { ...page, items: normalizeList(page.items) }
     },
     async setStatus(id, patch) { return normalize(await request(apiRoutes.users.update(id), json('PATCH', patch))) },
@@ -258,13 +265,12 @@ export const api = {
     async removeUserSubmissions(userId, options = {}) { return request(apiRoutes.admin.removeUserSubmissions(userId, options), { method: 'DELETE' }) },
     async deletionLookup(query) { return request(apiRoutes.admin.deletionLookup(query)) },
     /** B7: the dashboard's numbers for `days`, optionally for one contributor or category. */
-    async stats(query = {}) { return request(apiRoutes.admin.stats(validateApiInput(statsQuerySchema, query))) },
+    async stats(query = {}) { return request(apiRoutes.admin.stats(await validate('statsQuerySchema', query))) },
     /** B5: one page of submissions with the export fields and the contributor's name. */
-    async submissions(query = {}) { return request(apiRoutes.admin.submissions(validateApiInput(adminSubmissionsQuerySchema, query))) },
-    /** B5: the export's URL. A plain link, so the browser streams the file to disk. */
-    exportUrl(query) { return apiRoutes.admin.exportSubmissions(validateApiInput(exportQuerySchema, query)) },
+    async submissions(query = {}) { return request(apiRoutes.admin.submissions(await validate('adminSubmissionsQuerySchema', query))) },
+    // B5: the export's URL is built synchronously for a link, so it lives in services/adminExport.js.
     /** S7: one page of the activity log, `{ entries, page, limit, total }`, newest first. */
-    async audit(query = {}) { return request(apiRoutes.admin.audit(validateApiInput(auditQuerySchema, query))) },
+    async audit(query = {}) { return request(apiRoutes.admin.audit(await validate('auditQuerySchema', query))) },
   },
 
   categories: {

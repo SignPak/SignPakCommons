@@ -3,6 +3,7 @@ import ContributorSearch from '../../components/ContributorSearch'
 import Field from '../../components/Field'
 import { Alert, Badge, Button, SectionHeading } from '../../components/ui'
 import { useLibrary } from '../../context/LibraryContext'
+import { adminExportUrl } from '../../services/adminExport'
 import { api } from '../../services/api'
 import { formatBytes, formatDate } from '../../utils/format'
 
@@ -65,7 +66,7 @@ export default function AdminSubmissions() {
   }
 
   const videoChoices = videos.filter((video) => !filters.categoryId || video.categoryId === filters.categoryId)
-  const exportLink = (format) => (invalidRange ? undefined : api.admin.exportUrl({ ...query, format }))
+  const exportLink = (format) => (invalidRange ? undefined : adminExportUrl({ ...query, format }))
 
   return <>
     {error && <Alert tone="error">{error}</Alert>}

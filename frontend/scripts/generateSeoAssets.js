@@ -1,11 +1,10 @@
 /**
- * Reads src/seo/seoCatalog.mjs and writes the three files that come from it:
+ * Reads src/seo/seoCatalog.mjs and writes the two files that come from it:
  *   public/sitemap.xml        — one <url> per indexable route
  *   public/robots.txt         — allow/disallow rules, points crawlers at the sitemap
- *   react-snap-routes.json    — the same path list, for scripts/runReactSnap.js to prerender
  *
  * Run with `npm run seo:generate`. Safe to run as often as you like; it only reads the
- * catalog and overwrites these three generated files, nothing else.
+ * catalog and overwrites these two generated files, nothing else.
  *
  * Note: the project's package.json sets "type": "module", so this script is plain ESM
  * (import/export, import.meta.url) rather than CommonJS (require/module.exports).
@@ -66,20 +65,9 @@ async function main() {
     '',
   ].join('\n')
 
-  const prerenderRoutes = JSON.stringify(
-    routes.map((route) => route.path),
-    null,
-    2,
-  )
-
   fs.mkdirSync(publicDir, { recursive: true })
   fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemap, 'utf8')
   fs.writeFileSync(path.join(publicDir, 'robots.txt'), robots, 'utf8')
-  fs.writeFileSync(
-    path.join(projectRoot, 'react-snap-routes.json'),
-    prerenderRoutes,
-    'utf8',
-  )
 
   console.log(
     `Generated SEO assets for ${routes.length} canonical routes in ${publicDir} (site: ${catalog.SITE_URL})`,

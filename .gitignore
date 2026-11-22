@@ -19,7 +19,9 @@ dist-ssr
 # Generated from src/seo/seoCatalog.mjs during the build.
 frontend/public/sitemap.xml
 frontend/public/robots.txt
-react-snap-routes.json
+
+# The ffmpeg.wasm core, copied from node_modules/@ffmpeg/core before each build (S8).
+frontend/public/ffmpeg/
 
 # Editor directories and files
 .vscode/*

@@ -107,7 +107,7 @@ export default function BasePlayer({ video, videoRef, onAspect, src, loading, pr
           aria-label="Seek" 
         />
         <span className="base-player-time">{formatTime(time)} / {formatTime(duration)}</span>
-        <button type="button" onClick={cycleSpeed} aria-label={`Playback speed ${speed}x. Change speed`}>
+        <button type="button" onClick={cycleSpeed} aria-label={`${speed}× playback speed. Change speed`}>
           {speed}×
         </button>
         <button type="button" onClick={fullscreen} aria-label="Fullscreen">⛶</button>

@@ -17,8 +17,11 @@ const table = fs.readFileSync(path.join(backendRoot, 'docs', 'TEST-CASES.md'), '
 
 // SRS security requirements this project traces (see the legend in TEST-CASES.md).
 const DEFINED_SE = new Set(['SE-1', 'SE-2', 'SE-3', 'SE-4', 'SE-6', 'SE-9', 'SE-10'])
-const REQUIREMENT_TOKEN = /^(FR13\.(?:[1-9]|1[0-3])|OR-19|UI 3\.1\.1\.3|QA-3|SE-\d+)$/
-const NO_REQUIREMENT = /^— \((test infrastructure|deployment safety|API metadata), no SRS requirement\)$/
+// QA-20 (accessibility, SRS C.3) since Phase 9.
+const REQUIREMENT_TOKEN = /^(FR13\.(?:[1-9]|1[0-3])|OR-19|UI 3\.1\.1\.3|QA-3|QA-20|SE-\d+)$/
+// browser hardening (the site's CSP and headers), bundle size and deploy updates (stale
+// chunks after a deploy) since Phase 9.
+const NO_REQUIREMENT = /^— \((test infrastructure|deployment safety|API metadata|browser hardening|bundle size|deploy updates), no SRS requirement\)$/
 
 // Where each ID prefix's test files live.
 const LOCATIONS = {

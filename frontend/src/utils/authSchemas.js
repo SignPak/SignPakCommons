@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from './zod'
 
 const email = z.string({ error: 'Enter your email address.' })
   .trim()

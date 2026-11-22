@@ -15,7 +15,7 @@ For the complete runtime and data-flow explanation, see
 | Video playback and cache | `src/pages/Player.jsx`, `src/components/BasePlayer.jsx`, `src/components/ResponsiveVideo.jsx`, `src/hooks/useCachedVideo.js`, `src/utils/videoCache.js` | One native player; Blob cache has 5-minute TTL and size limits. |
 | Camera and recording draft | `src/hooks/useRecorder.js`, `src/context/RecordingProvider.jsx`, `src/pages/RecordingEditor.jsx` | Unsubmitted recording blobs are memory-only. |
 | Background submission uploads | `src/context/UploadQueueProvider.jsx`, `src/components/UploadToaster.jsx` | One upload at a time, one waiting slot; queue does not persist across tabs. |
-| Theme and notifications | `src/context/ThemeProvider.jsx`, `src/context/NotificationProvider.jsx` | Browser-local preferences and per-user notification state. |
+| Theme and notifications | `src/context/ThemeProvider.jsx`, `src/context/NotificationProvider.jsx`, `public/theme-init.js` | Browser-local preferences and per-user notification state. Notifications are kept per browser (`localStorage`, `api.notifications`) and are not synced between devices: a decided limitation. `theme-init.js` sets the theme before first paint; keep it in step with `ThemeProvider`. |
 | Styling | `src/styles/`, `src/index.css` | Global tokens and component styles are imported through `index.css`. |
 | Tests | `test/unit/`, `test/integration/`, `test/support/` | Vitest and Testing Library; unit tests mock the API client, integration tests mock only HTTP with MSW. Use targeted files before the full suite. |
 
