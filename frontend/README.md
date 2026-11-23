@@ -119,8 +119,9 @@ video's displayed dimensions and duration; the backend stores these values for
 responsive playback and display. No video-processing worker is required on the
 backend.
 
-The ffmpeg.wasm core is loaded from jsDelivr on first use, so admins need network
-access to that CDN to apply audio removal or trimming. If processing is
+The ffmpeg.wasm core is served by the site from `/ffmpeg/` (copied from the pinned
+`@ffmpeg/core` package at build time) and loaded on first use, when an admin applies
+audio removal or trimming. No CDN is involved. If processing is
 unavailable, the upload UI reports the failure and allows the original video to
 be uploaded unchanged. Theme preference, device ID, and notifications are
 stored locally in the browser; notifications are not synchronized between

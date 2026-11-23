@@ -40,6 +40,9 @@ frontend/public/ffmpeg/
 # Test and coverage output
 coverage/
 e2e/test-results/
+e2e/test-results-smoke/
+# Credentials for the @smoke run against production (e2e/scripts/smoke.js).
+e2e/.env.smoke
 e2e/playwright-report/
 .playwright/
 

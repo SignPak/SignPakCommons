@@ -9,3 +9,12 @@ This project is being developed by NUST students as part of our final year proje
 Every sign, every video, and every contribution helps us move closer to a future where communication is easier, smarter, and more accessible. We are deeply grateful to everyone who contributes their time, recordings, feedback, and encouragement. Together, we are building something valuable for the people who need it most.
 
 We also want to thank all contributors who are helping grow this dataset, improve the platform, and support this mission with their work and generosity. Your effort is helping create real impact and bringing long-term accessibility solutions to life.
+
+## Documentation
+
+- [Backend docs](backend/docs/README.md): setup, the API, architecture and the dataset script.
+- [Frontend docs](frontend/docs/README.md): architecture, modules and setup.
+- [Deployment](deploy/README.md): the API on the team server (Nginx, PM2) and the site on Vercel.
+- [End-to-end tests](e2e/README.md), including the `@smoke` run against the live site.
+- [Test cases and traceability](backend/docs/TEST-CASES.md): every test, mapped to the SRS.
+- [Changelog](CHANGELOG.md) and the [SRS changes](docs/SRS-CHANGES.md) for the team.

@@ -17,6 +17,9 @@ const WEB_PORT = Number(process.env.E2E_WEB_PORT || 4173)
 const CROSS_HOST_WEB_PORT = Number(process.env.E2E_CROSS_HOST_WEB_PORT || 4174)
 
 export const apiOrigin = `http://127.0.0.1:${API_PORT}`
+// The record-again cooldown for the run. The API enforces it and the site counts it down, so both
+// get the same value (production: 30 s). Short, so tests can wait it out.
+export const SUBMISSION_COOLDOWN_MS = 5_000
 export const webOrigin = `http://127.0.0.1:${WEB_PORT}`
 
 // api.localtest.me and commons.localtest.me resolve to this machine (127.0.0.1 and ::1), and
@@ -82,6 +85,7 @@ export default defineConfig({
         E2E_API_PORT: String(API_PORT),
         E2E_API_HOST: '::', // dual-stack: localtest.me also resolves to ::1
         E2E_CLIENT_ORIGIN: `${webOrigin},http://localhost:${WEB_PORT},${crossHost.site},${crossHost.otherSite}`,
+        SUBMISSION_COOLDOWN_MS: String(SUBMISSION_COOLDOWN_MS),
       },
     },
     {
@@ -92,7 +96,7 @@ export default defineConfig({
       timeout: 180_000,
       stdout: 'pipe',
       stderr: 'pipe',
-      env: { E2E_API_PORT: String(API_PORT) },
+      env: { E2E_API_PORT: String(API_PORT), VITE_SUBMISSION_COOLDOWN_MS: String(SUBMISSION_COOLDOWN_MS) },
     },
     {
       // Separate output folder so it never collides with the build above.
@@ -103,7 +107,7 @@ export default defineConfig({
       timeout: 180_000,
       stdout: 'pipe',
       stderr: 'pipe',
-      env: { VITE_API_ORIGIN: crossHost.api, E2E_API_PORT: String(API_PORT) },
+      env: { VITE_API_ORIGIN: crossHost.api, E2E_API_PORT: String(API_PORT), VITE_SUBMISSION_COOLDOWN_MS: String(SUBMISSION_COOLDOWN_MS) },
     },
   ],
 })

@@ -55,25 +55,25 @@ export default defineConfig({
       include: ['src/**/*.{js,jsx}'],
       // Generated SEO assets and the app entry point have no behaviour worth asserting.
       exclude: ['src/main.jsx', 'src/seo/**'],
-      // FIX-PLAN section 4.6. Floors may only go up; where a floor is below the figure
-      // FIX-PLAN asks for it is the Phase 0 baseline, and the phase that adds the missing
-      // page tests raises it. Targets: 70% overall, 80% for src/utils and src/services.
+      // FIX-PLAN section 4.6. Floors may only go up. Phase 10 raised them to the figures it
+      // reached, rounded down: src/utils and src/services are past the 80% target; the 70%
+      // overall target is not met yet (pages, contexts and hooks), see PHASE-10.md.
       thresholds: {
-        lines: 18,
-        statements: 17,
-        functions: 11,
-        branches: 18,
+        lines: 55,
+        statements: 52,
+        functions: 51,
+        branches: 48,
         'src/utils/**': {
-          lines: 25,
-          statements: 22,
-          functions: 13,
-          branches: 15,
+          lines: 98,
+          statements: 94,
+          functions: 93,
+          branches: 80,
         },
         'src/services/**': {
-          lines: 20,
-          statements: 18,
-          functions: 6,
-          branches: 15,
+          lines: 98,
+          statements: 97,
+          functions: 98,
+          branches: 91,
         },
       },
     },

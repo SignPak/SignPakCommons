@@ -52,3 +52,44 @@ export async function expectInLibrary(page, firstName = 'Sara') {
   await expect(page).toHaveURL(/\/home/)
   await expect(page.getByRole('heading', { level: 1 })).toContainText(firstName)
 }
+
+/** The seeded admin of the E2E API (backend/scripts/e2e-server.js). */
+export const ADMIN = { email: process.env.ADMIN_EMAIL || 'admin@signpak.test', password: process.env.ADMIN_PASSWORD || 'Admin@12345' }
+
+/** A few kilobytes that pass the API's WebM signature check; enough for API-level uploads. */
+export const tinyWebm = () => Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(3000, 7)])
+
+/** An API request context signed in as `account` (the seeded admin by default). Dispose it after use. */
+export async function apiSession(playwright, account = ADMIN) {
+  const session = await playwright.request.newContext({ baseURL: apiOrigin })
+  const response = await session.post('/api/v1/auth/login', { data: account })
+  expect(response.status(), await response.text()).toBe(200)
+  return session
+}
+
+/** A category of its own with one published reference video, so a test's data stays separate. */
+export async function publishedVideo(playwright, label) {
+  const admin = await apiSession(playwright)
+  const category = await admin.post('/api/v1/categories', { data: { label: `E2E ${label}`, tone: 'yellow' } })
+  expect(category.status(), await category.text()).toBe(201)
+  const categoryId = (await category.json()).data.id
+  const made = await admin.post('/api/v1/videos', {
+    multipart: { title: `Greeting ${label}`, categoryId, durationSec: '3', status: 'published', video: { name: 'video.webm', mimeType: 'video/webm', buffer: tinyWebm() } },
+  })
+  expect(made.status(), await made.text()).toBe(201)
+  const video = (await made.json()).data
+  await admin.dispose()
+  return { categoryId, video }
+}
+
+/**
+ * Logs in through the form. Waits for the login page itself first: pages load lazily, and React
+ * keeps the previous page on screen until the next one has loaded (Phase 9).
+ */
+export async function logInThroughUi(page, { email, password }) {
+  await page.goto('/login')
+  await expect(page.getByRole('heading', { name: 'Good to see you.' })).toBeVisible()
+  await page.getByLabel('Email address').fill(email)
+  await page.getByLabel('Password', { exact: true }).fill(password)
+  await page.getByRole('button', { name: /log in/i }).click()
+}

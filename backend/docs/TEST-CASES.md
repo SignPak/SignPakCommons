@@ -16,24 +16,27 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
   - **—** with a note marks a test that guards something the SRS does not specify: *test
     infrastructure* (the fake Drive driver and the capture email store), *deployment safety*
     (test-only switches that must never reach production), *API metadata*, *browser
-    hardening* (the site's CSP and security headers, S8), *bundle size* or *deploy updates* (a
-    tab opened before a deploy reloads once for the new build's chunks).
+    hardening* (the site's CSP and security headers, S8), *bundle size*, *deploy updates* (a
+    tab opened before a deploy reloads once for the new build's chunks), *documentation* (the
+    OpenAPI spec and env docs match the code), *API client* (requests and responses of
+    `frontend/src/services/api.js` with no user-visible behaviour of their own) or *frontend
+    helpers* (small formatting and validation functions).
 - **Checklist** is the ID from `docs/SignPakCommons review checklist.md` (C1–C5, S1–S10,
   B1–B8), or `—` when a test covers behaviour that was already correct.
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 9** (backend 1.0.15, frontend 1.0.17):
+Counts as of **Phase 10** (backend 1.0.16, frontend 1.0.18):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 38 | 209 |
+| Unit (backend) | `backend/tests/unit/` | 39 | 212 |
 | Integration (backend) | `backend/tests/integration/` | 22 | 162 |
 | Security (backend) | `backend/tests/security/` | 8 | 81 |
-| Unit (frontend) | `frontend/test/unit/` | 17 | 78 |
-| Integration (frontend) | `frontend/test/integration/` | 9 | 50 |
-| End-to-end | `e2e/tests/` | 12 | 72 (24 tests × 3 browsers; the editor's axe check runs in Chromium only) |
-| **Total** | | **106** | **652** |
+| Unit (frontend) | `frontend/test/unit/` | 18 | 94 |
+| Integration (frontend) | `frontend/test/integration/` | 10 | 124 |
+| End-to-end | `e2e/tests/` | 16 | 93 (31 tests × 3 browsers; the editor's axe check, the record flow and the upload limit run in Chromium only) |
+| **Total** | | **113** | **766** |
 
 The backend security count is per-route: the access matrix produces one case per route (57
 today) plus the completeness check; the hook suite adds three, the production-error suite
@@ -253,6 +256,9 @@ suite four, the admin-deletion suite two and the JWT suite six. Frontend cases c
 | U-207 | `requestId.test.js` | S10: a valid id (letters, digits, hyphens, up to 64 characters) is kept as sent | SE-10 | S10 | unit |
 | U-208 | `requestId.test.js` | S10: an id that is too long, empty or has any other character is replaced with a new UUID | SE-10 | S10 | unit |
 | U-209 | `requestId.test.js` | S10: no header, or a repeated header (an array), gets a new UUID | SE-10 | S10 | unit |
+| U-210 | `docsSync.test.js` | Docs: every API route is in the OpenAPI spec | — (documentation, no SRS requirement) | — | unit |
+| U-211 | `docsSync.test.js` | Docs: every environment variable is in .env.example, .env.production.example and setup.md | — (documentation, no SRS requirement) | — | unit |
+| U-212 | `traceability.test.js` | every FR13.x requirement and every checklist ID has at least one test | — (test infrastructure, no SRS requirement) | — | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -541,6 +547,22 @@ a new route cannot be added without an access decision.
 | FU-76 | `chunkReload.test.js` | Stale chunks: blocked storage and an empty history.state: reloads once and writes the stamp to history.state | — (deploy updates, no SRS requirement) | — | unit |
 | FU-77 | `chunkReload.test.js` | Stale chunks: with neither storage nor history.state available it does not reload at all | — (deploy updates, no SRS requirement) | — | unit |
 | FU-78 | `chunkReload.test.js` | Stale chunks: the newer of the two stamps counts | — (deploy updates, no SRS requirement) | — | unit |
+| FU-79 | `utilsCoverage.test.js` | Utils: aspectOf gives width / height, or null when a side is unknown | FR13.11 | — | unit |
+| FU-80 | `utilsCoverage.test.js` | Utils: orientationOf calls near-square videos square | FR13.11 | — | unit |
+| FU-81 | `utilsCoverage.test.js` | Utils: inspectVideoFile reads the duration and size and grabs a poster frame at most 640 px wide | FR13.11 | — | unit |
+| FU-82 | `utilsCoverage.test.js` | Utils: inspectVideoFile keeps the size when the poster cannot be drawn, and gives zeros for an unreadable file | FR13.11 | — | unit |
+| FU-83 | `utilsCoverage.test.js` | Utils: GitHub accepts a username or a profile link, and refuses anything else | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-84 | `utilsCoverage.test.js` | Utils: LinkedIn accepts a profile slug or link, and always stores the full https link | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-85 | `utilsCoverage.test.js` | Utils: safeRouteId keeps plain ids and drops anything that could change a URL | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-86 | `utilsCoverage.test.js` | Utils: formatTime shows mm:ss and treats bad input as zero | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-87 | `utilsCoverage.test.js` | Utils: formatBytes picks B, KB or MB | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-88 | `utilsCoverage.test.js` | Utils: initialsOf and greeting | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-89 | `utilsCoverage.test.js` | Utils: two players asking for one video share one download and both hear the progress | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-90 | `utilsCoverage.test.js` | Utils: a removed progress listener hears nothing more | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-91 | `utilsCoverage.test.js` | Utils: a failed download is forgotten, so the next attempt downloads again | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-92 | `utilsCoverage.test.js` | Utils: an expired video is kept for a player still using it, then released | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-93 | `utilsCoverage.test.js` | Utils: past the 250 MB budget the oldest videos are dropped first | — (frontend helpers, no SRS requirement) | — | unit |
+| FU-94 | `utilsCoverage.test.js` | Utils: prefetchVideo downloads in the background and ignores failures | — (frontend helpers, no SRS requirement) | — | unit |
 
 ## 5. Frontend integration tests — `frontend/test/integration/`
 
@@ -593,6 +615,38 @@ Rendered with the real router, providers and API client; only the network is moc
 | FI-43 | `AdminDashboard.test.jsx` | B7: renders the key numbers, chart, categories, top lists and recent list from /admin/stats only | FR13.12 | B7 | integration |
 | FI-44 | `AdminDashboard.test.jsx` | B7: the days, category and contributor filters reach the stats query | FR13.12 | B7 | integration |
 | FI-45 | `AdminDashboard.test.jsx` | B7: an empty range shows the empty notes, and a failed request shows an error | FR13.12 | B7 | integration |
+| FI-46 | `apiClient.test.js` | API client: %s sends the right request | — (API client, no SRS requirement) | — | integration |
+| FI-47 | `apiClient.test.js` | API client: every request carries the browser's device ID, the same one each time | — (API client, no SRS requirement) | — | integration |
+| FI-48 | `apiClient.test.js` | API client: no device ID is sent when browser storage is blocked | — (API client, no SRS requirement) | — | integration |
+| FI-49 | `apiClient.test.js` | API client: the less common route builders give the API paths | — (API client, no SRS requirement) | — | integration |
+| FI-50 | `apiClient.test.js` | API client: an invalid sign-up never reaches the network and names the fields | SE-10 | — | integration |
+| FI-51 | `apiClient.test.js` | API client: an invalid admin query never reaches the network | SE-10 | — | integration |
+| FI-52 | `apiClient.test.js` | API client: dates become timestamps and the API's file paths stay on the site | — (API client, no SRS requirement) | — | integration |
+| FI-53 | `apiClient.test.js` | API client: an error envelope becomes an Error with the message, the fields and the status | — (API client, no SRS requirement) | — | integration |
+| FI-54 | `apiClient.test.js` | API client: a failure with no JSON body still gives the status | — (API client, no SRS requirement) | — | integration |
+| FI-55 | `apiClient.test.js` | API client: 204 No Content resolves to undefined | — (API client, no SRS requirement) | — | integration |
+| FI-56 | `apiClient.test.js` | API client: a list endpoint with no data gives an empty list | — (API client, no SRS requirement) | — | integration |
+| FI-57 | `apiClient.test.js` | API client: a users page normalises its items and keeps the paging fields | — (API client, no SRS requirement) | — | integration |
+| FI-58 | `apiClient.test.js` | API client: statistics are fetched once, then served from the 30-minute browser cache | UI 3.1.1.3 | — | integration |
+| FI-59 | `apiClient.test.js` | API client: two statistics requests at once share one network call | UI 3.1.1.3 | — | integration |
+| FI-60 | `apiClient.test.js` | API client: an expired or malformed cache entry is dropped and fetched again | — (API client, no SRS requirement) | — | integration |
+| FI-61 | `apiClient.test.js` | API client: statistics in the wrong shape are refused and not cached | UI 3.1.1.3 | — | integration |
+| FI-62 | `apiClient.test.js` | API client: statistics still arrive when browser storage is full | UI 3.1.1.3 | — | integration |
+| FI-63 | `apiClient.test.js` | API client: a reference video is sent as a form, with the poster image decoded in memory | FR13.11 | — | integration |
+| FI-64 | `apiClient.test.js` | API client: an external video is sent by URL, with no file and defaults for the size | FR13.11 | — | integration |
+| FI-65 | `apiClient.test.js` | API client: a poster that is neither a Blob nor a data URL is left out | FR13.11 | — | integration |
+| FI-66 | `apiClient.test.js` | API client: the demo video is sent as a form | FR13.11 | — | integration |
+| FI-67 | `apiClient.test.js` | API client: a recording is submitted with its trim and mirror values | FR13.8 | — | integration |
+| FI-68 | `apiClient.test.js` | API client: the background upload sends the form with credentials and the device ID, reports progress and returns the submission | FR13.8 | — | integration |
+| FI-69 | `apiClient.test.js` | API client: a refused background upload rejects with the API's message, fields and status | FR13.8 | — | integration |
+| FI-70 | `apiClient.test.js` | API client: a background upload that fails without JSON still gives the status | FR13.8 | — | integration |
+| FI-71 | `apiClient.test.js` | API client: a lost connection during a background upload gives a clear message | FR13.8 | — | integration |
+| FI-72 | `apiClient.test.js` | API client: a background upload can be cancelled before or during the upload | FR13.8 | — | integration |
+| FI-73 | `apiClient.test.js` | API client: a video from the API is downloaded with progress, credentials and the device ID | — (API client, no SRS requirement) | — | integration |
+| FI-74 | `apiClient.test.js` | API client: a video larger than the limit is refused before or while it downloads | — (API client, no SRS requirement) | — | integration |
+| FI-75 | `apiClient.test.js` | API client: a failed download names the status | — (API client, no SRS requirement) | — | integration |
+| FI-76 | `apiClient.test.js` | API client: notifications are per user, newest first, and can be marked read one by one or all at once | — (API client, no SRS requirement) | — | integration |
+| FI-77 | `apiClient.test.js` | API client: unreadable stored notifications read as none | — (API client, no SRS requirement) | — | integration |
 
 ## 6. End-to-end tests — `e2e/tests/`
 
@@ -625,6 +679,13 @@ API with an in-memory database.
 | E-22 | `stale-chunks.spec.js` | Stale chunks: a chunk that stays missing shows the error after one reload instead of reloading forever | — (deploy updates, no SRS requirement) | — | E2E |
 | E-23 | `stale-chunks.spec.js` | Stale chunks: with sessionStorage blocked, a chunk that stays missing reloads once, then shows the error | — (deploy updates, no SRS requirement) | — | E2E |
 | E-24 | `stale-chunks.spec.js` | Stale chunks: with sessionStorage blocked, a chunk missing once reloads once, then the page opens | — (deploy updates, no SRS requirement) | — | E2E |
+| E-25 | `record-submit.spec.js` | FR13.8: record, trim, mirror and submit; the cooldown shows the time left, then the video can be recorded again | FR13.6, FR13.8, FR13.9 | — | E2E |
+| E-26 | `account-controls.spec.js` | FR13.12: a suspended contributor can neither submit nor log in, and Reactivate restores access | FR13.12, SE-2 | — | E2E |
+| E-27 | `account-controls.spec.js` | FR13.12: a restricted device is refused, and removing the restriction restores access | FR13.12 | — | E2E |
+| E-28 | `upload-limit.spec.js` | FR13.8: a recording of about 90 MB is accepted and one over 100 MB is refused with a reason | FR13.8, SE-10 | — | E2E |
+| E-29 | `smoke.spec.js` | Smoke: the landing page loads with the security headers | UI 3.1.1.3 | — | E2E |
+| E-30 | `smoke.spec.js` | Smoke: a contributor logs in and sees the library | FR13.1 | — | E2E |
+| E-31 | `smoke.spec.js` | Smoke: the profile shows the account, and logging out ends the session | FR13.1, SE-2 | — | E2E |
 
 ## 7. Gaps to close in later phases
 
@@ -643,7 +704,7 @@ Drive upload`) and a row here.
 | S7 | **Covered in Phase 7** (U-162–U-182, U-133 changed for item 5, I-111–I-125, the new access-matrix route, FI-33–FI-37, E-11). | 7 |
 | B5, B7 | **Covered in Phase 8** (U-183–U-202, U-180 and U-182 reordered for item 6, I-126–I-149, the two new access-matrix routes, FI-38–FI-45, E-12; after verification U-203–U-206 and I-150–I-159). The dataset script is run for real with ffmpeg on local files (I-156–I-159); Drive downloads are covered by unit tests only. | 8 |
 | S8, S10 | **Covered in Phase 9** (U-207–U-209, I-160–I-162, FU-43–FU-63, E-13–E-20). Every E2E test also runs under the CSP and fails on any violation (`e2e/support/test.js`). | 9 |
-| all | final traceability check: every FR13.x and checklist ID has a test | 10 |
+| all | **Done in Phase 10.** `traceability.test.js` now fails if any FR13.1–FR13.13 or any checklist ID C1–C5, S1–S10, B1–B8 has no test (U-212). Also new: the docs-sync tests (U-210–U-211), the API client and utils tests (FU-79–FU-94, FI-46–FI-77), and E2E for every automatable line of the production checklist, plus the `@smoke` subset (E-25–E-31). | 10 |
 
 ## 8. Running the suites
 
