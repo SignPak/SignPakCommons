@@ -33,12 +33,29 @@ function enforceBudget(keep) {
   }
 }
 
+const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || '').replace(/\/$/, '')
+
+/**
+ * S8: only videos on the site or the API are fetched into the cache. The CSP's connect-src
+ * allows nothing else, so an external video (an admin-added HTTPS URL) plays straight from its
+ * own host instead (media-src https:).
+ */
+export function isCacheableVideoUrl(url, { siteOrigin = window.location.origin, apiOrigin = API_ORIGIN } = {}) {
+  let origin
+  try { origin = new URL(url, siteOrigin).origin } catch { return true } // the request reports invalid URLs
+  return origin === siteOrigin || (Boolean(apiOrigin) && origin === new URL(apiOrigin).origin)
+}
+
 /**
  * Starts (or joins) the download for a video. Resolves with its entry once cached: { url, blob }.
- * Rejects when the file is too large or the request fails; callers then play from the network.
+ * Rejects when the file is too large, the request fails, or the video is external (code
+ * 'EXTERNAL', never fetched); callers then play from the network.
  */
 export function loadVideo(video, onProgress) {
   const key = video.videoUrl
+  if (!isCacheableVideoUrl(key)) {
+    return Promise.reject(Object.assign(new Error('External videos play from their own host.'), { code: 'EXTERNAL' }))
+  }
   let entry = entries.get(key)
   if (entry && !entry.expired) {
     if (entry.blob) {

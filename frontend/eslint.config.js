@@ -21,7 +21,7 @@ export default defineConfig([
   // Build-time scripts run under Node, not the browser, so `process`, `console` etc need
   // Node's globals rather than the browser set used for everything under src/.
   {
-    files: ['scripts/**/*.js'],
+    files: ['scripts/**/*.js', 'config/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: globals.node,

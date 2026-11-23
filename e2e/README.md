@@ -52,6 +52,23 @@ so it cannot reach the deployed API.
 | `tests/admin-activity.spec.js` | a second admin (`admin2@signpak.test`, seeded as a normal account and promoted by the startup sync from `ADMIN_EMAILS`) and the first admin each add a category; Admin → Activity names the right admin for each, and shows the promotion by System (S7) |
 | `tests/admin-export.spec.js` | a contributor makes two recordings (one trimmed and mirrored); the admin filters Admin → Submissions to their category and downloads the CSV, whose rows are exactly those submissions, with no name or email (B5) |
 | `tests/contact.spec.js` | a signed-in contributor sends a contact message (C2); a signed-out deletion request is confirmed with the emailed code (D4) |
+| `tests/csp.spec.js` | every path is served with the CSP and the security headers; an injected inline script is blocked and reported; the theme script and the sign-in photo still work under the CSP (S8) |
+| `tests/admin-video-tool.spec.js` | the admin video tool removes a clip's sound with ffmpeg.wasm loaded from `/ffmpeg/`, nothing from a CDN, and the stored file has no audio track (S8) |
+| `tests/accessibility.spec.js` | axe (WCAG 2.1 A/AA) finds no serious or critical problem on the landing, library, watch, editor and admin pages, in both themes (QA-20) |
+| `tests/stale-chunks.spec.js` | A page chunk that answers 404 (as after a deploy) reloads the page once and the page opens; a chunk that stays missing shows "This page could not be loaded." after one reload, with no reload loop |
+
+## Under the CSP
+
+`vite preview` sends the production security headers (`frontend/config/securityHeaders.js`).
+`support/test.js` makes every test fail if the browser reports a CSP violation (a
+`securitypolicyviolation` event or a console message about one). A test that opens another
+browser context calls `prepareContext(context)` on it. A test that triggers a violation on
+purpose sets `test.use({ allowCspViolations: true })` and reads the `cspViolations` fixture.
+
+Two browser limitations, both annotated in the report rather than skipped quietly: Playwright's
+Windows WebKit build plays no video, so `admin-video-tool.spec.js` checks the tool's fallback
+there (CI's Linux WebKit runs the full test); and the recording editor's axe check runs in
+Chromium only, the one project with a fake camera.
 
 The E2E API saves contact messages but never forwards them to Web3Forms, and raises the
 per-sender deletion-request limit because every browser connects from 127.0.0.1.

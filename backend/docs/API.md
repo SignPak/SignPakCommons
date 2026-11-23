@@ -81,7 +81,9 @@ Errors use a consistent shape with optional field errors:
 
 `DELETE` operations that succeed return `204 No Content` with no response body.
 Every request gets an `X-Request-Id` response header. A caller may supply the same
-header to correlate a request with structured server logs.
+header to correlate a request with structured server logs. It is kept only if it is 1 to 64
+letters, digits or hyphens (`^[A-Za-z0-9-]{1,64}$`); anything else is replaced with a new UUID,
+so a caller can never put arbitrary text into the logs (S10).
 
 ## Endpoint reference
 

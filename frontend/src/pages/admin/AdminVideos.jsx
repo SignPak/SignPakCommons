@@ -264,7 +264,7 @@ function VideoRow({ video, videos, categories, selected, onToggleSelect }) {
       <Field as="select" label="Category" name="categoryId" value={draft.categoryId} onChange={change}><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Field>
       <Field as="select" label="Visibility" name="status" value={draft.status} onChange={change}><option value="published">Published</option><option value="draft">Draft</option></Field>
       <div className="row-form-actions"><Button onClick={save}>Save changes</Button><Button variant="outline" onClick={() => setMode('view')}>Cancel</Button></div>
-      <div className="field-wide admin-inline-move"><label className="field-label">Quick move</label><div className="inline-action-row"><select value={video.categoryId || ''} onChange={(event) => { moveToCategory(event.target.value); setMode('view') }} className="field-control"><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div></div>
+      <div className="field-wide admin-inline-move"><label className="field-label" htmlFor={`quick-move-${video.id}`}>Quick move</label><div className="inline-action-row"><select id={`quick-move-${video.id}`} value={video.categoryId || ''} onChange={(event) => { moveToCategory(event.target.value); setMode('view') }} className="field-control"><option value="">Unassigned</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div></div>
     </div>}
     {mode === 'delete' && <div className="confirm">
       <p>Delete “{video.title}”? Contributors will no longer see it. Their past submissions stay on record.</p>

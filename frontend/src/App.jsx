@@ -1,30 +1,35 @@
+import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/Layouts'
 import { GuestOnly, RequireAdmin, RequireAuth } from './components/RouteGuards'
 import { PageState, ButtonLink } from './components/ui'
 import { paths } from './routes/appRoutes'
-import AdminActivity from './pages/admin/AdminActivity'
-import AdminCategories from './pages/admin/AdminCategories'
-import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminLayout from './pages/admin/AdminLayout'
-import AdminMessages from './pages/admin/AdminMessages'
-import AdminSubmissions from './pages/admin/AdminSubmissions'
-import AdminUsers from './pages/admin/AdminUsers'
-import AdminVideos from './pages/admin/AdminVideos'
-import CategoryBrowser from './pages/CategoryBrowser'
-import Demo from './pages/Demo'
-import Faq from './pages/Faq'
-import ForgotPassword from './pages/ForgotPassword'
-import Home from './pages/Home'
 import Landing from './pages/Landing'
-import Login from './pages/Login'
-import Player from './pages/Player'
-import ProfileDashboard from './pages/ProfileDashboard'
-import RecordingEditor from './pages/RecordingEditor'
-import Consent from './pages/Consent'
-import ContactVerify from './pages/ContactVerify'
-import Signup from './pages/Signup'
-import VerifyEmail from './pages/VerifyEmail'
+
+// Every page but the landing page is loaded on first visit, so it stays out of the main chunk
+// every visitor downloads (FIX-PLAN Phase 9 item 4: under 300 kB, checked by
+// scripts/checkBundleSize.js). The layouts' <Suspense> shows a loading line meanwhile.
+const CategoryBrowser = lazy(() => import('./pages/CategoryBrowser'))
+const Consent = lazy(() => import('./pages/Consent'))
+const ContactVerify = lazy(() => import('./pages/ContactVerify'))
+const Demo = lazy(() => import('./pages/Demo'))
+const Faq = lazy(() => import('./pages/Faq'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const Home = lazy(() => import('./pages/Home'))
+const Login = lazy(() => import('./pages/Login'))
+const Player = lazy(() => import('./pages/Player'))
+const ProfileDashboard = lazy(() => import('./pages/ProfileDashboard'))
+const Signup = lazy(() => import('./pages/Signup'))
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
+const AdminActivity = lazy(() => import('./pages/admin/AdminActivity'))
+const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'))
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'))
+const AdminMessages = lazy(() => import('./pages/admin/AdminMessages'))
+const AdminSubmissions = lazy(() => import('./pages/admin/AdminSubmissions'))
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
+const AdminVideos = lazy(() => import('./pages/admin/AdminVideos'))
+const RecordingEditor = lazy(() => import('./pages/RecordingEditor'))
 
 export default function App() {
   return <Routes>

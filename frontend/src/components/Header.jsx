@@ -51,9 +51,11 @@ export default function Header() {
             <Link 
               to={paths.profile} 
               className="header-avatar-link" 
-              aria-label="Your profile" 
               title="Your profile"
             >
+              {/* QA-20: the initials are a decorative avatar (aria-hidden); the link's name is
+                  this text, not an aria-label that leaves the visible initials out. */}
+              <span className="sr-only">Your profile</span>
               <Avatar user={user} size="sm" />
             </Link>
           ) : (

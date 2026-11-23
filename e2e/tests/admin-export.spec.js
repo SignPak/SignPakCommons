@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { expect, routeThirdParty, test } from '../support/test.js'
+import { expect, prepareContext, test } from '../support/test.js'
 import { apiOrigin, webOrigin } from '../playwright.config.js'
 import { signUpThroughUi, uniqueEmail } from '../support/flows.js'
 
@@ -48,7 +48,7 @@ test('B5: an admin downloads the CSV export, and its rows match the submissions 
 
   // The admin filters Admin → Submissions to this category and downloads the CSV.
   const adminContext = await browser.newContext({ acceptDownloads: true })
-  await routeThirdParty(adminContext)
+  await prepareContext(adminContext)
   const admin = await adminContext.newPage()
   await admin.goto('/login')
   await admin.getByLabel('Email address').fill(ADMIN.email)

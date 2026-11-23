@@ -9,6 +9,10 @@ import NotificationProvider from './context/NotificationProvider.jsx'
 import RecordingProvider from './context/RecordingProvider.jsx'
 import ThemeProvider from './context/ThemeProvider.jsx'
 import UploadQueueProvider from './context/UploadQueueProvider.jsx'
+import { installChunkReload } from './utils/chunkReload'
+
+// A tab opened before a deploy reloads once when an old page chunk is gone (utils/chunkReload.js).
+installChunkReload()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

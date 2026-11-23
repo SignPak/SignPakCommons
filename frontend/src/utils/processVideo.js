@@ -2,19 +2,24 @@
  * Browser-side video preparation with ffmpeg.wasm: drops the audio track and cuts away
  * unwanted frames, so the server only ever stores the clip that will be shown.
  * The library is loaded on first use, so contributors never download it.
+ *
+ * S8: the core (@ffmpeg/core, pinned in package.json) is served by the site itself from /ffmpeg
+ * (scripts/copyFfmpegCore.js), never a CDN. The worker imports it and fetches the .wasm from
+ * the site's own origin, which the CSP allows ('self', 'wasm-unsafe-eval').
  */
-const CORE_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm'
+const CORE_BASE = '/ffmpeg'
 
 let loading = null
 
 function loadFfmpeg() {
   if (!loading) {
     loading = (async () => {
-      const [{ FFmpeg }, { toBlobURL }] = await Promise.all([import('@ffmpeg/ffmpeg'), import('@ffmpeg/util')])
+      const { FFmpeg } = await import('@ffmpeg/ffmpeg')
       const ffmpeg = new FFmpeg()
+      // Absolute URLs: the worker resolves them against its own script URL, not the page.
       await ffmpeg.load({
-        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+        coreURL: new URL(`${CORE_BASE}/ffmpeg-core.js`, window.location.origin).href,
+        wasmURL: new URL(`${CORE_BASE}/ffmpeg-core.wasm`, window.location.origin).href,
       })
       return ffmpeg
     })().catch((error) => {

@@ -2,7 +2,7 @@
  * The canonical list of routes that are worth a search engine's time: static, public,
  * and the same for every visitor. Per-user pages (home, library, watch, profile, admin)
  * and auth pages are deliberately left out — see scripts/generateSeoAssets.js, which reads
- * this file to write public/sitemap.xml, public/robots.txt and react-snap-routes.json.
+ * this file to write public/sitemap.xml and public/robots.txt.
  *
  * `.mjs` so this one file can be imported unambiguously by both the Vite-bundled app
  * (src/seo/seoUtils.js) and a plain Node script, regardless of package.json's "type".

@@ -101,3 +101,19 @@ describe('AdminVideos poster selection', () => {
     expect(addVideo.mock.calls[0][0].poster).toBeInstanceOf(File)
   })
 })
+
+describe('AdminVideos accessibility', () => {
+  afterEach(cleanup)
+
+  it('QA-20: the Quick move select in a video row has an accessible name', () => {
+    useLibrary.mockReturnValue({
+      ...library(),
+      categories: [{ id: 'c1', label: 'Food', tone: 'yellow' }, { id: 'c2', label: 'Greetings', tone: 'blue' }],
+      videos: [{ id: 'v1', title: 'Bread', categoryId: 'c1', status: 'published', videoUrl: '/api/v1/videos/v1/file', videoSource: 'upload' }],
+    })
+    render(<AdminVideos />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const select = screen.getByRole('combobox', { name: 'Quick move' })
+    expect(select.value).toBe('c1')
+  })
+})

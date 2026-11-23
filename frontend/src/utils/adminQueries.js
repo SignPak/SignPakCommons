@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from './zod'
 
 /**
  * B5/B7: the admin list, export and stats queries, checked before a request is sent (the API

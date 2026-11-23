@@ -8,29 +8,32 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
   - **FR13.x** — the contribution-site functional requirements.
   - **OR-19** — the consent notice.
   - **UI 3.1.1.3** — the public landing page. **QA-3** — service availability (health).
+    **QA-20** — accessibility (SRS C.3): no serious WCAG 2.1 AA problem.
   - **SE-1** role-based access control · **SE-2** sessions, JWT and logout ·
     **SE-3** password hashing · **SE-4** login lockout · **SE-6** data separation between
     contributors · **SE-9** the API requires a valid token · **SE-10** server-side input
     validation.
   - **—** with a note marks a test that guards something the SRS does not specify: *test
     infrastructure* (the fake Drive driver and the capture email store), *deployment safety*
-    (test-only switches that must never reach production) or *API metadata*.
+    (test-only switches that must never reach production), *API metadata*, *browser
+    hardening* (the site's CSP and security headers, S8), *bundle size* or *deploy updates* (a
+    tab opened before a deploy reloads once for the new build's chunks).
 - **Checklist** is the ID from `docs/SignPakCommons review checklist.md` (C1–C5, S1–S10,
   B1–B8), or `—` when a test covers behaviour that was already correct.
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 8, after the verification fixes** (backend 1.0.14, frontend 1.0.16):
+Counts as of **Phase 9** (backend 1.0.15, frontend 1.0.17):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 37 | 206 |
-| Integration (backend) | `backend/tests/integration/` | 21 | 159 |
+| Unit (backend) | `backend/tests/unit/` | 38 | 209 |
+| Integration (backend) | `backend/tests/integration/` | 22 | 162 |
 | Security (backend) | `backend/tests/security/` | 8 | 81 |
-| Unit (frontend) | `frontend/test/unit/` | 12 | 42 |
+| Unit (frontend) | `frontend/test/unit/` | 17 | 78 |
 | Integration (frontend) | `frontend/test/integration/` | 9 | 50 |
-| End-to-end | `e2e/tests/` | 8 | 36 (12 tests × 3 browsers) |
-| **Total** | | **95** | **574** |
+| End-to-end | `e2e/tests/` | 12 | 72 (24 tests × 3 browsers; the editor's axe check runs in Chromium only) |
+| **Total** | | **106** | **652** |
 
 The backend security count is per-route: the access matrix produces one case per route (57
 today) plus the completeness check; the hook suite adds three, the production-error suite
@@ -247,6 +250,9 @@ suite four, the admin-deletion suite two and the JWT suite six. Frontend cases c
 | U-204 | `prepareDataset.test.js` | B5: without FFMPEG_PATH, the ffmpeg-static binary when it is installed and on disk | FR13.6 | B5 | unit |
 | U-205 | `prepareDataset.test.js` | B5: falls back to ffmpeg on PATH when ffmpeg-static is missing, unsupported or not downloaded | FR13.6 | B5 | unit |
 | U-206 | `prepareDataset.test.js` | B5: the not-found message says npm install is enough, and names a broken FFMPEG_PATH | FR13.6 | B5 | unit |
+| U-207 | `requestId.test.js` | S10: a valid id (letters, digits, hyphens, up to 64 characters) is kept as sent | SE-10 | S10 | unit |
+| U-208 | `requestId.test.js` | S10: an id that is too long, empty or has any other character is replaced with a new UUID | SE-10 | S10 | unit |
+| U-209 | `requestId.test.js` | S10: no header, or a repeated header (an array), gets a new UUID | SE-10 | S10 | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -414,6 +420,9 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-157 | `prepare-dataset.test.js` | B5: each clip is trimmed to its trimStart–trimEnd: 2.00 s and 5.00 s | FR13.6 | B5 | integration |
 | I-158 | `prepare-dataset.test.js` | B5: the mirrored clip is flipped back (red box on the right); the other is not (red on the left) | FR13.6 | B5 | integration |
 | I-159 | `prepare-dataset.test.js` | B5: the clips are H.264 MP4 without audio | FR13.6 | B5 | integration |
+| I-160 | `api-request-id.test.js` | S10: a valid incoming X-Request-Id is echoed back unchanged | SE-10 | S10 | integration |
+| I-161 | `api-request-id.test.js` | S10: an invalid one is never echoed: the response carries a fresh UUID | SE-10 | S10 | integration |
+| I-162 | `api-request-id.test.js` | S10: without the header, every response gets its own UUID | SE-10 | S10 | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -496,6 +505,42 @@ a new route cannot be added without an access decision.
 | FU-40 | `VerifyEmail.test.jsx` | B3: the password is required before anything is sent | FR13.1 | B3 | unit |
 | FU-41 | `VerifyEmail.test.jsx` | B4: the consent token is saved, so the consent page survives a reload | FR13.1, OR-19 | B4 | unit |
 | FU-42 | `VerifyEmail.test.jsx` | B3: a wrong sign-up password from the server is shown next to the password field | FR13.1 | B3 | unit |
+| FU-43 | `securityHeaders.test.js` | S8: vercel.json sends exactly securityHeaders() for the production API, on every path | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-44 | `securityHeaders.test.js` | S8: vite preview (the E2E server) sends the same headers | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-45 | `securityHeaders.test.js` | S8: the CSP allows only the site, the API and the listed hosts | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-46 | `securityHeaders.test.js` | S8: no script source allows inline code, eval or a CDN | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-47 | `securityHeaders.test.js` | S8: the other headers | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-48 | `securityHeaders.test.js` | S8: another API origin (the cross-host E2E build) replaces the production one | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-49 | `securityHeaders.test.js` | S8: index.html has no inline script (the theme script is public/theme-init.js) | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-50 | `cspSafeCode.test.js` | S8: a base64 data URL becomes a Blob of the same bytes and type, without fetch | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-51 | `cspSafeCode.test.js` | S8: a percent-encoded (non-base64) data URL is decoded too | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-52 | `cspSafeCode.test.js` | S8: anything that is not a data URL is refused | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-53 | `cspSafeCode.test.js` | S8: isCacheableVideoUrl accepts the site and the API origin, and refuses any other host | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-54 | `cspSafeCode.test.js` | S8: an external video is never fetched: loadVideo rejects at once, so the player streams it | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-55 | `cspSafeCode.test.js` | S8: ffmpeg.load gets the core and wasm from /ffmpeg/ on this origin, never a CDN | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-56 | `cspSafeCode.test.js` | S8: loading a schema module switches Zod to jitless (no new Function under the CSP) | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-57 | `cspSafeCode.test.js` | S8: every schema module gets Zod through src/utils/zod.js, so the setting always applies first | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-58 | `cspSafeCode.test.js` | S8: the saved theme is applied before the app loads, with the matching theme colour | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-59 | `cspSafeCode.test.js` | S8: without a saved theme it follows the system setting | — (browser hardening, no SRS requirement) | S8 | unit |
+| FU-60 | `checkBundleSize.test.js` | the limit is 300 kB, as Vite prints sizes (300,000 bytes) | — (bundle size, no SRS requirement) | — | unit |
+| FU-61 | `checkBundleSize.test.js` | finds the entry chunk: the module script in index.html, not the theme script or a preload | — (bundle size, no SRS requirement) | — | unit |
+| FU-62 | `checkBundleSize.test.js` | passes at the limit and fails one byte over it | — (bundle size, no SRS requirement) | — | unit |
+| FU-63 | `AdminVideos.test.jsx` | QA-20: the Quick move select in a video row has an accessible name | QA-20 | — | unit |
+| FU-64 | `chunkReload.test.js` | Stale chunks: the first preloadError reloads the page once and stops the error | — (deploy updates, no SRS requirement) | — | unit |
+| FU-65 | `chunkReload.test.js` | Stale chunks: another preloadError within 10 s of that reload does not reload again | — (deploy updates, no SRS requirement) | — | unit |
+| FU-66 | `chunkReload.test.js` | Stale chunks: a failure 10 s or more after the last reload reloads again | — (deploy updates, no SRS requirement) | — | unit |
+| FU-67 | `chunkReload.test.js` | Stale chunks: a second preloadError on the same page never reloads twice | — (deploy updates, no SRS requirement) | — | unit |
+| FU-68 | `chunkReload.test.js` | Stale chunks: blocked sessionStorage still reloads once | — (deploy updates, no SRS requirement) | — | unit |
+| FU-69 | `chunkReload.test.js` | Stale chunks: installChunkReload listens for vite:preloadError on window and uses sessionStorage | — (deploy updates, no SRS requirement) | — | unit |
+| FU-70 | `chunkReload.test.js` | Stale chunks: an import aborted because the visitor is leaving the page does not reload | — (deploy updates, no SRS requirement) | — | unit |
+| FU-71 | `chunkReload.test.js` | Stale chunks: a page restored from the back/forward cache handles a missing chunk again | — (deploy updates, no SRS requirement) | — | unit |
+| FU-72 | `PageErrorBoundary.test.jsx` | Stale chunks: a page that could not be loaded shows the error and a Reload button | — (deploy updates, no SRS requirement) | — | unit |
+| FU-73 | `PageErrorBoundary.test.jsx` | Stale chunks: going to another page clears the error | — (deploy updates, no SRS requirement) | — | unit |
+| FU-74 | `PageErrorBoundary.test.jsx` | Stale chunks: while the reload for a new build is pending, the loading line shows instead of the error | — (deploy updates, no SRS requirement) | — | unit |
+| FU-75 | `chunkReload.test.js` | Stale chunks: blocked storage and a reload stamp from 2 s ago in history.state: no reload, the error goes through | — (deploy updates, no SRS requirement) | — | unit |
+| FU-76 | `chunkReload.test.js` | Stale chunks: blocked storage and an empty history.state: reloads once and writes the stamp to history.state | — (deploy updates, no SRS requirement) | — | unit |
+| FU-77 | `chunkReload.test.js` | Stale chunks: with neither storage nor history.state available it does not reload at all | — (deploy updates, no SRS requirement) | — | unit |
+| FU-78 | `chunkReload.test.js` | Stale chunks: the newer of the two stamps counts | — (deploy updates, no SRS requirement) | — | unit |
 
 ## 5. Frontend integration tests — `frontend/test/integration/`
 
@@ -568,6 +613,18 @@ API with an in-memory database.
 | E-10 | `account-security.spec.js` | B4: reloading the consent page keeps the visitor on it, and accepting still works | FR13.1, OR-19 | B4 | E2E |
 | E-11 | `admin-activity.spec.js` | S7: two admins each make a change, and Activity shows the right name for each | FR13.12, SE-1 | S7 | E2E |
 | E-12 | `admin-export.spec.js` | B5: an admin downloads the CSV export, and its rows match the submissions made | FR13.6, FR13.8 | B5 | E2E |
+| E-13 | `csp.spec.js` | S8: every page and file is served with the CSP and the other security headers | — (browser hardening, no SRS requirement) | S8 | E2E |
+| E-14 | `csp.spec.js` | S8: an injected inline script is blocked, and the violation is reported | — (browser hardening, no SRS requirement) | S8 | E2E |
+| E-15 | `csp.spec.js` | S8: the theme is still set before the app runs (public/theme-init.js under the CSP) | — (browser hardening, no SRS requirement) | S8 | E2E |
+| E-16 | `csp.spec.js` | S8: the sign-in background photo comes from the site itself | — (browser hardening, no SRS requirement) | S8 | E2E |
+| E-17 | `admin-video-tool.spec.js` | S8: the admin video tool processes a clip with ffmpeg from /ffmpeg, under the CSP | FR13.11 | S8 | E2E |
+| E-18 | `accessibility.spec.js` | QA-20: the landing page, the library and the watch page have no serious problems | QA-20 | — | E2E |
+| E-19 | `accessibility.spec.js` | QA-20: the recording editor has no serious problems | QA-20 | — | E2E |
+| E-20 | `accessibility.spec.js` | QA-20: every admin tab has no serious problems | QA-20 | — | E2E |
+| E-21 | `stale-chunks.spec.js` | Stale chunks: a page chunk that is gone after a deploy reloads the page once, and the page then opens | — (deploy updates, no SRS requirement) | — | E2E |
+| E-22 | `stale-chunks.spec.js` | Stale chunks: a chunk that stays missing shows the error after one reload instead of reloading forever | — (deploy updates, no SRS requirement) | — | E2E |
+| E-23 | `stale-chunks.spec.js` | Stale chunks: with sessionStorage blocked, a chunk that stays missing reloads once, then shows the error | — (deploy updates, no SRS requirement) | — | E2E |
+| E-24 | `stale-chunks.spec.js` | Stale chunks: with sessionStorage blocked, a chunk missing once reloads once, then the page opens | — (deploy updates, no SRS requirement) | — | E2E |
 
 ## 7. Gaps to close in later phases
 
@@ -585,7 +642,7 @@ Drive upload`) and a row here.
 | S2, S6, S9, B2, B3, B4 | **Covered in Phase 6** (U-141–U-161, I-86–I-110, S-20–S-25, the new access-matrix route, FU-35–FU-42, FI-22–FI-32, E-08–E-10). | 6 |
 | S7 | **Covered in Phase 7** (U-162–U-182, U-133 changed for item 5, I-111–I-125, the new access-matrix route, FI-33–FI-37, E-11). | 7 |
 | B5, B7 | **Covered in Phase 8** (U-183–U-202, U-180 and U-182 reordered for item 6, I-126–I-149, the two new access-matrix routes, FI-38–FI-45, E-12; after verification U-203–U-206 and I-150–I-159). The dataset script is run for real with ffmpeg on local files (I-156–I-159); Drive downloads are covered by unit tests only. | 8 |
-| S8, S10 | CSP and security headers, `X-Request-Id` validation, axe checks | 9 |
+| S8, S10 | **Covered in Phase 9** (U-207–U-209, I-160–I-162, FU-43–FU-63, E-13–E-20). Every E2E test also runs under the CSP and fails on any violation (`e2e/support/test.js`). | 9 |
 | all | final traceability check: every FR13.x and checklist ID has a test | 10 |
 
 ## 8. Running the suites

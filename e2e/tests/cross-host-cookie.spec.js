@@ -1,5 +1,5 @@
 import { expect, test } from '../support/test.js'
-import { crossHost, webOrigin } from '../playwright.config.js'
+import { crossHost } from '../playwright.config.js'
 import { expectInLibrary, signUpThroughUi, uniqueEmail } from '../support/flows.js'
 
 /**
@@ -58,7 +58,9 @@ test('C4: login cookie set by api.localtest.me works on commons.localtest.me', a
   await expect(page).toHaveURL(/\/login/)
   expect((await context.cookies(crossHost.api)).filter((cookie) => cookie.name === 'signpak_token')).toEqual([])
 
-  // 4. Log in again, then reload: the new cookie works across the two hosts too.
+  // 4. Log in again, then reload: the new cookie works across the two hosts too. (Wait for the
+  //    login page itself: pages load lazily since Phase 9.)
+  await expect(page.getByRole('heading', { name: 'Good to see you.' })).toBeVisible()
   await page.getByLabel('Email address').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: /log in/i }).click()
@@ -67,8 +69,9 @@ test('C4: login cookie set by api.localtest.me works on commons.localtest.me', a
   await expectInLibrary(page)
 
   // 5. Negative control: it works because the two hosts are the same *site*. The identical
-  //    credentialed request made from a different site (127.0.0.1 — also an allowed CORS
-  //    origin, so the answer is readable) must not carry the SameSite=Lax cookie. This is the
+  //    credentialed request made from a different site (the same build at 127.0.0.1:4174 — an
+  //    allowed CORS origin, so the answer is readable, and its CSP allows connecting to
+  //    api.localtest.me) must not carry the SameSite=Lax cookie. This is the
   //    *.vercel.app -> *.railway.app situation C4 describes.
   const whoAmI = (from) => from.evaluate(async (api) => {
     const response = await fetch(`${api}/api/v1/auth/session`, { credentials: 'include' })
@@ -87,8 +90,12 @@ test('C4: login cookie set by api.localtest.me works on commons.localtest.me', a
     })
     return
   }
-  const otherSite = await context.newPage()
-  await otherSite.goto(webOrigin)
-  expect(await whoAmI(otherSite), 'cross-site: the session must not travel').toBeNull()
-  await otherSite.close()
+  //    Since Phase 9 (S8) every build has a CSP, and the 127.0.0.1:4173 build's connect-src
+  //    only allows its own origin, so the control uses the cross-host build reached by IP. Same
+  //    context, so the real cookie is there; the browser must not send it cross-site. (Neither
+  //    a bypassCSP context, whose CSP Linux WebKit still enforces for fetch, nor a page
+  //    Playwright serves itself, whose loopback requests Chromium blocks as Private Network
+  //    Access, can stand in.)
+  await page.goto(crossHost.otherSite)
+  expect(await whoAmI(page), 'cross-site: the session must not travel').toBeNull()
 })

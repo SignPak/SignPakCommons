@@ -68,7 +68,7 @@ export const openapi = {
   info: {
     title: 'SignPak Commons API',
     version: '1.0.0',
-    description: 'API for the SignPak Commons Pakistan Sign Language dataset contribution platform.',
+    description: 'API for the SignPak Commons Pakistan Sign Language dataset contribution platform. Every response carries an X-Request-Id header; a caller may send its own, which is kept only if it is 1-64 letters, digits or hyphens (otherwise a new UUID is used).',
   },
   servers: [{ url: '/api/v1', description: 'Current API server' }],
   tags: [

@@ -3,7 +3,6 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
-import { randomUUID } from 'node:crypto'
 import pinoHttp from 'pino-http'
 import { API_PREFIX } from './config/constants.js'
 import { env } from './config/env.js'
@@ -16,6 +15,7 @@ import { verifyOrigin } from './middlewares/verifyOrigin.js'
 import routes from './routes/index.js'
 import testHookRoutes from './routes/testHooks.js'
 import { logger } from './utils/logger.js'
+import { requestIdFrom } from './utils/requestId.js'
 import { requestLogProps, requestLogSerializer } from './utils/requestLog.js'
 import swaggerUi from 'swagger-ui-express'
 
@@ -31,7 +31,8 @@ app.use(ensureServicesInitialized)
 // Request logging with an id that is also sent back, so a support report can be matched to a log line.
 app.use(pinoHttp({
   logger,
-  genReqId: (req, res) => { const id = req.headers['x-request-id'] || randomUUID(); res.setHeader('X-Request-Id', id); return id },
+  // S10: a caller's X-Request-Id is kept only if it is 1-64 letters, digits or hyphens.
+  genReqId: (req, res) => { const id = requestIdFrom(req.headers['x-request-id']); res.setHeader('X-Request-Id', id); return id },
   autoLogging: { ignore: (req) => req.url.endsWith('/health') },
   customProps: requestLogProps, // the visitor's IP (req.ip), not the proxy's socket address
   serializers: { req: requestLogSerializer }, // no email address in logged URLs (C3)

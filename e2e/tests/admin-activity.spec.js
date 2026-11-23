@@ -1,4 +1,4 @@
-import { expect, routeThirdParty, test } from '../support/test.js'
+import { expect, prepareContext, test } from '../support/test.js'
 import { webOrigin } from '../playwright.config.js'
 
 /**
@@ -33,7 +33,7 @@ test('S7: two admins each make a change, and Activity shows the right name for e
   await addCategory(page, firstLabel)
 
   const secondContext = await browser.newContext()
-  await routeThirdParty(secondContext)
+  await prepareContext(secondContext)
   const second = await secondContext.newPage()
   await logIn(second, SECOND)
   await second.goto('/admin')
