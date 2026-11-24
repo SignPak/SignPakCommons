@@ -4,7 +4,6 @@ What the SRS (v1.1) should say after Phases 0–10 of `docs/FIX-PLAN.md`. The SR
 team in Word; it is not in this repository. Each entry gives:
 
 - **Current text:** the SRS text as it reads in v1.1, quoted, so it can be found with a search.
-  Where no v1.1 text was available for this list, the entry says so and names where to look.
 - **Now:** what the system does, with the file that shows it.
 - **Suggested:** replacement wording to adapt, or "no change needed".
 
@@ -14,14 +13,14 @@ team in Word; it is not in this repository. Each entry gives:
 | 2 | §3.3.4: the Community Contribution Site bullet | To do (team) |
 | 3 | Table 15 and the paragraph under it | To do (team) |
 | 4 | Table 17 | **No change needed** |
-| 5 | FR13.1 | Optional addition |
+| 5 | FR13.1 | No change needed (optional addition) |
 | 6 | FR13.12 | To do (team) |
 | 7 | FR13.13 | To do (team) |
 | 8 | SE-4 | **No change needed** |
-| 9 | Other security behaviour | Check against the SRS |
-| 10 | Recordings, data and the ML dataset | Check against the SRS |
-| 11 | Other behaviour | Check against the SRS |
-| 12 | §9 Testing | Check against the SRS |
+| 9 | SE-1, SE-2, SE-8 and the code expiry (FR1.3 / FR1.5) | No change needed (optional addition) |
+| 10 | FR13.8, OR-10, FR12.1: recordings and the ML dataset | No change needed (optional addition) |
+| 11 | QA-20 / C.3, and behaviour the SRS doesn't describe | **No change needed** |
+| 12 | §9 Testing: Contributor Testing | No change needed (optional addition) |
 
 ## 1. The Figure 5 intro and Figure 5 (§2, Deployment Diagram)
 
@@ -125,14 +124,21 @@ The chosen option is therefore no longer "Vercel + Google Drive".
 The installed versions come from the lockfiles at the end of Phase 10, and Node 22 from `.nvmrc`.
 Every row is still met. **No change needed.**
 
-## 5. FR13.1: optional addition
+## 5. FR13.1: no change needed (optional addition)
 
-**Current text:** not quoted here (no v1.1 text for FR13.1 was available for this list). Find
-FR13.1 in the contribution-site requirements.
+**Current text:**
 
-**Now:** a signed-in contributor can change their password from the profile. They enter the
-current password and the new one twice; every other session is then signed out
-(`POST /users/me/password`, Phase 6).
+> "The system shall let volunteers sign up with a first name, surname, email address and
+> password, and verify the email address with a 6-digit code. Contributors who forget their
+> password can reset it with a 6-digit emailed code."
+
+**Now:**
+- **What the text says still holds.** Volunteers sign up with a first name, surname, email
+  address and password, and verify the address with a 6-digit code (E2E test E-03). A forgotten
+  password is reset with a 6-digit emailed code (E-09).
+- **New since the review:** a signed-in contributor can also change their password from the
+  profile. They enter the current password and the new one twice; every other session is then
+  signed out (`POST /users/me/password`, Phase 6).
 
 **Suggested addition (optional):**
 
@@ -203,25 +209,56 @@ current password and the new one twice; every other session is then signed out
 **Now:** 5 wrong passwords in a row lock the account for 15 minutes, even against the right
 password (`AUTH_LOCKOUT_ATTEMPTS`, `AUTH_LOCKOUT_MINUTES`; tests I-86 and E-08). **No change needed.**
 
-## 9. Other security behaviour: check against the SRS
+## 9. SE-1, SE-2, SE-8 and the code expiry: no change needed (optional addition)
 
-**Current text:** not quoted here (no v1.1 text for these was available for this list). Compare
-with the SE requirements, and with wherever the SRS describes sign-up and sessions.
+**Current text.** These requirements are written for the main app, not the contribution site:
 
-| Topic | Now | Where |
+- **SE-1:** "The system shall enforce two roles, App User and Admin. Only admins shall be able to
+  use the Admin Panel and the admin APIs."
+- **SE-2:** "Sessions shall use JWTs that expire after 7 days (FR1.6). Logging out shall remove
+  the token from the device."
+- **SE-8:** "Admin actions and login attempts shall be recorded in the server logs."
+- **Code expiry**, in FR1.3 / FR1.5: "valid for 10 minutes", "expires after 10 minutes".
+
+**Now.** The contribution site meets or exceeds each of these:
+
+| Requirement | The contribution site | Where |
 | --- | --- | --- |
-| Sessions | Logging out ends every session of the account, on every device ("Log out of all devices" on the profile). A password change ends every other session; a password reset ends them all. | `POST /auth/logout`, `POST /users/me/password` |
-| Sign-up | Email codes are valid for 10 minutes (resend after 60 s). An unfinished sign-up is deleted 24 hours after it started. The account is only created once the consent notice is accepted. | `AUTH_OTP_TTL_MINUTES` |
-| Browser security | The site sends a Content Security Policy (no inline scripts, no eval, no third-party scripts), `Referrer-Policy`, `X-Content-Type-Options: nosniff` and a `Permissions-Policy`. | `frontend/config/securityHeaders.js` |
-| Request tracing | Each API response carries an `X-Request-Id`; one sent by the client is kept only if it is 1–64 letters, digits or dashes. | `backend/docs/API.md` |
-| Server | Node listens only on 127.0.0.1 behind Nginx; real client IPs come from Nginx (`TRUST_PROXY`); production errors never include internal details. | `deploy/README.md` |
+| SE-1 roles | Two roles, contributor and admin. Every admin route is refused to anyone else, checked route by route by the security test suite's access matrix. | `backend/tests/security/access-matrix.test.js` |
+| SE-2 sessions | JWTs that expire after 7 days (`JWT_EXPIRES_DAYS`). Logging out also ends the session **on the server**, on every device; a password change ends the other sessions. | `POST /auth/logout`, `POST /users/me/password` |
+| SE-8 logging | Every admin action goes to the activity log (Admin → Activity). Login attempts go to the server log, with the email hash, the outcome and the IP. | Phase 7 |
+| Code expiry | Email codes last 10 minutes (resend after 60 s). | `AUTH_OTP_TTL_MINUTES` |
 
-## 10. Recordings, data and the ML dataset: check against the SRS
+**Beyond the SRS:**
+- an unfinished sign-up is deleted after 24 hours;
+- the site sends a Content Security Policy and other security headers
+  (`frontend/config/securityHeaders.js`);
+- an incoming `X-Request-Id` is kept only if it is 1–64 letters, digits or dashes;
+- Node listens only on 127.0.0.1 behind Nginx.
 
-**Current text:** not quoted here (no v1.1 text was available for this list). Look for where the
-SRS describes uploads, and how recordings reach the ML team.
+**Suggested: no change needed.** Optionally, one sentence in §3.3.4 or §4.13:
+
+> "The Community Contribution Site applies the same security rules as the main app: an account
+> is locked for 15 minutes after 5 failed logins, email codes expire after 10 minutes, and admin
+> actions and login attempts are logged. In addition, unfinished sign-ups are deleted after 24
+> hours, and the site sends a Content Security Policy."
+
+## 10. FR13.8, OR-10 and FR12.1: no change needed (optional addition)
+
+**Current text:**
+
+> **FR13.8:** "The system shall store submitted recordings on Google Drive and their details in
+> the database."
+
+> **OR-10:** "Data of the Community Contribution Site shall be kept separately: accounts and
+> metadata in MongoDB, recordings on Google Drive (Section 3.3.4)."
+
+> **FR12.1:** "The system shall support model training, validation and testing using the
+> collected PSL dataset."
 
 **Now:**
+- **Storage still matches.** Recordings are stored on Google Drive, and accounts and recording
+  details in MongoDB.
 - **Uploads:**
   - A recording can be up to 100 MB (`MAX_RECORDING_UPLOAD_MB`).
   - Only WebM, MP4 and MOV video is accepted; 3GP, audio-only and image files are refused.
@@ -231,35 +268,46 @@ SRS describes uploads, and how recordings reach the ML team.
   - It contains ids, the reference video and category, the storage key, size, duration, trim
     start and end, mirrored, and the submission time.
   - The contributor appears only as their account id, with no names or emails.
-- **The dataset script:** `backend/scripts/prepare-dataset.js` downloads the exported recordings
-  and applies each one's trim and mirror with ffmpeg. The recording in Drive is the raw take
+- **The dataset script:** `backend/scripts/prepare-dataset.js` applies each recording's trim and
+  mirror with ffmpeg when preparing training clips. The recording in Drive is the raw take
   (`backend/docs/DATASET.md`).
 
-**Suggested:** where the SRS describes how recordings reach the ML team, describe the export and
-the dataset script.
+**Suggested: no change required.** Optionally, one sentence after FR13.8:
 
-## 11. Other behaviour: check against the SRS
+> "Site admins can export the recordings' details, including the trim and mirror settings, as
+> CSV or JSON, and a dataset script applies the trim and mirror when preparing training clips."
 
-**Current text:** not quoted here (no v1.1 text was available for this list).
+## 11. QA-20 / C.3, and behaviour the SRS doesn't describe: no change needed
 
-- **Contact form limits:**
-  - signed in: 1 general or partnership message a day (deletion requests don't count);
-  - signed-out deletion requests: 2 a day per IP address or device;
-  - a site-wide cap of 25 a day that never blocks anyone.
-- **Notifications** are kept per browser and device; they are not synced between devices.
-- **Pages load on demand.** Every page except the landing page is downloaded the first time it is
-  opened, and after a new deployment an open tab reloads once to get it.
-- **Accessibility.** The main pages are checked automatically against WCAG 2.1 A and AA (axe), in
-  the light and the dark theme, with no serious or critical problem allowed. If the SRS has an
-  accessibility requirement (QA-20 / C.3), this is the evidence.
+**Current text:**
 
-## 12. Testing (§9): check against the SRS
+> **QA-20:** "Text shall have a contrast ratio of at least 4.5:1, or 3:1 for large text."
 
-**Current text:** not quoted here (no v1.1 text was available for this list).
+C.3 says the same.
 
-`backend/docs/TEST-CASES.md` is the traceability table for §9. It lists every automated test with
-its requirement (FR13.x, SE-x, OR-19, UI 3.1.1.3, QA-3, QA-20) and its checklist ID. At the end of
-Phase 10 it has **113 test files and 766 cases**:
+**Now:**
+- **QA-20 / C.3:** the site's main pages are checked automatically with axe against WCAG 2.1 A
+  and AA, colour contrast included, in the light and the dark theme. A serious or critical problem
+  fails the build (E-18–E-20). This is evidence for QA-20 / C.3. **No change needed.**
+- **Not described in the SRS, so no change needed:**
+  - **Contact form limits:**
+    - signed in: 1 general or partnership message a day (deletion requests don't count);
+    - signed-out deletion requests: 2 a day per IP address or device;
+    - a site-wide cap of 25 a day that never blocks anyone.
+  - **Notifications** are kept per browser and device; they are not synced between devices.
+  - **Pages load on demand:** every page except the landing page is downloaded the first time it
+    is opened, and after a new deployment an open tab reloads once to get it.
+
+## 12. §9 Testing: no change needed (optional addition)
+
+**Current text:**
+
+> "Contributor Testing: Recording, trimming and submitting a sign, the consent notice, the
+> cooldown, and the site admin's statistics and contributor controls (FR13.1–FR13.13)"
+
+**Now:** `backend/docs/TEST-CASES.md` is the evidence. It maps every automated test to its
+requirement (FR13.x, SE-x, OR-19, UI 3.1.1.3, QA-3, QA-20) and checklist ID. At the end of Phase
+10 it has **113 test files and 766 cases**:
 
 | Level | Files | Cases |
 | --- | ---: | ---: |
@@ -271,9 +319,17 @@ Phase 10 it has **113 test files and 766 cases**:
 | End-to-end (Chromium, Firefox, WebKit) | 16 | 93 |
 
 - **Traceability:** a test fails if any of FR13.1–FR13.13 has no test.
+- **The FR13 flows the text names:**
+  - recording, trimming and submitting, with the cooldown (E-25);
+  - the consent notice (E-03, E-10);
+  - the admin's statistics (FI-43–FI-45);
+  - the contributor controls (E-26, E-27).
 - **Smoke:** a read-only `@smoke` subset (login, library, profile) can be run against the live
   site (`e2e/README.md`).
-- **Coverage:**
-  - backend: about 95% of lines;
-  - frontend: 55% of lines overall, and over 98% of the API client and the helper modules.
 - **CI** runs the whole gate on every push and pull request.
+
+**Suggested: no change needed.** Optionally, one sentence in §9.x:
+
+> "The contribution site's tests are automated: unit, integration, security and end-to-end
+> (Playwright, in Chromium, Firefox and WebKit) suites run on every change, and a traceability
+> table maps each test to its FR13 requirement."

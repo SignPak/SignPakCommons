@@ -36,10 +36,9 @@ refresh token.
 
 ### 1. SRS change list: `docs/SRS-CHANGES.md` (new)
 
-There is no SRS in the repo. Each entry quotes the current SRS (v1.1) text where it was
-available, says what the system does now (with the file that shows it), and gives suggested
-wording. This table is the list as corrected after verification; see "Fixes after
-verification".
+There is no SRS in the repo. Each entry quotes the current SRS (v1.1) text, says what the
+system does now (with the file that shows it), and gives suggested wording. This table is the
+list as corrected after verification; see "Fixes after verification".
 
 | SRS place | Change |
 | --- | --- |
@@ -47,11 +46,14 @@ verification".
 | §3.3.4, the site bullet | The backend runs on the team's Linux server behind Nginx with HTTPS; Drive through an OAuth refresh token (service account as fallback); Brevo also sends deletion-request codes. |
 | Table 15 (hosting and storage) | The chosen column becomes "Vercel (site) + team server (API) + Google Drive", with suggested row values and a replacement paragraph. |
 | Table 17 (minimum versions) | **No change needed**: the installed React, Vite, Tailwind, Node, Express and Mongoose meet every minimum. |
-| FR13.1 | Optional: change password while logged in. |
+| FR13.1 | **No change needed**; optional addition: change password while logged in. |
 | FR13.12 | Keep; add personal admin accounts, the activity log and the submissions export. |
 | FR13.13 | The emailed code for signed-out requests, the admin deletion tools, and the self-delete sentence (the account goes, recordings stay until a deletion request, as the consent notice says). |
 | SE-4 | **No change needed** (it already says 5 attempts, 15 minutes). |
-| Other security, data, other behaviour, §9 | Listed for checking against the SRS; their v1.1 text was not available for this list. |
+| SE-1, SE-2, SE-8, code expiry (FR1.3 / FR1.5) | **No change needed** (written for the main app; the site meets or exceeds them). Optional sentence in §3.3.4 or §4.13. |
+| FR13.8, OR-10, FR12.1 | **No change needed.** Optional sentence after FR13.8 on the export and the dataset script. |
+| QA-20 / C.3, and behaviour the SRS doesn't describe | **No change needed.** The axe checks, colour contrast included, are the evidence. |
+| §9 Contributor Testing | **No change needed**; `TEST-CASES.md` is the evidence. Optional sentence in §9.x. |
 
 ### 2. Docs
 
@@ -312,3 +314,22 @@ test changed.
 
 **Gate:** docs only. CI runs the full gate on the final commit; the result is in the hand-off
 message and a PR comment.
+
+### The remaining SRS entries, with the v1.1 texts
+
+You sent the v1.1 texts for the entries that had said "not quoted here", with a conclusion for
+each. Docs only.
+
+| Entry | Current text quoted | Conclusion |
+| --- | --- | --- |
+| 5. FR13.1 | sign-up with a 6-digit code; reset with a 6-digit emailed code | No change needed; the optional change-password sentence stays |
+| 9. Security | SE-1, SE-2, SE-8, FR1.3 / FR1.5 (all written for the main app) | No change needed: the site meets or exceeds each (logout also ends the session on the server; admin actions in the activity log and login attempts in the server log; 10-minute codes). Optional sentence for §3.3.4 or §4.13 |
+| 10. Data and ML | FR13.8, OR-10, FR12.1 | No change required. Optional sentence after FR13.8 on the export and the dataset script |
+| 11. Other behaviour | QA-20 (C.3 the same) | No change needed: the axe checks, colour contrast included, are the evidence; contact limits, notifications and lazy pages aren't described in the SRS |
+| 12. §9 Testing | Contributor Testing (FR13.1–FR13.13) | No change needed; `TEST-CASES.md` is the evidence. Optional sentence in §9.x |
+
+- **The status table** at the top of `SRS-CHANGES.md` now gives entries 5, 9, 10 and 12 as "No
+  change needed (optional addition)", and 11 as "No change needed".
+- **Every entry now quotes the SRS,** so the "not quoted here" notes are gone.
+- **Left for the team:** entries 1, 2, 3, 6 and 7, the Figure 5 intro and figure, the §3.3.4
+  bullet, Table 15, FR13.12 and FR13.13.
