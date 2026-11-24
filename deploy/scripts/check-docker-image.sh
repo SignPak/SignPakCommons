@@ -31,6 +31,11 @@ fail() {
 pass() {
   echo "ok: $*"
 }
+# grep -q on a here-string, never on a pipe: with pipefail, `docker logs ... | grep -q` fails
+# whenever grep stops reading at its match before docker logs has written everything (SIGPIPE).
+contains() {
+  grep -q -- "$2" <<< "$1"
+}
 
 # 1. Runs as the non-root node user.
 [ "$(docker image inspect -f '{{.Config.User}}' "$IMAGE")" = "node" ] || fail "the image does not set USER node"
@@ -117,13 +122,13 @@ else
   BASE_URL="http://$(docker port "$API" 5000/tcp | head -n 1)"
 fi
 health="$(curl --fail --silent --show-error "${BASE_URL}/api/v1/health")"
-echo "$health" | grep -q '"status":"ok"' || fail "health from outside the container: $health"
+contains "$health" '"status":"ok"' || fail "health from outside the container: $health"
 pass "GET /api/v1/health from outside the container: $health"
 
 logs="$(docker logs "$API" 2>&1)"
-echo "$logs" | grep -q '"requestTimeoutMs":900000' || fail "the server did not start with the 15-minute request timeout"
+contains "$logs" '"requestTimeoutMs":900000' || fail "the server did not start with the 15-minute request timeout"
 pass "requestTimeout is 900000 ms"
-if echo "$logs" | grep -q 'cannot reach the API'; then
+if contains "$logs" 'cannot reach the API'; then
   fail "the container-on-loopback warning fired with HOST=0.0.0.0"
 fi
 
@@ -131,11 +136,12 @@ fi
 docker run -d --name "$API_LOOPBACK" "${NET_ARGS[@]}" "${ENV_ARGS[@]}" -e PORT=5001 "$IMAGE" > /dev/null
 started=""
 for _ in $(seq 1 30); do
-  if docker logs "$API_LOOPBACK" 2>&1 | grep -q 'API server listening'; then started="yes"; break; fi
+  loopback_logs="$(docker logs "$API_LOOPBACK" 2>&1)"
+  if contains "$loopback_logs" 'API server listening'; then started="yes"; break; fi
   sleep 1
 done
 [ -n "$started" ] || { docker logs "$API_LOOPBACK" >&2 || true; fail "the loopback container did not start"; }
-docker logs "$API_LOOPBACK" 2>&1 | grep -q 'HOST is 127.0.0.1 inside a container' || fail "no warning for HOST=127.0.0.1 in a container"
+contains "$loopback_logs" 'HOST is 127.0.0.1 inside a container' || fail "no warning for HOST=127.0.0.1 in a container"
 docker rm -f "$API_LOOPBACK" > /dev/null
 pass "HOST unset in a container is warned about"
 
@@ -143,7 +149,8 @@ pass "HOST unset in a container is warned about"
 docker stop -t 30 "$API" > /dev/null
 exit_code="$(docker inspect -f '{{.State.ExitCode}}' "$API")"
 [ "$exit_code" = "0" ] || { docker logs "$API" >&2 || true; fail "exit code $exit_code after docker stop"; }
-docker logs "$API" 2>&1 | grep -q '"msg":"Shutdown complete"' || fail "no 'Shutdown complete' in the logs"
+stop_logs="$(docker logs "$API" 2>&1)"
+contains "$stop_logs" '"msg":"Shutdown complete"' || fail "no 'Shutdown complete' in the logs"
 pass "docker stop: graceful shutdown, exit 0"
 
 echo "All image checks passed for $IMAGE"

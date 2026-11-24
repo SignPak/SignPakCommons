@@ -145,6 +145,16 @@ retry or longer timeout was added; the 300 ms limit is unchanged.
 
 ### CI
 
+**A CI failure on the first push, fixed at its cause.** On `a262cfb` the push run was green,
+but the pull-request run's "Docker image" job failed one check: "no warning for HOST=127.0.0.1
+in a container". The server had logged the warning. The fault was in the check script: under
+`set -o pipefail` it piped `docker logs … | grep -q`. `grep -q` stops reading at its first
+match, and the warning is the first log line. When `docker logs` was still writing, it got
+SIGPIPE and the pipeline counted as failed even though the line was there. Shown directly:
+`set -o pipefail; seq 1 300000 | grep -q '^1$'` exits 141. Every `grep -q` in the script now
+reads a variable through a here-string (`contains()`), with no pipe. Afterwards the script
+passed 3 of 3 locally, and shellcheck is clean. No retry or longer wait was added.
+
 The CI runs for the last commit, including the new "Docker image" job, are given in the hand-off
 message and in a PR comment. "Deploy (Coolify)" does not run on a branch or a pull request; it
 first runs after the merge to `main`, and passes with "Deploy skipped" until the two secrets
