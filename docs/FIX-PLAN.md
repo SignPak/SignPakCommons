@@ -18,6 +18,12 @@ Repo: https://github.com/SignPak/SignPakCommons (base commit `b10d90b`).
 | D4 | Verifying deletion requests | **Emailed 6-digit code.** | A signed-out deletion request sends a code to the account's email; the request shows as "verified" once the code is entered. Requests from signed-in contributors are verified straight away. Requests for an email with no account stay "unverified" and are checked by hand. |
 | D5 | Admins | **Separate admin accounts for each team member, plus an activity log.** | Add `ADMIN_EMAILS` (comma-separated). Team members sign up normally; at startup the accounts on the list become admins, and admins not on the list (other than `ADMIN_EMAIL`) go back to normal users. Every admin action is written to an `AuditLog`. |
 
+> **D1 since Phase 11:** the API runs on the team's **Hostinger KVM-8** (Ubuntu) as a
+> **Coolify** application built from `backend/Dockerfile`, behind Coolify's **Traefik** (Let's
+> Encrypt for `api.commons.signpak.tech`), deployed by CI from `main`. The site stays on Vercel
+> and the database on Atlas. The Nginx + PM2 setup above stays in `deploy/` as the documented
+> alternative for a bare server. See `deploy/README.md` and `docs/phase-reports/PHASE-11.md`.
+
 Smaller choices, also settled:
 
 | Topic | Value |

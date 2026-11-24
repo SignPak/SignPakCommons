@@ -1,12 +1,12 @@
 /**
- * Graceful shutdown for SIGTERM/SIGINT (PM2 reload/stop, systemd, Ctrl+C).
+ * Graceful shutdown for SIGTERM/SIGINT (`docker stop` from Coolify, PM2 reload/stop, Ctrl+C).
  *
- * 1. Stop accepting new connections and drop idle keep-alive ones, so `pm2 reload` hands
- *    traffic to the new process instead of to a dying one.
+ * 1. Stop accepting new connections and drop idle keep-alive ones, so the new container (or
+ *    the new process after `pm2 reload`) gets the traffic instead of a dying one.
  * 2. Let in-flight requests finish (an upload can take a while), then close MongoDB.
- * 3. Exit 0. If draining takes longer than `timeoutMs`, exit 1 rather than hang; PM2's
- *    kill_timeout (deploy/ecosystem.config.cjs) is set above this so PM2 never has to SIGKILL
- *    a process that is still closing cleanly.
+ * 3. Exit 0. If draining takes longer than `timeoutMs`, exit 1 rather than hang. Whoever sends
+ *    SIGTERM waits longer than this before SIGKILL: Coolify's stop grace period (30 s by
+ *    default; deploy/README.md) and PM2's kill_timeout (15 s, deploy/ecosystem.config.cjs).
  *
  * Dependencies are injected so the sequence can be unit-tested without a real server.
  */

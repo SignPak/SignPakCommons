@@ -35,6 +35,10 @@ const schema = z.object({
   // Address the server listens on. Unset: 127.0.0.1 in production (only Nginx on the same
   // machine can connect, so nobody can bypass it and forge X-Forwarded-For), 0.0.0.0 elsewhere.
   HOST: z.string().trim().min(1, 'HOST must be an address such as 127.0.0.1; leave it unset for the default.').optional(),
+  // How long one request, body included, may take to arrive (Node's requestTimeout). 15 minutes
+  // lets a 100 MB recording through at about 1 Mbps; Node's own 300 s default would cut it off
+  // below ~2.7 Mbps. At least 60 s, Node's headersTimeout. The proxy must allow as long.
+  REQUEST_TIMEOUT_MS: z.coerce.number().int().min(60_000, 'REQUEST_TIMEOUT_MS must be at least 60000 (one minute).').max(3_600_000, 'REQUEST_TIMEOUT_MS must be at most 3600000 (one hour).').default(900_000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   TRUST_PROXY: bool.default(false),
 

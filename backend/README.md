@@ -18,7 +18,9 @@ Use Node.js 22+ and a MongoDB instance (local or Atlas). Environment values are
 validated while loading the app. The standalone server binds its listener and
 initializes MongoDB, selected storage drivers, and the configured admin.
 Requests wait for the same shared initialization to finish. In production it runs
-under PM2 behind Nginx on the team's own server; see [deploy/README.md](../deploy/README.md).
+as a Docker container (`Dockerfile`) under Coolify behind Traefik on the team's Hostinger
+server; Nginx + PM2 on a bare server is the documented alternative. See
+[deploy/README.md](../deploy/README.md).
 
 ## Architecture
 

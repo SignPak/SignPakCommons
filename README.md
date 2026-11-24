@@ -14,7 +14,7 @@ We also want to thank all contributors who are helping grow this dataset, improv
 
 - [Backend docs](backend/docs/README.md): setup, the API, architecture and the dataset script.
 - [Frontend docs](frontend/docs/README.md): architecture, modules and setup.
-- [Deployment](deploy/README.md): the API on the team server (Nginx, PM2) and the site on Vercel.
+- [Deployment](deploy/README.md): the API as a Coolify application (Docker image, Traefik) on the team's Hostinger server, the site on Vercel; Nginx + PM2 on a bare server as the alternative.
 - [End-to-end tests](e2e/README.md), including the `@smoke` run against the live site.
 - [Test cases and traceability](backend/docs/TEST-CASES.md): every test, mapped to the SRS.
 - [Changelog](CHANGELOG.md) and the [SRS changes](docs/SRS-CHANGES.md) for the team.

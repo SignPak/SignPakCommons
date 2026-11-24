@@ -96,9 +96,10 @@ URL-encode special characters in the database username or password.
 | `NODE_ENV` | Set manually: `development`, `test`, or `production` | Selects runtime behavior and production cookie defaults. |
 | `PORT` | Set manually; default `5000` | Port used by the Express server. |
 | `MONGODB_URI` | Your MongoDB connection string (section 4) | The database. Required. |
-| `HOST` | Usually leave unset | Address the server listens on. Unset: `127.0.0.1` in production, so only Nginx on the same machine can reach Node (nobody can bypass it and forge `X-Forwarded-For`); `0.0.0.0` in development and test. Set it only for an unusual topology. |
+| `HOST` | Coolify: `0.0.0.0`. Bare server: leave unset | Address the server listens on. Unset: `127.0.0.1` in production, so only Nginx on the same machine can reach Node (nobody can bypass it and forge `X-Forwarded-For`); `0.0.0.0` in development and test. In the Coolify container set `HOST=0.0.0.0`, or Traefik cannot reach it; that is safe only while the application publishes no host port ("Ports Mappings" empty), so Traefik is the only way in. The server warns at startup when it runs in a container on loopback. |
+| `REQUEST_TIMEOUT_MS` | Set manually; default `900000` (15 minutes), allowed 60000–3600000 | How long one request, body included, may take to arrive (Node's `server.requestTimeout`). Node's own 300 s would cut off a 100 MB recording below about 2.7 Mbps. The proxy must allow as long: Traefik's entry point `readTimeout=900s` under Coolify (deploy/README.md). |
 | `LOG_LEVEL` | Set manually: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent` | Controls structured log verbosity. |
-| `TRUST_PROXY` | Set `true` behind a trusted reverse proxy | Enables Express proxy awareness for client IPs used by rate limits and access restrictions. |
+| `TRUST_PROXY` | Set `true` behind a trusted reverse proxy | Enables Express proxy awareness for client IPs used by rate limits and access restrictions. It trusts exactly one proxy: Traefik under Coolify, or Nginx on a bare server. |
 | `CLIENT_ORIGIN` | Frontend URL, for example `http://localhost:5173` | CORS allowlist and state-changing request origin check. Separate multiple origins with commas. |
 
 ### Authentication and cookies
@@ -143,9 +144,9 @@ The admin is ensured on every startup. Changing `ADMIN_PASSWORD` later does not 
 password and the activity log (Admin → Activity) shows who did what:
 
 1. The team member signs up on the site in the normal way (email code and consent).
-2. Add their email to `ADMIN_EMAILS` in `backend/.env`, for example
-   `ADMIN_EMAILS=nida@example.com,omar@example.com`.
-3. Restart the API (`pm2 reload deploy/ecosystem.config.cjs`). At startup every verified account on
+2. Add their email to `ADMIN_EMAILS` (in Coolify's environment variables, or `backend/.env`
+   on a bare server), for example `ADMIN_EMAILS=nida@example.com,omar@example.com`.
+3. Restart the API (Coolify: **Restart**; bare server: `pm2 reload deploy/ecosystem.config.cjs`). At startup every verified account on
    `ADMIN_EMAIL` or `ADMIN_EMAILS` becomes an admin.
 
 To remove an admin, delete their email from the list and restart: at startup an admin who is
@@ -283,8 +284,9 @@ npm start
 
 `server.js` logs any configuration warnings, binds the HTTP listener and starts service
 initialization; requests await the same shared initialization promise before routing. In
-production PM2 runs it (`deploy/ecosystem.config.cjs`); `SIGTERM` drains in-flight requests
-and closes MongoDB before exiting. Initialization does the following:
+production it runs in the Docker image from `backend/Dockerfile` under Coolify (or under PM2,
+`deploy/ecosystem.config.cjs`, on a bare server); `SIGTERM` drains in-flight requests and
+closes MongoDB before exiting. Initialization does the following:
 
 1. Validate environment variables while loading the app.
 2. Connect to MongoDB if it is not already connected.
@@ -347,14 +349,16 @@ The browser must send credentials for the HTTP-only authentication cookie. In pr
 
 ## 10. Production checklist
 
-The step-by-step server guide (Nginx, PM2, certbot, firewall, DNS, Vercel) is
-[deploy/README.md](../../deploy/README.md). Start `backend/.env` from
-`.env.production.example`.
+The step-by-step guide is [deploy/README.md](../../deploy/README.md): Coolify on the team's
+server (the main path: Docker image from `backend/Dockerfile`, Traefik, DNS, Vercel), and Nginx +
+PM2 on a bare server as the alternative. Take the variables from `.env.production.example`.
 
 - Use MongoDB Atlas or a managed MongoDB deployment.
-- Set `TRUST_PROXY=true` (the API is behind Nginx); the server warns at startup otherwise.
+- Set `TRUST_PROXY=true` (the API is behind Traefik or Nginx); the server warns at startup otherwise.
+- Under Coolify set `HOST=0.0.0.0` and publish no host port.
 - Check `GET /api/v1/health` reports `"status":"ok"`, `"database":"connected"` and
-  `"storage":true` (`deploy/deploy.sh` does this after every deploy).
+  `"storage":true` (the image's health check does this for every Coolify deploy;
+  `deploy/deploy.sh` on a bare server).
 - Set `NODE_ENV=production`.
 - Generate a unique `JWT_SECRET` and store it in the host secret manager.
 - Set a strong admin password and never expose it to the frontend.

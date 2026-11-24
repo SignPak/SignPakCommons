@@ -7,19 +7,24 @@ Mongoose. Environment validation lives in `src/config/env.js`. The HTTP app is
 composed in `src/app.js`; it exports an Express app without binding its own port so
 that tests can import it.
 
-In production the API is one long-running Node process on the team's own Linux server,
-kept alive by PM2 (one process, fork mode) behind Nginx with HTTPS at `api.commons.signpak.tech`;
-the website is on Vercel at `commons.signpak.tech`. The deployment files and the server guide
-are in `deploy/`.
+In production the API is one long-running Node process in a Docker container (`Dockerfile`,
+one replica) that Coolify runs on the team's Hostinger KVM-8, behind Coolify's Traefik with
+HTTPS at `api.commons.signpak.tech`; the website is on Vercel at `commons.signpak.tech`. CI
+builds and checks the image and triggers the deploy from `main`. The guide is in `deploy/`,
+which also keeps the earlier setup (PM2, one fork-mode process, behind Nginx) for a bare
+server.
 
 `server.js` is the entry point. It logs configuration warnings from
 `src/config/startupChecks.js` (for example `TRUST_PROXY` off in production), starts the
-HTTP listener on `HOST` (`127.0.0.1` in production, so only Nginx on the same machine can
-connect and nobody can bypass it to forge `X-Forwarded-For`; `0.0.0.0` elsewhere), and starts
-initialization straight away. On `SIGTERM`/`SIGINT` it shuts down
-gracefully (`src/utils/gracefulShutdown.js`): it stops accepting connections, lets in-flight
-requests finish, closes MongoDB, and exits, or exits 1 after 10 seconds. PM2 waits 15 seconds
-before forcing it.
+HTTP listener on `HOST` (`src/utils/httpServer.js`), and starts initialization straight
+away. `HOST` is `127.0.0.1` in production by default, so on a bare server only Nginx on the same
+machine can connect and nobody can bypass it to forge `X-Forwarded-For`; under Coolify it is
+set to `0.0.0.0` with no host port published, so only Traefik reaches it; `0.0.0.0` elsewhere.
+A request, body included, may take `REQUEST_TIMEOUT_MS` (15 minutes) to arrive, so slow
+uploads of 100 MB recordings are not cut off at Node's 300 s default. On `SIGTERM`/`SIGINT` it
+shuts down gracefully (`src/utils/gracefulShutdown.js`): it stops accepting connections, lets
+in-flight requests finish, closes MongoDB, and exits, or exits 1 after 10 seconds. Coolify waits
+30 seconds (its default stop grace period) and PM2 15 seconds before forcing it.
 
 Initialization is idempotent and shared between startup and requests:
 `src/services/initialization.js` connects MongoDB, initializes the selected storage drivers,
@@ -220,7 +225,8 @@ OAuth refresh token expired or was revoked, usually because the consent screen w
   the IP.
 - Contact requires a signed-in account email match and enforces per-account and
   global daily quotas; abusive attempts may create a temporary device/IP block.
-- `TRUST_PROXY` makes Express trust exactly one proxy hop (Nginx). With it, `req.ip`
+- `TRUST_PROXY` makes Express trust exactly one proxy hop (Traefik, or Nginx on a bare
+  server). With it, `req.ip`
   is the visitor's address from `X-Forwarded-For`; rate limits, IP restrictions and the
   `clientIp` field on every request log line all use it. Without it, a client-supplied
   `X-Forwarded-For` is ignored. Production must set it; the server warns at startup if not.

@@ -26,17 +26,17 @@ checklist item it guards. This table is the source for Section 9 of the SRS/fina
 - **Level** is unit, integration, security or E2E, matching the layout in
   `docs/FIX-PLAN.md` section 4.1.
 
-Counts as of **Phase 10** (backend 1.0.16, frontend 1.0.18):
+Counts as of **Phase 11** (backend 1.0.17, frontend 1.0.18):
 
 | Level | Where | Files | Cases |
 | --- | --- | ---: | ---: |
-| Unit (backend) | `backend/tests/unit/` | 39 | 212 |
-| Integration (backend) | `backend/tests/integration/` | 22 | 162 |
+| Unit (backend) | `backend/tests/unit/` | 40 | 219 |
+| Integration (backend) | `backend/tests/integration/` | 23 | 163 |
 | Security (backend) | `backend/tests/security/` | 8 | 81 |
 | Unit (frontend) | `frontend/test/unit/` | 18 | 94 |
 | Integration (frontend) | `frontend/test/integration/` | 10 | 124 |
 | End-to-end | `e2e/tests/` | 16 | 93 (31 tests × 3 browsers; the editor's axe check, the record flow and the upload limit run in Chromium only) |
-| **Total** | | **113** | **766** |
+| **Total** | | **115** | **774** |
 
 The backend security count is per-route: the access matrix produces one case per route (57
 today) plus the completeness check; the hook suite adds three, the production-error suite
@@ -259,6 +259,13 @@ suite four, the admin-deletion suite two and the JWT suite six. Frontend cases c
 | U-210 | `docsSync.test.js` | Docs: every API route is in the OpenAPI spec | — (documentation, no SRS requirement) | — | unit |
 | U-211 | `docsSync.test.js` | Docs: every environment variable is in .env.example, .env.production.example and setup.md | — (documentation, no SRS requirement) | — | unit |
 | U-212 | `traceability.test.js` | every FR13.x requirement and every checklist ID has at least one test | — (test infrastructure, no SRS requirement) | — | unit |
+| U-213 | `httpServer.test.js` | D1: the server gets REQUEST_TIMEOUT_MS as requestTimeout; headersTimeout and keepAliveTimeout keep Node's defaults | FR13.8 | C1 (D1, Phase 11) | unit |
+| U-214 | `httpServer.test.js` | D1: REQUEST_TIMEOUT_MS defaults to 15 minutes, takes a value, and refuses 0, text and values under 60 s | FR13.8 | C1 (D1, Phase 11) | unit |
+| U-215 | `startupChecks.test.js` | D1: in a container, a loopback HOST in production is warned about | — (deployment safety, no SRS requirement) | C1, S3 (D1, Phase 11) | unit |
+| U-216 | `deployConfig.test.js` | D1: the Dockerfile builds a slim production image of Node 22 that runs as the node user | QA-3 | C1 (D1, Phase 11) | unit |
+| U-217 | `deployConfig.test.js` | D1: .dockerignore sends only the app: no tests, .env files, node_modules, coverage, uploads or scripts | — (deployment safety, no SRS requirement) | C1 (D1, Phase 11) | unit |
+| U-218 | `deployConfig.test.js` | D1: the Coolify guide comes first and names the settings the API depends on | FR13.8, QA-3 | C1, S3 (D1, Phase 11) | unit |
+| U-219 | `deployConfig.test.js` | D1: CI builds and checks the image, and deploys only from main, after every other job, through a POST webhook | QA-3 | C1 (D1, Phase 11) | unit |
 
 ## 2. Backend integration tests — `backend/tests/integration/`
 
@@ -429,6 +436,7 @@ MongoDB, local storage in a temporary folder, captured email and a recording con
 | I-160 | `api-request-id.test.js` | S10: a valid incoming X-Request-Id is echoed back unchanged | SE-10 | S10 | integration |
 | I-161 | `api-request-id.test.js` | S10: an invalid one is never echoed: the response carries a fresh UUID | SE-10 | S10 | integration |
 | I-162 | `api-request-id.test.js` | S10: without the header, every response gets its own UUID | SE-10 | S10 | integration |
+| I-163 | `requestTimeout.test.js` | D1: an upload slower than REQUEST_TIMEOUT_MS is cut off with 408; one within it gets its response | FR13.8 | C1 (D1, Phase 11) | integration |
 
 ## 3. Backend security tests — `backend/tests/security/`
 
@@ -705,6 +713,7 @@ Drive upload`) and a row here.
 | B5, B7 | **Covered in Phase 8** (U-183–U-202, U-180 and U-182 reordered for item 6, I-126–I-149, the two new access-matrix routes, FI-38–FI-45, E-12; after verification U-203–U-206 and I-150–I-159). The dataset script is run for real with ffmpeg on local files (I-156–I-159); Drive downloads are covered by unit tests only. | 8 |
 | S8, S10 | **Covered in Phase 9** (U-207–U-209, I-160–I-162, FU-43–FU-63, E-13–E-20). Every E2E test also runs under the CSP and fails on any violation (`e2e/support/test.js`). | 9 |
 | all | **Done in Phase 10.** `traceability.test.js` now fails if any FR13.1–FR13.13 or any checklist ID C1–C5, S1–S10, B1–B8 has no test (U-212). Also new: the docs-sync tests (U-210–U-211), the API client and utils tests (FU-79–FU-94, FI-46–FI-77), and E2E for every automatable line of the production checklist, plus the `@smoke` subset (E-25–E-31). | 10 |
+| C1 (D1 changed) | **Phase 11: the API on Coolify.** U-213–U-219 and I-163 (the request timeout, the container warning, the Dockerfile, `.dockerignore`, the Coolify guide and the CI jobs). The built image itself is checked in CI by `deploy/scripts/check-docker-image.sh` (job "Docker image": runs as `node`, no tests or `.env` files or dev dependencies, bcrypt works, healthy against a real MongoDB, `requestTimeoutMs` 900000, graceful `docker stop`); it is a CI script, not a row here. Coolify and Traefik themselves are checked on the server: see `docs/phase-reports/PHASE-11.md`. | 11 |
 
 ## 8. Running the suites
 
