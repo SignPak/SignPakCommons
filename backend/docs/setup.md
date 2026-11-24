@@ -95,6 +95,7 @@ URL-encode special characters in the database username or password.
 | --- | --- | --- |
 | `NODE_ENV` | Set manually: `development`, `test`, or `production` | Selects runtime behavior and production cookie defaults. |
 | `PORT` | Set manually; default `5000` | Port used by the Express server. |
+| `MONGODB_URI` | Your MongoDB connection string (section 4) | The database. Required. |
 | `HOST` | Usually leave unset | Address the server listens on. Unset: `127.0.0.1` in production, so only Nginx on the same machine can reach Node (nobody can bypass it and forge `X-Forwarded-For`); `0.0.0.0` in development and test. Set it only for an unusual topology. |
 | `LOG_LEVEL` | Set manually: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent` | Controls structured log verbosity. |
 | `TRUST_PROXY` | Set `true` behind a trusted reverse proxy | Enables Express proxy awareness for client IPs used by rate limits and access restrictions. |
@@ -115,6 +116,9 @@ URL-encode special characters in the database username or password.
 | `AUTH_OTP_MAX_ATTEMPTS` | Set manually; default `5`, range `1`–`10` | Maximum code verification attempts. A wrong sign-up password at the verify step counts as one. |
 | `AUTH_LOCKOUT_ATTEMPTS` | Set manually; default `5`, range `1`–`50` | Wrong passwords in a row before an account is locked (S2, SE-4). The count resets after a successful login, a password reset or a password change. |
 | `AUTH_LOCKOUT_MINUTES` | Set manually; default `15`, range `1`–`1440` | How long a locked account refuses every login, even with the right password. Forgot password still works and ends the lock. |
+| `BREVO_API_KEY` | Brevo → SMTP & API → API keys; keep secret | Sends verification, reset and deletion-request codes. Required in production. |
+| `BREVO_SENDER_EMAIL` | A sender on a domain authenticated in Brevo; production uses `no-reply@signpak.tech` (D2) | The address the codes come from. Required in production. |
+| `BREVO_SENDER_NAME` | Set manually; default `SignPak Commons` | The sender name shown in the inbox. |
 | `EMAIL_DRIVER` | `brevo` or `capture`; default `brevo` | How verification and reset codes are delivered. `capture` keeps them in memory for the automated tests and never sends anything; the server refuses to start with `capture` when `NODE_ENV=production`. |
 
 Generate a JWT secret:

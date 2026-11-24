@@ -189,9 +189,9 @@ local file, optionally remove audio, and trim its start and end. When processing
 is needed, `processVideo` loads ffmpeg.wasm on demand and processes the file in
 the browser; trimming re-encodes the selected range, while audio-only removal
 copies the video stream. No processing happens on the backend. The core is
-downloaded from jsDelivr on first use, so the browser needs network access to
-that CDN to apply changes. If processing fails, the UI reports the error and
-allows an unchanged original upload.
+served by the site itself from `/ffmpeg/` (see "ffmpeg.wasm" below) and downloaded
+on first use. If processing fails, the UI reports the error and allows an unchanged
+original upload.
 
 `inspectVideoFile` reads the browser-reported duration and displayed dimensions
 (including rotation metadata) and captures a poster frame locally. For each

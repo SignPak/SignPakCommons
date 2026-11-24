@@ -77,6 +77,14 @@ await mongoose.models.User.create({
   email: 'admin2@signpak.test', firstName: 'Nida', surname: 'Second', role: 'user', emailVerified: true,
   passwordHash: await bcrypt.hash(process.env.E2E_ADMIN2_PASSWORD || 'Admin2@12345', 4),
 })
+// Phase 10: the contributor the @smoke specs sign in as when they run locally (e2e/tests/smoke.spec.js).
+// Against production they use a real test account from SMOKE_EMAIL / SMOKE_PASSWORD instead.
+const { CONSENT_VERSION } = await import('../src/config/constants.js')
+await mongoose.models.User.create({
+  email: 'smoke@signpak.test', firstName: 'Sana', surname: 'Smoke', role: 'user', emailVerified: true,
+  passwordHash: await bcrypt.hash('Smoke@12345', 4),
+  consent: { acceptedAt: new Date(), version: CONSENT_VERSION },
+})
 await authService.ensureAdminFromEnv()
 
 const server = app.listen(PORT, HOST, () => {

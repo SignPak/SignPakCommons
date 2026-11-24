@@ -20,8 +20,9 @@ const DEFINED_SE = new Set(['SE-1', 'SE-2', 'SE-3', 'SE-4', 'SE-6', 'SE-9', 'SE-
 // QA-20 (accessibility, SRS C.3) since Phase 9.
 const REQUIREMENT_TOKEN = /^(FR13\.(?:[1-9]|1[0-3])|OR-19|UI 3\.1\.1\.3|QA-3|QA-20|SE-\d+)$/
 // browser hardening (the site's CSP and headers), bundle size and deploy updates (stale
-// chunks after a deploy) since Phase 9.
-const NO_REQUIREMENT = /^— \((test infrastructure|deployment safety|API metadata|browser hardening|bundle size|deploy updates), no SRS requirement\)$/
+// chunks after a deploy) since Phase 9; documentation, API client and frontend helpers since
+// Phase 10.
+const NO_REQUIREMENT = /^— \((test infrastructure|deployment safety|API metadata|browser hardening|bundle size|deploy updates|documentation|API client|frontend helpers), no SRS requirement\)$/
 
 // Where each ID prefix's test files live.
 const LOCATIONS = {
@@ -76,4 +77,22 @@ test('every row in TEST-CASES.md points at a test that exists', () => {
     if (!expanded) problems.push(`${row.id}: no test named "${row.name}" in ${row.file}`)
   }
   assert.deepEqual(problems, [])
+})
+
+// FIX-PLAN Phase 10 item 5: the final check, kept as a test. Every contribution-site requirement
+// and every review checklist item must be guarded by at least one test in the table.
+test('every FR13.x requirement and every checklist ID has at least one test', () => {
+  const required = [
+    ...Array.from({ length: 13 }, (_, index) => `FR13.${index + 1}`),
+    ...Array.from({ length: 5 }, (_, index) => `C${index + 1}`),
+    ...Array.from({ length: 10 }, (_, index) => `S${index + 1}`),
+    ...Array.from({ length: 8 }, (_, index) => `B${index + 1}`),
+  ]
+  const cited = new Set()
+  for (const row of rows) {
+    for (const token of row.requirement.split(',')) cited.add(token.trim())
+    // The checklist column may carry a note, e.g. "C3 (to change)" or "S7, B5".
+    for (const match of row.checklist.matchAll(/\b([CSB]\d+)\b/g)) cited.add(match[1])
+  }
+  assert.deepEqual(required.filter((id) => !cited.has(id)), [], 'requirements or checklist items with no test')
 })
