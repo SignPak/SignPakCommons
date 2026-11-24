@@ -36,20 +36,22 @@ refresh token.
 
 ### 1. SRS change list: `docs/SRS-CHANGES.md` (new)
 
-There is no SRS in the repo, so each entry gives the SRS place, what the system does now (with
-the file that shows it), and suggested wording. Status: **to do (team)**.
+There is no SRS in the repo. Each entry quotes the current SRS (v1.1) text where it was
+available, says what the system does now (with the file that shows it), and gives suggested
+wording. This table is the list as corrected after verification; see "Fixes after
+verification".
 
 | SRS place | Change |
 | --- | --- |
-| Figure 5, §3.3.4 | The API runs on the team's VPS (Node 22, PM2, Nginx, Let's Encrypt) at `api.commons.signpak.tech`; the site is on Vercel at `commons.signpak.tech`. Not Railway, no Vercel backend. One site, so the host-only `SameSite=Lax` cookie works. |
-| Table 15 | Google Drive OAuth refresh token (used), next to the service account (alternative), with the variables. |
-| Table 17 | Every direct dependency with its range and installed version, from the lockfiles; Node 22; what was removed. |
-| FR13.13 | The self-delete sentence you asked for (the account goes, recordings stay until a deletion request, as the consent notice says); the emailed code for signed-out requests; the admin deletion tools. |
-| FR13.12, roles | Personal admin accounts (`ADMIN_EMAILS`), the activity log, the admin tabs. |
-| SE-x | Lockout 5 / 15 min, sessions ended on logout and password change, 10-minute codes, 24-hour sign-up expiry, the CSP, `X-Request-Id`. |
-| Data and ML | The CSV/JSON export (no names or emails), `prepare-dataset.js`, the 100 MB limit and the accepted formats. |
-| Other | Contact limits, per-browser notifications, lazy pages, the WCAG 2.1 AA checks. |
-| §9 | `TEST-CASES.md` as the traceability table, with the final counts. |
+| §2, the Figure 5 intro and Figure 5 | The site runs on Vercel with its API on the team's own server; the diagram shows Nginx → Node (PM2). |
+| §3.3.4, the site bullet | The backend runs on the team's Linux server behind Nginx with HTTPS; Drive through an OAuth refresh token (service account as fallback); Brevo also sends deletion-request codes. |
+| Table 15 (hosting and storage) | The chosen column becomes "Vercel (site) + team server (API) + Google Drive", with suggested row values and a replacement paragraph. |
+| Table 17 (minimum versions) | **No change needed**: the installed React, Vite, Tailwind, Node, Express and Mongoose meet every minimum. |
+| FR13.1 | Optional: change password while logged in. |
+| FR13.12 | Keep; add personal admin accounts, the activity log and the submissions export. |
+| FR13.13 | The emailed code for signed-out requests, the admin deletion tools, and the self-delete sentence (the account goes, recordings stay until a deletion request, as the consent notice says). |
+| SE-4 | **No change needed** (it already says 5 attempts, 15 minutes). |
+| Other security, data, other behaviour, §9 | Listed for checking against the SRS; their v1.1 text was not available for this list. |
 
 ### 2. Docs
 
@@ -252,7 +254,7 @@ Mark each line and send me the results; I'll record them here as a fix after ver
 3. **IP restrictions in E2E:** device restrictions only, for the reason above. The API test I-45
    covers IP restrictions.
 4. **The SRS itself is not edited here.** `docs/SRS-CHANGES.md` is the list for the team; its
-   wording was written without the SRS text, so each entry needs checking against the document.
+   wording was first written without the SRS text; after verification it quotes the v1.1 text where it was available (see "Fixes after verification").
 
 ## Known risks
 
@@ -264,3 +266,49 @@ Mark each line and send me the results; I'll record them here as a fix after ver
 3. **The raised frontend floors are tight** (rounded down from today's figures). A change that
    removes tested code or adds untested code to `src/utils` or `src/services` will need tests to
    pass the gate, which is the point.
+
+## Fixes after verification
+
+### `docs/SRS-CHANGES.md` checked against the SRS text (v1.1)
+
+You checked the list against SRS v1.1 and sent the exact current texts. Docs only; no code or
+test changed.
+
+1. **Table 15 is the hosting and storage comparison, not a credentials table.**
+   - Section 3 is rewritten. The chosen column "Vercel + Google Drive (chosen)" becomes "Vercel
+     (site) + team server (API) + Google Drive".
+   - It suggests values for the three rows ("Team access to recordings", "Public availability for
+     volunteers", "Setup and maintenance").
+   - It suggests a replacement for the paragraph under the table: site on Vercel, API on the
+     team's Linux server behind Nginx at `api.commons.signpak.tech`, one site with
+     `commons.signpak.tech` so the cookie works in every browser, and Drive through an OAuth
+     refresh token with a service account as the fallback.
+   - The env-variable table is gone; `setup.md` has it.
+   - The entry also notes that the "University server" column can stay, since D1 leaves the API's
+     server open between a Hostinger VPS and the university server.
+2. **Table 17 is "Minimum software versions" and needs no change.**
+   - The installed versions meet every row:
+     - React 19.3.0 ≥ 19.2, Vite 8.3.6 ≥ 8.3, Tailwind CSS 4.3.3 ≥ 4.3;
+     - Node 22 ≥ 22, Express 4.22.3 ≥ 4.22, Mongoose 7.8.13 ≥ 7.8.
+   - Section 4 now says only that. The full package list is removed from the SRS change list and
+     not moved anywhere: the lockfiles hold it.
+3. **Every entry now opens with the current text, so the team can find it.**
+   - Quoted:
+     - the §3.3.4 Community Contribution Site bullet;
+     - the end of the Figure 5 intro, with a suggested replacement clause;
+     - FR13.13;
+     - FR13.12;
+     - SE-4, marked **no change needed**.
+   - FR13.1 is an optional addition (change password while logged in).
+   - **No v1.1 text was available** for FR13.1, the other security topics, data and ML, other
+     behaviour or §9. Those entries say "not quoted here" and name where to look in the SRS,
+     instead of a guessed quote.
+4. **The entries are reordered** by SRS location, with a status table at the top: to do, no
+   change needed, optional, or check against the SRS.
+5. **Related text corrected:**
+   - The `CHANGELOG.md` Phase 10 entry and the SRS table in this report now say the same.
+   - The new Table 15 row value says "Vercel builds and hosts the site". Nothing in the repository
+     says how the Vercel project is connected, so I didn't claim it deploys from GitHub.
+
+**Gate:** docs only. CI runs the full gate on the final commit; the result is in the hand-off
+message and a PR comment.

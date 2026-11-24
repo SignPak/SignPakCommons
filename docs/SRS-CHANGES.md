@@ -1,236 +1,265 @@
 # SRS changes after the review fixes
 
-What the SRS should say after Phases 0–10 of `docs/FIX-PLAN.md`. The SRS is edited by the team in
-Word; it is not in this repository, so each entry gives:
+What the SRS (v1.1) should say after Phases 0–10 of `docs/FIX-PLAN.md`. The SRS is edited by the
+team in Word; it is not in this repository. Each entry gives:
 
-- the place in the SRS;
-- what the system does now, with the file that shows it;
-- suggested wording to adapt.
+- **Current text:** the SRS text as it reads in v1.1, quoted, so it can be found with a search.
+  Where no v1.1 text was available for this list, the entry says so and names where to look.
+- **Now:** what the system does, with the file that shows it.
+- **Suggested:** replacement wording to adapt, or "no change needed".
 
-Check each entry against the current SRS text: where the SRS already says the same, nothing needs
-to change.
+| # | SRS place | Status |
+| --- | --- | --- |
+| 1 | §2 Deployment Diagram: the Figure 5 intro, and Figure 5 | To do (team) |
+| 2 | §3.3.4: the Community Contribution Site bullet | To do (team) |
+| 3 | Table 15 and the paragraph under it | To do (team) |
+| 4 | Table 17 | **No change needed** |
+| 5 | FR13.1 | Optional addition |
+| 6 | FR13.12 | To do (team) |
+| 7 | FR13.13 | To do (team) |
+| 8 | SE-4 | **No change needed** |
+| 9 | Other security behaviour | Check against the SRS |
+| 10 | Recordings, data and the ML dataset | Check against the SRS |
+| 11 | Other behaviour | Check against the SRS |
+| 12 | §9 Testing | Check against the SRS |
 
-Status of every item: **to do (team)**.
+## 1. The Figure 5 intro and Figure 5 (§2, Deployment Diagram)
 
-## 1. Hosting: Figure 5 and section 3.3.4
+**Current text (the end of the Figure 5 intro):**
 
-**Now:**
-- **API:** the contribution site's API runs on the team's own Linux server: a Hostinger VPS, or
-  the university server, with the same setup on both. It is Node.js 22, kept running by PM2 (one
-  process, fork mode), behind Nginx with HTTPS from Let's Encrypt, at `api.commons.signpak.tech`.
-- **Site:** the React site stays on Vercel at `commons.signpak.tech`.
-- **Not Railway, and not a backend on Vercel.** There is no Vercel- or Railway-specific code
-  left (`deploy/`, `deploy/README.md`).
-- **The login cookie:** the two hosts are one *site* (`signpak.tech`), so the cookie is host-only
-  and `SameSite=Lax`, and works in every browser, Safari included.
-- **Services:**
-  - email: Brevo, from `no-reply@signpak.tech`;
-  - files: Google Drive;
-  - data: MongoDB Atlas.
+> "...while sentence generation is handled by the Groq cloud API and the Community Contribution
+> Site runs on Vercel (Section 3.3.4)."
 
-**Suggested wording (3.3.4):**
+**Now:** only the site runs on Vercel. Its API runs on the team's own Linux server
+(`deploy/README.md`).
 
-> The contribution site is split in two. The web client, a React single-page application, is
-> hosted on Vercel at `commons.signpak.tech`. The API, a Node.js 22 / Express application, runs on
-> the team's own Linux server at `api.commons.signpak.tech`, kept running by PM2 behind an Nginx
-> reverse proxy that terminates HTTPS (Let's Encrypt). The API stores data in MongoDB Atlas,
-> stores reference videos and contributor recordings in Google Drive, and sends verification
-> codes by email through Brevo.
+**Suggested replacement for that clause:**
+
+> "...while sentence generation is handled by the Groq cloud API, and the Community Contribution
+> Site runs on Vercel with its API on the team's own server (Section 3.3.4)."
 
 **Figure 5:**
-- Redraw the deployment boxes as: Browser → Vercel (site) and Browser → Nginx → Node/PM2 (API)
-  on the team server.
+- Show the site as Browser → Vercel.
+- Show its API as Browser → Nginx → Node.js (PM2) on the team server, at
+  `api.commons.signpak.tech`.
 - The API connects to MongoDB Atlas, Google Drive and Brevo.
-- Remove any Vercel or Railway box for the backend.
+- No backend box on Vercel (and none on Railway, which the code also no longer uses).
 
-## 2. Google Drive sign-in: Table 15
+## 2. The Community Contribution Site bullet (§3.3.4)
 
-**Now:** Drive is reached through an **OAuth refresh token** (D3), with a service account still
-supported as the alternative.
+**Current text:**
 
-| Credential | Variables | Note |
+> "A separate web application built with React 19, Vite and Tailwind CSS, hosted on Vercel. It
+> has its own backend (Express on Node.js with a MongoDB database). Submitted recordings are
+> stored on Google Drive through a service account, and email verification and password reset
+> codes are sent through Brevo."
+
+**Now:**
+- **The site** (React, Vite, Tailwind CSS) is on Vercel at `commons.signpak.tech`.
+- **The backend** (Express on Node.js 22, MongoDB Atlas) runs on the team's own Linux server at
+  `api.commons.signpak.tech`, behind Nginx with HTTPS (Let's Encrypt), kept running by PM2.
+  - The server is a Hostinger VPS or the university server; the setup works on both (FIX-PLAN D1).
+- **Google Drive** is connected through an OAuth refresh token; a service account is still
+  supported as the fallback (D3).
+- **Brevo** sends the codes, from `no-reply@signpak.tech`. Besides verification and password
+  reset, it also sends the codes that confirm a signed-out deletion request.
+
+**Suggested replacement:**
+
+> "A separate web application built with React 19, Vite and Tailwind CSS, hosted on Vercel. Its
+> backend (Express on Node.js with a MongoDB database) runs on the team's own Linux server
+> behind an Nginx reverse proxy with HTTPS. Submitted recordings are stored on Google Drive
+> through an OAuth refresh token (a service account can be used instead), and email
+> verification, password reset and deletion-request codes are sent through Brevo."
+
+## 3. Table 15 and the paragraph under it
+
+**Current text:**
+- **Title:** "Table 15. Comparison of Community Contribution Site hosting and storage".
+- **Columns:** "Vercel + Google Drive (chosen)", "University server" and "Paid cloud (e.g.,
+  AWS S3 storage + EC2 server)".
+- **Rows:** "Team access to recordings", "Public availability for volunteers" and "Setup and
+  maintenance".
+- **The paragraph under it:**
+
+  > "The contribution site has to be reachable by volunteers at any time. Hosting it on Vercel
+  > keeps it separate from the university server. Google Drive was simple to connect through a
+  > service account, and the team can open and download the recordings directly when preparing
+  > training data."
+
+**Now:** the site is on Vercel, the API on the team's own server, and the files on Google Drive.
+The chosen option is therefore no longer "Vercel + Google Drive".
+
+**Suggested:**
+- **Rename the chosen column** to "Vercel (site) + team server (API) + Google Drive".
+- **Its row values:**
+
+| Row | Suggested value for the chosen column |
+| --- | --- |
+| Team access to recordings | The team opens and downloads the recordings directly in Google Drive. The admin export lists every recording with its trim and mirror values, and the dataset script applies them. |
+| Public availability for volunteers | The site is served by Vercel. The API runs on the team's server behind Nginx with HTTPS, and PM2 restarts it if it stops. Both are reachable at any time, independent of any one person's computer. |
+| Setup and maintenance | Vercel builds and hosts the site. The team maintains one Linux server (Node.js 22, PM2, Nginx and certificate renewal), with scripts and a step-by-step guide in the repository. The Google OAuth consent screen must stay "In production". |
+
+- **The other two columns can stay as they are.** "University server" compares hosting
+  everything there. The team server for the API may itself be the university server: D1 leaves
+  the choice between a Hostinger VPS and the university server open.
+
+**Suggested replacement paragraph:**
+
+> "The contribution site has to be reachable by volunteers at any time. The site is hosted on
+> Vercel, and its API runs on the team's own Linux server behind Nginx at
+> `api.commons.signpak.tech`. Because the API is on the same site as `commons.signpak.tech`, the
+> login cookie works in every browser, including Safari. Google Drive is connected through an
+> OAuth refresh token, with a service account as the fallback, and the team can open and
+> download the recordings directly when preparing training data."
+
+## 4. Table 17: no change needed
+
+**Current text:** "Table 17. Minimum software versions". The contribution site's rows:
+
+| Row | Minimum (SRS) | Installed now | Meets it |
+| --- | --- | --- | --- |
+| Contribution site: React / Vite / Tailwind CSS | 19.2 / 8.3 / 4.3 | 19.3.0 / 8.3.6 / 4.3.3 | yes |
+| Contribution site: Node.js / Express / Mongoose | 22 or later / 4.22 / 7.8 | 22 / 4.22.3 / 7.8.13 | yes |
+
+The installed versions come from the lockfiles at the end of Phase 10, and Node 22 from `.nvmrc`.
+Every row is still met. **No change needed.**
+
+## 5. FR13.1: optional addition
+
+**Current text:** not quoted here (no v1.1 text for FR13.1 was available for this list). Find
+FR13.1 in the contribution-site requirements.
+
+**Now:** a signed-in contributor can change their password from the profile. They enter the
+current password and the new one twice; every other session is then signed out
+(`POST /users/me/password`, Phase 6).
+
+**Suggested addition (optional):**
+
+> "A signed-in contributor shall be able to change their password, after entering the current
+> one; other signed-in sessions of the account are then ended."
+
+## 6. FR13.12
+
+**Current text:**
+
+> "The system shall let site admins view contribution statistics, suspend or delete
+> contributors, and restrict access from an IP address or device. Suspended contributors cannot
+> log in or submit recordings."
+
+**Now:**
+- **What the text says still holds.** A suspended contributor's open session can't submit, and
+  they can't log in (E2E test E-26). A device or IP restriction blocks access until an admin
+  removes it (E-27, I-45).
+- **Personal admin accounts.** Each team member has their own admin account (`ADMIN_EMAIL` plus
+  `ADMIN_EMAILS`, applied at every start; D5).
+- **Activity log.** Every admin action is recorded in an activity log (Admin → Activity).
+- **Submissions.** Admins can browse all submissions and export them for the ML team (Admin →
+  Submissions).
+
+**Suggested: keep the current text and add:**
+
+> "Each site admin uses a personal admin account, and every admin action is recorded in an
+> activity log that admins can view. Site admins can browse all submissions and export them
+> for training, without contributors' names or email addresses."
+
+## 7. FR13.13
+
+**Current text:**
+
+> "The system shall let contributors ask the site admins, through the contact form, to delete
+> their account and recordings. Recordings already used to train a released model remain in
+> that model."
+
+**Now:**
+- **Self-delete.** A contributor can delete their own account from the profile, after entering
+  their password. This removes the account and their sign-in, but **not** their recordings,
+  which stay until a deletion request is made. This is what the consent notice says
+  (`frontend/src/utils/consent.js`, "Account deletion and recording retention").
+- **Deletion requests through the contact form:**
+  - from a signed-in contributor: verified at once;
+  - from a signed-out contributor: confirmed with a 6-digit code emailed to the account's address
+    (D4);
+  - for an address with no account: they stay "unverified" and are checked by hand.
+- **Admin side.** Admins see each request with its verification state (Admin → Messages) and
+  can delete that contributor's recordings, with or without the account. Every deletion is
+  recorded.
+
+**Suggested replacement:**
+
+> "The system shall let contributors ask the site admins, through the contact form, to delete
+> their account and recordings; a request made while signed out is confirmed with a six-digit
+> code sent to the account's email address. Site admins shall be able to delete a contributor's
+> recordings, with or without the account, and every deletion is recorded. A contributor can
+> also delete their account from the profile page; this removes the account and sign-in access
+> but keeps their submitted recordings until they request deletion through the contact form, as
+> stated in the consent notice. Recordings already used to train a released model remain in
+> that model."
+
+## 8. SE-4: no change needed
+
+**Current text:** "After 5 failed login attempts, the account shall be locked for 15 minutes."
+
+**Now:** 5 wrong passwords in a row lock the account for 15 minutes, even against the right
+password (`AUTH_LOCKOUT_ATTEMPTS`, `AUTH_LOCKOUT_MINUTES`; tests I-86 and E-08). **No change needed.**
+
+## 9. Other security behaviour: check against the SRS
+
+**Current text:** not quoted here (no v1.1 text for these was available for this list). Compare
+with the SE requirements, and with wherever the SRS describes sign-up and sessions.
+
+| Topic | Now | Where |
 | --- | --- | --- |
-| OAuth client and refresh token (used in production) | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | The Google Cloud OAuth consent screen must be **In production**; in "Testing" the token expires after 7 days. The API logs a clear message when the token stops working. |
-| Service account (alternative) | `GOOGLE_SERVICE_ACCOUNT_JSON` | The whole JSON key as one value. |
-| Folder | `GOOGLE_DRIVE_FOLDER_ID` | The shared root folder. |
-| Separate account for recordings (optional) | `GOOGLE_ARCHIVE_OAUTH_*`, `GOOGLE_ARCHIVE_SERVICE_ACCOUNT_JSON`, `GOOGLE_ARCHIVE_DRIVE_FOLDER_ID` | Falls back to the shared values when unset. |
-
-**Suggested change:** add a row "Google Drive OAuth (refresh token)" next to the service-account
-row and mark it as the one used. The env tables in `backend/docs/setup.md` §5 have the details.
-
-**Team action still open (checklist D3):** set the OAuth consent screen to *In production* and
-create a new refresh token.
-
-## 3. Versions: Table 17
-
-From the `package.json` files and lockfiles at the end of Phase 10: the version range and the
-version actually installed (resolved).
-
-**Runtime:** Node.js 22 (`.nvmrc`; CI and the server guide use 22). MongoDB through the
-`mongodb` driver 5.9.2 (under Mongoose).
-
-**Backend (API), 1.0.16**
-
-| Package | Range | Installed |
-| --- | --- | --- |
-| express | ^4.22.3 | 4.22.3 |
-| mongoose | ^7.8.13 | 7.8.13 |
-| zod | ^4.6.7 | 4.6.7 |
-| jsonwebtoken | ^9.0.3 | 9.0.3 |
-| bcrypt | ^6.0.0 | 6.0.0 |
-| multer | ^2.5.0 | 2.5.0 |
-| helmet | ^8.3.0 | 8.3.0 |
-| cors | ^2.8.6 | 2.8.6 |
-| cookie-parser | ^1.4.7 | 1.4.7 |
-| compression | ^1.8.2 | 1.8.2 |
-| express-rate-limit | ^8.7.0 | 8.7.0 |
-| googleapis | ^182.0.0 | 182.0.0 |
-| @getbrevo/brevo | ^6.0.3 | 6.0.3 |
-| pino / pino-http | ^10.3.1 / ^11.0.0 | 10.3.1 / 11.0.0 |
-| swagger-ui-express | ^5.0.1 | 5.0.1 |
-| dotenv | ^16.6.1 | 16.6.1 |
-
-The backend's dev tools: c8 12.0.0, mongodb-memory-server 10.4.3, nodemon 3.1.14, and
-ffmpeg-static 5.3.0 (the dataset script).
-
-**Frontend (site), 1.0.18**
-
-| Package | Range | Installed |
-| --- | --- | --- |
-| react / react-dom | ^19.2.8 | 19.3.0 |
-| react-router-dom | ^7.9.0 | 7.18.4 |
-| react-hook-form | ^7.91.0 | 7.91.0 |
-| @hookform/resolvers | ^5.9.2 | 5.9.2 |
-| zod | ^4.6.7 | 4.6.7 |
-| tailwindcss / @tailwindcss/vite | ^4.3.3 | 4.3.3 |
-| @ffmpeg/ffmpeg | ^0.12.15 | 0.12.15 |
-| @ffmpeg/core (served by the site) | 0.12.10 (pinned) | 0.12.10 |
-| vite (build) | ^8.3.6 | 8.3.6 |
-
-The frontend's dev tools: vitest 5.1.1, @vitest/coverage-v8 5.1.1, eslint 10.14.0, jsdom 29.1.1,
-msw 3.0.7, @testing-library/react 16.3.3.
-
-**Removed since the SRS was written:** react-snap (prerendering) and `@ffmpeg/util`.
-
-**End-to-end tests:** @playwright/test 1.65.1 (Chromium, Firefox and WebKit) and
-@axe-core/playwright 4.14.0.
-
-## 4. FR13.13: deleting an account and recordings
-
-**Now, three parts:**
-
-1. **Self-delete.** A contributor can delete their own account from the profile, after entering
-   their password. It removes the account and their sign-in, but **not** their recordings: those
-   stay until a deletion request is made. That is what the consent notice says
-   (`frontend/src/utils/consent.js`, "Account deletion and recording retention").
-2. **Deletion requests.** A deletion request is sent from the contact form ("Request
-   recording/data deletion"):
-   - **signed in:** verified at once;
-   - **signed out:** confirmed with a 6-digit code emailed to the account's address (D4), with
-     limits per IP and per device;
-   - **for an address with no account:** stays "unverified" and is checked by hand.
-3. **Admin deletion tools.**
-   - **Admin → Messages** lists the requests with their verification state.
-   - An admin can delete a contributor's recordings (the files in Drive and the records), on
-     their own or with the account.
-   - Each deletion is logged (`DeletionLog`, and the Activity log).
-
-**Suggested sentence for the self-delete button:**
-
-> A contributor can delete their account from the profile page; this removes the account and
-> sign-in access but keeps their submitted recordings until they request deletion through the
-> contact form, as stated in the consent notice.
-
-**Suggested addition for the rest:**
-
-> A signed-out deletion request is confirmed with a six-digit code sent to the account's email
-> address. Administrators see verified requests in the admin workspace, and can delete a
-> contributor's recordings (and, optionally, the account); every deletion is recorded.
-
-## 5. Roles and administration: FR13.12 and the user roles
-
-**Now (D5):**
-- **Separate admin accounts.** Each team member has their own admin account. Admins are the
-  account in `ADMIN_EMAIL` plus those listed in `ADMIN_EMAILS`. The list is applied at every
-  start: listed accounts become admins, and admins taken off the list become normal users again.
-  The roles are still only *user* and *admin*.
-- **Activity log.** Every admin action is written to an activity log (Admin → Activity), with
-  the admin's name and filters by admin and action. The actions are:
-  - videos, categories and the demo video;
-  - suspensions and reactivations;
-  - account and recording deletions;
-  - restrictions;
-  - message status changes;
-  - admin promotions and demotions;
-  - exports.
-- **Admin workspace tabs:**
-  - Dashboard: server-side statistics, filtered by days, contributor and category;
-  - Users: search, suspend and reactivate, device and IP restrictions, deletions;
-  - Videos, Categories;
-  - Submissions: browse and filter, and the ML export;
-  - Messages;
-  - Activity.
-
-**Suggested change:** in the roles text and FR13.12, say that each administrator has a personal
-account, and add the activity log and the Submissions page to the admin features.
-
-## 6. Security requirements (SE-x)
-
-| Requirement | Now | Where |
-| --- | --- | --- |
-| SE-4 login lockout | 5 wrong passwords in a row lock the account for 15 minutes, even against the right password. | `AUTH_LOCKOUT_ATTEMPTS`, `AUTH_LOCKOUT_MINUTES` |
-| SE-2 sessions | Logging out ends every session of the account, on every device ("Log out of all devices" on the profile). A password change ends every other session and keeps this one; a password reset ends them all. A contributor can change their password while logged in. | `POST /auth/logout`, `POST /users/me/password` |
-| Sign-up | Email codes are valid for **10 minutes** (resend after 60 s). An unfinished sign-up is deleted 24 hours after it started. The account is only created once the consent notice is accepted. | `AUTH_OTP_TTL_MINUTES` |
-| Browser security | The site sends a Content Security Policy (no inline scripts, no eval, no third-party scripts), `Referrer-Policy`, `X-Content-Type-Options: nosniff` and a `Permissions-Policy`. | `frontend/config/securityHeaders.js`, `frontend/vercel.json` |
+| Sessions | Logging out ends every session of the account, on every device ("Log out of all devices" on the profile). A password change ends every other session; a password reset ends them all. | `POST /auth/logout`, `POST /users/me/password` |
+| Sign-up | Email codes are valid for 10 minutes (resend after 60 s). An unfinished sign-up is deleted 24 hours after it started. The account is only created once the consent notice is accepted. | `AUTH_OTP_TTL_MINUTES` |
+| Browser security | The site sends a Content Security Policy (no inline scripts, no eval, no third-party scripts), `Referrer-Policy`, `X-Content-Type-Options: nosniff` and a `Permissions-Policy`. | `frontend/config/securityHeaders.js` |
 | Request tracing | Each API response carries an `X-Request-Id`; one sent by the client is kept only if it is 1–64 letters, digits or dashes. | `backend/docs/API.md` |
 | Server | Node listens only on 127.0.0.1 behind Nginx; real client IPs come from Nginx (`TRUST_PROXY`); production errors never include internal details. | `deploy/README.md` |
 
-If the SRS gives the code expiry as something other than 10 minutes, or no lockout duration,
-update it to these values.
+## 10. Recordings, data and the ML dataset: check against the SRS
 
-## 7. Recordings, data and the ML dataset
+**Current text:** not quoted here (no v1.1 text was available for this list). Look for where the
+SRS describes uploads, and how recordings reach the ML team.
 
-**Uploads:**
-- A recording can be up to **100 MB** (`MAX_RECORDING_UPLOAD_MB`).
-- Only **WebM, MP4 and MOV video** is accepted. 3GP, audio-only and image files are refused.
-- After an accepted upload, the same video can be recorded again after a **30-second** cooldown.
-
-**Export for the ML team (B5):**
-- Admin → Submissions exports all submissions, or a filtered set, as CSV or JSON
+**Now:**
+- **Uploads:**
+  - A recording can be up to 100 MB (`MAX_RECORDING_UPLOAD_MB`).
+  - Only WebM, MP4 and MOV video is accepted; 3GP, audio-only and image files are refused.
+  - After an accepted upload, the same video can be recorded again after a 30-second cooldown.
+- **Export (B5):** Admin → Submissions exports all submissions, or a filtered set, as CSV or JSON
   (`GET /api/v1/admin/submissions/export`).
-- It contains ids, the reference video and category, the storage key, size, duration, **trim
-  start and end**, **mirrored**, and the submission time.
-- The contributor appears only as their account id: **no names or emails**.
+  - It contains ids, the reference video and category, the storage key, size, duration, trim
+    start and end, mirrored, and the submission time.
+  - The contributor appears only as their account id, with no names or emails.
+- **The dataset script:** `backend/scripts/prepare-dataset.js` downloads the exported recordings
+  and applies each one's trim and mirror with ffmpeg. The recording in Drive is the raw take
+  (`backend/docs/DATASET.md`).
 
-**Dataset script:**
-- `backend/scripts/prepare-dataset.js` downloads the exported recordings and uses ffmpeg to
-  apply each recording's trim and mirror. The recording in Drive is the raw take.
-- The output is clips ready for training (`backend/docs/DATASET.md`).
+**Suggested:** where the SRS describes how recordings reach the ML team, describe the export and
+the dataset script.
 
-**Suggested change:** where the SRS describes how recordings reach the ML team, describe the
-export and the dataset script.
+## 11. Other behaviour: check against the SRS
 
-## 8. Other behaviour the SRS may describe differently
+**Current text:** not quoted here (no v1.1 text was available for this list).
 
 - **Contact form limits:**
-  - signed-in: 1 general or partnership message a day (deletion requests don't count);
+  - signed in: 1 general or partnership message a day (deletion requests don't count);
   - signed-out deletion requests: 2 a day per IP address or device;
   - a site-wide cap of 25 a day that never blocks anyone.
-- **Notifications** in the site are kept per browser and device; they are not synced between
-  devices.
-- **Pages load on demand:**
-  - every page except the landing page is downloaded the first time it is opened;
-  - after a new deployment, an open tab reloads once to get it.
-- **Accessibility:** the main pages are checked automatically against WCAG 2.1 A and AA (axe),
-  in the light and the dark theme, and must have no serious or critical problem. If the SRS has
-  an accessibility requirement (QA-20 / C.3), this is the evidence.
+- **Notifications** are kept per browser and device; they are not synced between devices.
+- **Pages load on demand.** Every page except the landing page is downloaded the first time it is
+  opened, and after a new deployment an open tab reloads once to get it.
+- **Accessibility.** The main pages are checked automatically against WCAG 2.1 A and AA (axe), in
+  the light and the dark theme, with no serious or critical problem allowed. If the SRS has an
+  accessibility requirement (QA-20 / C.3), this is the evidence.
 
-## 9. Testing: section 9
+## 12. Testing (§9): check against the SRS
 
-`backend/docs/TEST-CASES.md` is the traceability table for section 9:
-- every automated test, with its requirement (FR13.x, SE-x, OR-19, UI 3.1.1.3, QA-3, QA-20) and
-  its checklist ID;
-- **113 test files and 766 cases** at the end of Phase 10.
+**Current text:** not quoted here (no v1.1 text was available for this list).
+
+`backend/docs/TEST-CASES.md` is the traceability table for §9. It lists every automated test with
+its requirement (FR13.x, SE-x, OR-19, UI 3.1.1.3, QA-3, QA-20) and its checklist ID. At the end of
+Phase 10 it has **113 test files and 766 cases**:
 
 | Level | Files | Cases |
 | --- | ---: | ---: |
@@ -241,10 +270,10 @@ export and the dataset script.
 | Frontend integration | 10 | 124 |
 | End-to-end (Chromium, Firefox, WebKit) | 16 | 93 |
 
-- **Traceability:** a test fails if any FR13.1–FR13.13 has no test.
-- **Production smoke:** a read-only `@smoke` subset (login, library, profile) can be run against
-  the live site (`e2e/README.md`).
+- **Traceability:** a test fails if any of FR13.1–FR13.13 has no test.
+- **Smoke:** a read-only `@smoke` subset (login, library, profile) can be run against the live
+  site (`e2e/README.md`).
 - **Coverage:**
   - backend: about 95% of lines;
   - frontend: 55% of lines overall, and over 98% of the API client and the helper modules.
-- **The rest of the gate:** CI runs the whole gate on every push and pull request.
+- **CI** runs the whole gate on every push and pull request.

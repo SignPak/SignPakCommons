@@ -9,8 +9,9 @@ Versions are `backend / frontend`. The e2e package stays at 1.0.0 (it is never r
 
 ## Phase 10: docs, SRS sync and final check (1.0.16 / 1.0.18), 2026-11-23
 
-- `docs/SRS-CHANGES.md`: the SRS updates for the team (hosting, Drive sign-in, versions,
-  FR13.12, FR13.13 and the security, data and testing changes).
+- `docs/SRS-CHANGES.md`: the SRS (v1.1) updates for the team, each quoting the current text:
+  the Figure 5 intro, the §3.3.4 site bullet, Table 15 (hosting and storage), FR13.1, FR13.12,
+  FR13.13 and the security, data and testing changes. Table 17 and SE-4 need no change.
 - Docs: every env variable is now in both `.env` examples and the tables in `setup.md`; new
   tests keep the OpenAPI spec and the env docs in step with the code.
 - Traceability: a test fails if any FR13.x or checklist ID has no test.
