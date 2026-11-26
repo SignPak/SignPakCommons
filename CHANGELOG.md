@@ -7,6 +7,26 @@ each phase, with its tests and gate results, is in `docs/phase-reports/PHASE-N.m
 
 Versions are `backend / frontend`. The e2e package stays at 1.0.0 (it is never released).
 
+## Phase 11: deployment on Coolify (1.0.17 / 1.0.18), 2026-11-24
+
+- **D1 changed:** the API runs on the team's Hostinger KVM-8 as a Coolify application built
+  from the new `backend/Dockerfile`, behind Coolify's Traefik (Let's Encrypt for
+  `api.commons.signpak.tech`). Nginx + PM2 stays in `deploy/` as the alternative for a bare
+  server. `deploy/README.md` now starts with the Coolify settings.
+- The image: `node:22-bookworm-slim`, production dependencies only, runs as `node`, read-only
+  app code, a health check on `/api/v1/health`. `.dockerignore` sends only the app.
+- New `REQUEST_TIMEOUT_MS` (15 minutes): a 100 MB recording on a slow connection is no longer
+  cut off at Node's 300 s. Traefik's entry points need `readTimeout=900s` to match (README).
+- Under Coolify `HOST=0.0.0.0` (safe only with no host port published); the server warns if a
+  container listens on loopback.
+- CI: a "Docker image" job builds the image and checks it against a real MongoDB (non-root,
+  contents, bcrypt, health, graceful stop), and "Deploy (Coolify)" calls the deploy webhook
+  (POST) after every other job passes on `main`.
+- After verification: the image's health check is the new `GET /api/v1/health/live`, which
+  fails only without the database. A storage failure at startup (an expired Drive token, D3)
+  no longer stops the API: login and browsing keep working, uploads fail, and `/api/v1/health`
+  shows `"storage":false` and answers 503. The health checks retry storage.
+
 ## Phase 10: docs, SRS sync and final check (1.0.16 / 1.0.18), 2026-11-23
 
 - `docs/SRS-CHANGES.md`: the SRS (v1.1) updates for the team, each quoting the current text.

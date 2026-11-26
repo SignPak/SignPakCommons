@@ -21,3 +21,13 @@ test('C3: an email in the query string is redacted from the logged URL', async (
   assert.equal(requestLogSerializer({ url: '/api/v1/videos?limit=5' }).url, '/api/v1/videos?limit=5', 'other URLs unchanged')
   assert.equal(requestLogSerializer({ url: '/a?myemail=keep' }).url, '/a?myemail=keep', 'only the email parameter')
 })
+
+test('D1: both health checks are left out of the request log, and nothing else is', async () => {
+  const { isHealthCheck } = await import('../../src/utils/requestLog.js')
+  for (const url of ['/api/v1/health', '/api/v1/health/live', '/api/v1/health?x=1', '/api/v1/health/live?probe=docker']) {
+    assert.equal(isHealthCheck({ url }), true, url)
+  }
+  for (const url of ['/api/v1/healthz', '/api/v1/health/other', '/api/v1/videos', '/health', '/api/v1/users/health']) {
+    assert.equal(isHealthCheck({ url }), false, url)
+  }
+})

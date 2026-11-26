@@ -368,6 +368,17 @@ export const openapi = {
         },
       },
     },
+    '/health/live': {
+      get: {
+        tags: ['Health'],
+        summary: 'Container health check: fails only when the database is down',
+        description: 'Public. The Docker HEALTHCHECK (backend/Dockerfile), which Coolify and Traefik use to decide whether the container gets traffic. Same body as `/health`, but a storage failure (for example an expired Google Drive token) is reported as `storage: false` and `status: degraded` with 200, so login and browsing stay up while uploads fail. 503 only when MongoDB is disconnected. Like `/health`, it answers even when initialization failed, and retries initialization and a failed storage start. Not written to the request log.',
+        responses: {
+          200: jsonResponse('Database connected. `status` is `ok` when storage also initialized, `degraded` when it did not', healthSchema(['ok', 'degraded'])),
+          503: jsonResponse('The database is disconnected', healthSchema(['degraded'])),
+        },
+      },
+    },
     '/public/stats': {
       get: {
         tags: ['Public'],

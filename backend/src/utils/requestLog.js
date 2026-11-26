@@ -11,6 +11,13 @@ export const requestLogProps = (req) => ({
 })
 
 /**
+ * Phase 11 (D1): the two health checks, left out of the request log. Docker probes
+ * /health/live every 30 s; logging each probe would bury the real requests.
+ */
+const HEALTH_CHECK = /^\/api\/v1\/health(\/live)?(\?|$)/
+export const isHealthCheck = (req) => HEALTH_CHECK.test(req.url ?? '')
+
+/**
  * C3: the request-log serializer. pino-http applies its standard serializer first, so `url`
  * is already the path with its query string. An `email=` value is replaced, so a direct
  * `GET /admin/deletion-lookup?email=` call never writes the address to the logs. (The admin

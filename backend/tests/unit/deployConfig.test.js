@@ -142,3 +142,150 @@ test('C1: the production env template is a valid production configuration once f
     warnings: [],
   })
 })
+
+// Phase 11 (D1): the API runs on the team's Hostinger KVM-8 as a Coolify application built from
+// backend/Dockerfile, behind Coolify's Traefik. deploy/scripts/check-docker-image.sh checks the
+// built image in CI; these tests pin down the files themselves.
+
+const dockerfile = read('backend/Dockerfile')
+const dockerLines = dockerfile.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'))
+// Continuation lines joined, so a multi-line instruction can be matched as one.
+const instructions = dockerfile.replace(/\\\n\s*/g, ' ').split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'))
+const envExampleValue = (key) => new RegExp(`^${key}=(.*)$`, 'm').exec(read('backend/.env.production.example'))?.[1]
+
+test('D1: the Dockerfile builds a slim production image of Node 22 that runs as the node user', () => {
+  const froms = instructions.filter((line) => line.startsWith('FROM '))
+  assert.ok(froms.length >= 1)
+  const nvmrcMajor = read('.nvmrc').trim().replace(/^v/, '').split('.')[0]
+  for (const from of froms) {
+    assert.match(from, /^FROM node:(\d+)-bookworm-slim( AS \w+)?$/, from)
+    assert.equal(/node:(\d+)/.exec(from)[1], nvmrcMajor, 'the image must use the Node major in .nvmrc')
+  }
+  assert.ok(instructions.some((line) => /^RUN npm ci --omit=dev\b/.test(line)), 'dependencies must be installed with npm ci --omit=dev')
+  assert.ok(!/npm (i|install)\b/.test(dockerfile), 'npm ci only: the lockfile decides the versions')
+  assert.ok(instructions.some((line) => /^ENV .*\bNODE_ENV=production\b/.test(line)))
+  assert.equal(instructions.filter((line) => line.startsWith('USER ')).at(-1), 'USER node')
+  assert.ok(dockerLines.includes(`EXPOSE ${envExampleValue('PORT')}`), 'EXPOSE must match PORT in .env.production.example')
+  // Exec form, so Node is PID 1 and receives SIGTERM itself (graceful shutdown).
+  assert.equal(instructions.filter((line) => line.startsWith('CMD ')).at(-1), 'CMD ["node", "server.js"]')
+  const healthcheck = instructions.find((line) => line.startsWith('HEALTHCHECK '))
+  assert.ok(healthcheck, 'the image needs a HEALTHCHECK (Coolify uses it for rolling updates)')
+  assert.match(healthcheck, /\/api\/v1\/health/)
+  assert.match(healthcheck, /CMD \["node", /, 'the slim image has no curl or wget: the check runs with node')
+})
+
+/** True when the build context sends `file` (Docker's .dockerignore rules: the last match wins). */
+function sentToDocker(rules, file) {
+  const toRegex = (pattern) => new RegExp(`^${pattern.replace(/\/$/, '')
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*\//g, '\u0000')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\?/g, '[^/]')
+    .replace(/\u0000/g, '(?:.*/)?')}$`)
+  const segments = file.split('/')
+  const prefixes = segments.map((_, index) => segments.slice(0, index + 1).join('/'))
+  let included = true
+  for (const rule of rules) {
+    const negated = rule.startsWith('!')
+    const regex = toRegex(negated ? rule.slice(1) : rule)
+    if (prefixes.some((prefix) => regex.test(prefix))) included = negated
+  }
+  return included
+}
+
+test('D1: .dockerignore sends only the app: no tests, .env files, node_modules, coverage, uploads or scripts', () => {
+  const rules = read('backend/.dockerignore').split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'))
+  for (const file of ['server.js', 'package.json', 'package-lock.json', 'src/app.js', 'src/config/env.js']) {
+    assert.ok(sentToDocker(rules, file), `${file} must be in the build context`)
+  }
+  for (const file of [
+    'node_modules/express/index.js',
+    'tests/unit/deployConfig.test.js',
+    'coverage/lcov.info',
+    '.env',
+    '.env.example',
+    '.env.production.example',
+    'src/.env',
+    'uploads/tmp/recording.webm',
+    'scripts/e2e-server.js',
+    'docs/setup.md',
+    '.c8rc.json',
+  ]) {
+    assert.ok(!sentToDocker(rules, file), `${file} must stay out of the image`)
+  }
+})
+
+test('D1: the Coolify guide comes first and names the settings the API depends on', () => {
+  const guide = read('deploy/README.md')
+  const coolify = guide.indexOf('Coolify')
+  const pm2 = guide.indexOf('PM2')
+  assert.ok(coolify >= 0 && coolify < pm2, 'Coolify is the main path; Nginx + PM2 is the alternative')
+  for (const text of [
+    'Base Directory',
+    '`/backend`',
+    'Dockerfile',
+    'https://api.commons.signpak.tech',
+    'Ports Mappings',
+    'HOST=0.0.0.0',
+    'TRUST_PROXY=true',
+    '/api/v1/health',
+    'Manual deployments only',
+    'COOLIFY_WEBHOOK',
+    'COOLIFY_TOKEN',
+    'Stop Grace Period',
+    '--entrypoints.http.transport.respondingTimeouts.readTimeout=',
+    '--entrypoints.https.transport.respondingTimeouts.readTimeout=',
+  ]) {
+    assert.ok(guide.includes(text), `deploy/README.md is missing: ${text}`)
+  }
+  // Traefik must let a request take at least as long as the API does (REQUEST_TIMEOUT_MS).
+  const requestTimeoutMs = Number(envExampleValue('REQUEST_TIMEOUT_MS'))
+  assert.ok(requestTimeoutMs >= 60_000)
+  for (const entrypoint of ['http', 'https']) {
+    const seconds = Number(new RegExp(`--entrypoints\\.${entrypoint}\\.transport\\.respondingTimeouts\\.readTimeout=(\\d+)s`).exec(guide)?.[1])
+    assert.ok(seconds * 1000 >= requestTimeoutMs, `Traefik's ${entrypoint} readTimeout (${seconds}s) must be at least REQUEST_TIMEOUT_MS (${requestTimeoutMs} ms)`)
+  }
+})
+
+test('D1: CI builds and checks the image, and deploys only from main, after every other job, through a POST webhook', () => {
+  const ci = read('.github/workflows/ci.yml')
+  const jobsText = ci.slice(ci.indexOf('\njobs:\n'))
+  const jobIds = [...jobsText.matchAll(/^ {2}([a-z0-9-]+):$/gm)].map(([, id]) => id)
+  const block = (id) => {
+    const start = jobsText.indexOf(`\n  ${id}:\n`)
+    assert.ok(start >= 0, `ci.yml has no ${id} job`)
+    const next = jobsText.slice(start + 1).search(/\n {2}[a-z0-9-]+:\n/)
+    return next < 0 ? jobsText.slice(start) : jobsText.slice(start, start + 1 + next)
+  }
+
+  const image = block('docker-image')
+  assert.match(image, /image: mongo:7/)
+  assert.match(image, /docker build .*backend/)
+  assert.match(image, /deploy\/scripts\/check-docker-image\.sh/)
+
+  const deploy = block('deploy-coolify')
+  assert.match(deploy, /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/)
+  const needs = /needs: \[([^\]]+)\]/.exec(deploy)[1].split(',').map((id) => id.trim())
+  assert.deepEqual([...needs].sort(), jobIds.filter((id) => id !== 'deploy-coolify').sort(), 'the deploy waits for every other job')
+  assert.match(deploy, /COOLIFY_TOKEN: \$\{\{ secrets\.COOLIFY_TOKEN \}\}/)
+  assert.match(deploy, /COOLIFY_WEBHOOK: \$\{\{ secrets\.COOLIFY_WEBHOOK \}\}/)
+  assert.match(deploy, /::notice title=Deploy skipped::/)
+  // Coolify v4 answers GET /api/v1/deploy with 405: only POST deploys.
+  assert.match(deploy, /curl --fail [^\n]*-X POST [^\n]*-H "Authorization: Bearer \$COOLIFY_TOKEN" "\$COOLIFY_WEBHOOK"/)
+  // The deploy-files job shellchecks the image check script too.
+  assert.match(block('deploy'), /shellcheck [^\n]*deploy\/scripts\/check-docker-image\.sh/)
+})
+
+test('D1: the image health check uses /health/live, so a storage failure never takes the API offline', () => {
+  // Traefik stops routing to an unhealthy container. /health fails on storage too (a Drive
+  // token, D3), which would take login and browsing down with the uploads.
+  const healthcheck = instructions.find((line) => line.startsWith('HEALTHCHECK '))
+  assert.match(healthcheck, /\/api\/v1\/health\/live'/)
+  assert.ok(!/\/api\/v1\/health'/.test(healthcheck), 'not /api/v1/health, which also fails on storage')
+  // A bare server's deploy.sh keeps checking the full /health.
+  assert.match(read('deploy/deploy.sh'), /\/api\/v1\/health\b(?!\/live)/)
+  const guide = read('deploy/README.md')
+  for (const text of ['/api/v1/health/live', '"storage":true', 'uploads fail', 'the site stays up']) {
+    assert.ok(guide.includes(text), `deploy/README.md is missing: ${text}`)
+  }
+})

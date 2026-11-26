@@ -1,0 +1,12 @@
+# An allowlist: the build context holds only what the image needs. Everything else stays out,
+# in particular node_modules, tests/, coverage/, every .env file, uploads/, scripts/ (the
+# test-only e2e-server.js among them) and docs/. Checked by tests/unit/deployConfig.test.js and,
+# on the built image, by deploy/scripts/check-docker-image.sh.
+*
+!server.js
+!package.json
+!package-lock.json
+!src/
+
+# Never a .env file, even one left inside src/.
+**/.env*

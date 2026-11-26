@@ -29,8 +29,8 @@ team in Word; it is not in this repository. Each entry gives:
 > "...while sentence generation is handled by the Groq cloud API and the Community Contribution
 > Site runs on Vercel (Section 3.3.4)."
 
-**Now:** only the site runs on Vercel. Its API runs on the team's own Linux server
-(`deploy/README.md`).
+**Now:** only the site runs on Vercel. Its API runs on the team's own Linux server, the
+Hostinger KVM-8, as a Docker container managed by Coolify (`deploy/README.md`; Phase 11).
 
 **Suggested replacement for that clause:**
 
@@ -39,8 +39,8 @@ team in Word; it is not in this repository. Each entry gives:
 
 **Figure 5:**
 - Show the site as Browser → Vercel.
-- Show its API as Browser → Nginx → Node.js (PM2) on the team server, at
-  `api.commons.signpak.tech`.
+- Show its API as Browser → Traefik (HTTPS) → Node.js in a Docker container, managed by
+  Coolify on the team server, at `api.commons.signpak.tech`.
 - The API connects to MongoDB Atlas, Google Drive and Brevo.
 - No backend box on Vercel (and none on Railway, which the code also no longer uses).
 
@@ -56,8 +56,10 @@ team in Word; it is not in this repository. Each entry gives:
 **Now:**
 - **The site** (React, Vite, Tailwind CSS) is on Vercel at `commons.signpak.tech`.
 - **The backend** (Express on Node.js 22, MongoDB Atlas) runs on the team's own Linux server at
-  `api.commons.signpak.tech`, behind Nginx with HTTPS (Let's Encrypt), kept running by PM2.
-  - The server is a Hostinger VPS or the university server; the setup works on both (FIX-PLAN D1).
+  `api.commons.signpak.tech`: a Docker container managed by Coolify, behind Coolify's Traefik
+  proxy with HTTPS (Let's Encrypt).
+  - The server is the team's Hostinger KVM-8 (FIX-PLAN D1, changed in Phase 11). Nginx + PM2 on
+    a bare server stays documented as the alternative.
 - **Google Drive** is connected through an OAuth refresh token; a service account is still
   supported as the fallback (D3).
 - **Brevo** sends the codes, from `no-reply@signpak.tech`. Besides verification and password
@@ -66,8 +68,8 @@ team in Word; it is not in this repository. Each entry gives:
 **Suggested replacement:**
 
 > "A separate web application built with React 19, Vite and Tailwind CSS, hosted on Vercel. Its
-> backend (Express on Node.js with a MongoDB database) runs on the team's own Linux server
-> behind an Nginx reverse proxy with HTTPS. Submitted recordings are stored on Google Drive
+> backend (Express on Node.js with a MongoDB database) runs in a Docker container on the team's
+> own Linux server, managed by Coolify behind a reverse proxy with HTTPS. Submitted recordings are stored on Google Drive
 > through an OAuth refresh token (a service account can be used instead), and email
 > verification, password reset and deletion-request codes are sent through Brevo."
 
@@ -96,17 +98,17 @@ The chosen option is therefore no longer "Vercel + Google Drive".
 | Row | Suggested value for the chosen column |
 | --- | --- |
 | Team access to recordings | The team opens and downloads the recordings directly in Google Drive. The admin export lists every recording with its trim and mirror values, and the dataset script applies them. |
-| Public availability for volunteers | The site is served by Vercel. The API runs on the team's server behind Nginx with HTTPS, and PM2 restarts it if it stops. Both are reachable at any time, independent of any one person's computer. |
-| Setup and maintenance | Vercel builds and hosts the site. The team maintains one Linux server (Node.js 22, PM2, Nginx and certificate renewal), with scripts and a step-by-step guide in the repository. The Google OAuth consent screen must stay "In production". |
+| Public availability for volunteers | The site is served by Vercel. The API runs on the team's server as a Docker container behind a reverse proxy with HTTPS; Coolify restarts it if it stops and replaces it only with a healthy new version. Both are reachable at any time, independent of any one person's computer. |
+| Setup and maintenance | Vercel builds and hosts the site. The team maintains one Linux server running Coolify, which builds the API image from the repository and renews the certificate; CI deploys every tested change. A step-by-step guide is in the repository. The Google OAuth consent screen must stay "In production". |
 
 - **The other two columns can stay as they are.** "University server" compares hosting
-  everything there. The team server for the API may itself be the university server: D1 leaves
-  the choice between a Hostinger VPS and the university server open.
+  everything there. The team server for the API is the Hostinger KVM-8 (D1, decided in
+  Phase 11).
 
 **Suggested replacement paragraph:**
 
 > "The contribution site has to be reachable by volunteers at any time. The site is hosted on
-> Vercel, and its API runs on the team's own Linux server behind Nginx at
+> Vercel, and its API runs on the team's own Linux server, managed by Coolify, at
 > `api.commons.signpak.tech`. Because the API is on the same site as `commons.signpak.tech`, the
 > login cookie works in every browser, including Safari. Google Drive is connected through an
 > OAuth refresh token, with a service account as the fallback, and the team can open and
@@ -234,7 +236,7 @@ password (`AUTH_LOCKOUT_ATTEMPTS`, `AUTH_LOCKOUT_MINUTES`; tests I-86 and E-08).
 - the site sends a Content Security Policy and other security headers
   (`frontend/config/securityHeaders.js`);
 - an incoming `X-Request-Id` is kept only if it is 1–64 letters, digits or dashes;
-- Node listens only on 127.0.0.1 behind Nginx.
+- the API is reachable only through its HTTPS proxy (Traefik under Coolify), never directly.
 
 **Suggested: no change needed.** Optionally, one sentence in §3.3.4 or §4.13:
 
