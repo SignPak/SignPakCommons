@@ -122,12 +122,23 @@ which answers `413` with its own message.
 ### 2.4 Health check and shutdown
 
 - **Healthcheck:** leave Coolify's own Healthcheck **off**. The image has a `HEALTHCHECK` on
-  `GET /api/v1/health` (run with `node`, because the slim image has no `curl` or `wget`, which
-  Coolify's HTTP check would need), and Coolify uses the image's check when its own is off. A
-  new container counts as healthy only when MongoDB and storage are ready; until then the old
-  one keeps serving. In a deployment's log look for **New container is healthy** and **Rolling
+  `GET /api/v1/health/live` (run with `node`, because the slim image has no `curl` or `wget`,
+  which Coolify's HTTP check would need), and Coolify uses the image's check when its own is
+  off. A new container counts as healthy once it is connected to MongoDB; until then the old one
+  keeps serving. In a deployment's log look for **New container is healthy** and **Rolling
   update completed**. The `--start-interval` option in that check needs Docker Engine 25 or
   newer: check with `docker version` on the server.
+- **Two health endpoints, on purpose:**
+
+  | Endpoint | 200 when | Used by |
+  | --- | --- | --- |
+  | `/api/v1/health/live` | MongoDB is connected (storage is reported but never fails it) | the container's health check: Traefik routes only to a healthy container |
+  | `/api/v1/health` | MongoDB is connected **and** storage started | people after a deploy (2.8), and `deploy.sh` on a bare server |
+
+  Traefik stops routing to an unhealthy container, so if the container check also required
+  storage, an expired Google Drive token would take the whole API offline: login and browsing
+  too, answering "no available server". With `/health/live`, a storage problem means uploads
+  fail but the site stays up, and `/api/v1/health` shows it.
 - **Advanced → Operations → Stop Grace Period:** leave it **empty** (Coolify then waits 30 s),
   or set at least `15`. On SIGTERM the API stops taking new requests and lets running ones
   finish for up to 10 s before it closes MongoDB and exits (`src/utils/gracefulShutdown.js`).
@@ -202,6 +213,13 @@ curl -s https://api.commons.signpak.tech/api/v1/health
 It must show `"status":"ok"`, `"database":"connected"` and `"storage":true`, over HTTPS with a
 valid certificate. A 503 with `"status":"degraded"` says which part is down; the logs say why.
 
+**Check `"storage":true` after every deploy.** The container's own check
+(`/api/v1/health/live`) passes without storage, so a deploy can succeed while storage is down.
+If `/api/v1/health` shows `"storage":false`, the Google Drive token is the usual cause (section
+4): uploads fail, but the site stays up (login, browsing, the admin pages). The API retries
+storage every 30 s while the health checks run, so a passing Google outage clears by itself; an
+expired or revoked token needs a new token and a restart.
+
 **Logs:** the application → **Logs**. The API writes one JSON line per event to stdout (pino).
 Each request line's `clientIp` must show real visitor addresses, not a Docker address such as
 `10.0.x.x` or `172.x.x.x`. If every request shows the same private address, `TRUST_PROXY` is not
@@ -237,7 +255,8 @@ switching to production, create a new refresh token and put it in `GOOGLE_OAUTH_
 
 If the token stops working, the API's logs (Coolify → the application → **Logs**; on a bare
 server `pm2 logs signpakcommons-api`) show this line, naming the driver and
-the variable to replace, and the health check reports `"storage":false`:
+the variable to replace, and `/api/v1/health` reports `"storage":false` (the container stays
+healthy and the rest of the site keeps working; only uploads and playback from Drive fail):
 
 ```text
 Google Drive refresh token expired or revoked; make sure the OAuth app is In production and create a new token

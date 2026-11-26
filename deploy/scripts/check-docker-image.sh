@@ -15,11 +15,12 @@ IMAGE="${1:?usage: check-docker-image.sh <image>}"
 RUN_ID="$$"
 API="signpak-api-check-${RUN_ID}"
 API_LOOPBACK="signpak-api-loopback-${RUN_ID}"
+API_NO_STORAGE="signpak-api-nostorage-${RUN_ID}"
 MONGO="signpak-mongo-check-${RUN_ID}"
 NETWORK="signpak-check-${RUN_ID}"
 
 cleanup() {
-  docker rm -f "$API" "$API_LOOPBACK" "$MONGO" > /dev/null 2>&1 || true
+  docker rm -f "$API" "$API_LOOPBACK" "$API_NO_STORAGE" "$MONGO" > /dev/null 2>&1 || true
   docker network rm "$NETWORK" > /dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -35,6 +36,27 @@ pass() {
 # whenever grep stops reading at its match before docker logs has written everything (SIGPIPE).
 contains() {
   grep -q -- "$2" <<< "$1"
+}
+# Waits up to 90 s for Docker to report the container healthy (the image's HEALTHCHECK).
+wait_healthy() {
+  local name="$1" status=""
+  for _ in $(seq 1 90); do
+    status="$(docker inspect -f '{{.State.Health.Status}}' "$name")"
+    [ "$status" = "healthy" ] && return 0
+    if [ "$(docker inspect -f '{{.State.Running}}' "$name")" != "true" ]; then
+      docker logs "$name" >&2 || true
+      fail "the container $name stopped"
+    fi
+    sleep 1
+  done
+  docker logs "$name" >&2 || true
+  fail "the container $name did not become healthy (last status: $status)"
+}
+# Prints "<status code> <body>" for a GET, without failing on a 503.
+http_get() {
+  local out
+  out="$(curl --silent --show-error -w '\n%{http_code}' "$1")"
+  echo "${out##*$'\n'} ${out%$'\n'*}"
 }
 
 # 1. Runs as the non-root node user.
@@ -94,26 +116,11 @@ ENV_ARGS=(
   -e BREVO_API_KEY=image-check-placeholder
   -e BREVO_SENDER_EMAIL=no-reply@signpak.tech
   -e WEB3FORMS_ACCESS_KEY=image-check-placeholder
-  -e STORAGE_DRIVER=local
   -e ARCHIVE_STORAGE_DRIVER=local
 )
 
-docker run -d --name "$API" "${NET_ARGS[@]}" "${ENV_ARGS[@]}" -e HOST=0.0.0.0 "$IMAGE" > /dev/null
-
-status=""
-for _ in $(seq 1 90); do
-  status="$(docker inspect -f '{{.State.Health.Status}}' "$API")"
-  [ "$status" = "healthy" ] && break
-  if [ "$(docker inspect -f '{{.State.Running}}' "$API")" != "true" ]; then
-    docker logs "$API" >&2 || true
-    fail "the API container stopped"
-  fi
-  sleep 1
-done
-if [ "$status" != "healthy" ]; then
-  docker logs "$API" >&2 || true
-  fail "the container did not become healthy (last status: $status)"
-fi
+docker run -d --name "$API" "${NET_ARGS[@]}" "${ENV_ARGS[@]}" -e STORAGE_DRIVER=local -e HOST=0.0.0.0 "$IMAGE" > /dev/null
+wait_healthy "$API"
 pass "Docker reports the container healthy"
 
 if [ -n "${MONGODB_URI:-}" ]; then
@@ -133,7 +140,7 @@ if contains "$logs" 'cannot reach the API'; then
 fi
 
 # 6. With HOST unset, the container listens on loopback, and the server says so at startup.
-docker run -d --name "$API_LOOPBACK" "${NET_ARGS[@]}" "${ENV_ARGS[@]}" -e PORT=5001 "$IMAGE" > /dev/null
+docker run -d --name "$API_LOOPBACK" "${NET_ARGS[@]}" "${ENV_ARGS[@]}" -e STORAGE_DRIVER=local -e PORT=5001 "$IMAGE" > /dev/null
 started=""
 for _ in $(seq 1 30); do
   loopback_logs="$(docker logs "$API_LOOPBACK" 2>&1)"
@@ -145,7 +152,40 @@ contains "$loopback_logs" 'HOST is 127.0.0.1 inside a container' || fail "no war
 docker rm -f "$API_LOOPBACK" > /dev/null
 pass "HOST unset in a container is warned about"
 
-# 7. SIGTERM drains and exits 0 well within Coolify's 30 s stop grace period.
+# 7. Storage failing (Google Drive with credentials that cannot work, as with an expired token):
+# the container is still healthy, because its check is /health/live, which needs only the
+# database. /health answers 503 with storage false, and the rest of the API keeps working.
+if [ -n "${MONGODB_URI:-}" ]; then
+  NO_STORAGE_PORT=(-e PORT=5002)
+else
+  NO_STORAGE_PORT=()
+fi
+docker run -d --name "$API_NO_STORAGE" "${NET_ARGS[@]}" "${ENV_ARGS[@]}" -e HOST=0.0.0.0 "${NO_STORAGE_PORT[@]}" \
+  -e STORAGE_DRIVER=gdrive \
+  -e GOOGLE_OAUTH_CLIENT_ID=image-check-placeholder \
+  -e GOOGLE_OAUTH_CLIENT_SECRET=image-check-placeholder \
+  -e GOOGLE_OAUTH_REFRESH_TOKEN=image-check-placeholder \
+  -e GOOGLE_DRIVE_FOLDER_ID=image-check-placeholder \
+  "$IMAGE" > /dev/null
+wait_healthy "$API_NO_STORAGE"
+if [ -n "${MONGODB_URI:-}" ]; then
+  NO_STORAGE_URL="http://127.0.0.1:5002"
+else
+  NO_STORAGE_URL="http://$(docker port "$API_NO_STORAGE" 5000/tcp | head -n 1)"
+fi
+live="$(http_get "${NO_STORAGE_URL}/api/v1/health/live")"
+health="$(http_get "${NO_STORAGE_URL}/api/v1/health")"
+categories="$(http_get "${NO_STORAGE_URL}/api/v1/categories")"
+contains "$live" '^200 .*"storage":false' || fail "with storage failing, /health/live should be 200 with storage false: $live"
+contains "$health" '^503 .*"storage":false' || fail "with storage failing, /health should be 503 with storage false: $health"
+contains "$categories" '^200 ' || fail "with storage failing, the API should still answer: $categories"
+no_storage_logs="$(docker logs "$API_NO_STORAGE" 2>&1)"
+contains "$no_storage_logs" 'Storage failed to initialize' || fail "no storage failure in the logs"
+docker rm -f "$API_NO_STORAGE" > /dev/null
+pass "storage failing: container healthy, /health/live $live"
+pass "storage failing: /health $health; /categories still ${categories%% *}"
+
+# 8. SIGTERM drains and exits 0 well within Coolify's 30 s stop grace period.
 docker stop -t 30 "$API" > /dev/null
 exit_code="$(docker inspect -f '{{.State.ExitCode}}' "$API")"
 [ "$exit_code" = "0" ] || { docker logs "$API" >&2 || true; fail "exit code $exit_code after docker stop"; }

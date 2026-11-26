@@ -30,12 +30,15 @@ RUN mkdir uploads && chown node:node uploads
 USER node
 EXPOSE 5000
 
-# /api/v1/health answers 200 only when MongoDB and storage are ready (503 otherwise), so a new
-# container that cannot work never replaces a healthy one in a rolling update. The slim image
-# has no curl or wget, so the check uses node. Coolify uses this check when its own
-# Healthcheck setting is off (deploy/README.md). --start-interval needs Docker Engine 25+.
+# /api/v1/health/live answers 503 only when MongoDB is down, so a new container without a
+# database never replaces a healthy one in a rolling update. A storage problem (usually the
+# Google Drive token) does not fail it: Traefik stops routing to an unhealthy container, which
+# would take login and browsing down with the uploads. /api/v1/health, which also needs storage,
+# is the check for people after a deploy (deploy/README.md). The slim image has no curl or wget,
+# so the check uses node. Coolify uses this check when its own Healthcheck setting is off.
+# --start-interval needs Docker Engine 25+.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --start-interval=2s --retries=3 \
-  CMD ["node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 5000) + '/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 5000) + '/api/v1/health/live').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 
 # Exec form: Node is PID 1 and receives SIGTERM itself, then drains for up to 10 s
 # (src/utils/gracefulShutdown.js). Coolify waits 30 s by default before forcing a stop.

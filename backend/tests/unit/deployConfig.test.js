@@ -275,3 +275,17 @@ test('D1: CI builds and checks the image, and deploys only from main, after ever
   // The deploy-files job shellchecks the image check script too.
   assert.match(block('deploy'), /shellcheck [^\n]*deploy\/scripts\/check-docker-image\.sh/)
 })
+
+test('D1: the image health check uses /health/live, so a storage failure never takes the API offline', () => {
+  // Traefik stops routing to an unhealthy container. /health fails on storage too (a Drive
+  // token, D3), which would take login and browsing down with the uploads.
+  const healthcheck = instructions.find((line) => line.startsWith('HEALTHCHECK '))
+  assert.match(healthcheck, /\/api\/v1\/health\/live'/)
+  assert.ok(!/\/api\/v1\/health'/.test(healthcheck), 'not /api/v1/health, which also fails on storage')
+  // A bare server's deploy.sh keeps checking the full /health.
+  assert.match(read('deploy/deploy.sh'), /\/api\/v1\/health\b(?!\/live)/)
+  const guide = read('deploy/README.md')
+  for (const text of ['/api/v1/health/live', '"storage":true', 'uploads fail', 'the site stays up']) {
+    assert.ok(guide.includes(text), `deploy/README.md is missing: ${text}`)
+  }
+})

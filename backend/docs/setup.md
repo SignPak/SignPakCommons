@@ -227,8 +227,10 @@ Google Drive refresh token expired or revoked; make sure the OAuth app is In pro
 
 with `driver` (`gdrive` or `gdrive-archive`) and `replace` (the env variable to update). It
 usually appears at startup, because storage initialization reads the root Drive folder; then
-`/api/v1/health` shows `"storage":false`. Fix: publish the app, create a new refresh token, put
-it in that variable, and restart.
+`/api/v1/health` shows `"storage":false` (and answers 503). The rest of the site keeps working:
+login and browsing do not need storage, and the container's own check (`/api/v1/health/live`)
+stays healthy, so only uploads and playback from Drive fail. Fix: publish the app, create a new
+refresh token, put it in that variable, and restart.
 
 ### Configure Google credentials
 

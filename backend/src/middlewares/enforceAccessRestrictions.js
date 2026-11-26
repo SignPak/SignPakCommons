@@ -10,7 +10,8 @@ export const enforceAccessRestrictions = asyncHandler(async (req, res, next) => 
   // buffer timeout and turn the health check into a slow 500; the health check exists to say
   // "the database is down", returns booleans only, and there are no restriction records to
   // enforce without a database, so it is answered directly. Every other route still checks.
-  if (req.path === '/health' && !isDbReady()) return next()
+  // The same goes for /health/live, the container's health check (Phase 11).
+  if ((req.path === '/health' || req.path === '/health/live') && !isDbReady()) return next()
   const deviceId = req.get('X-Device-ID')?.slice(0, 128)
   if (await accessRestrictionService.isRequestRestricted(req.ip, deviceId)) {
     throw forbidden('Access from this network or device has been restricted.')

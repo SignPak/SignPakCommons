@@ -30,6 +30,7 @@ const matrix = {
 
   // Public API surface
   'GET /api/v1/health': [OPEN, OPEN, OPEN, OPEN],
+  'GET /api/v1/health/live': [OPEN, OPEN, OPEN, OPEN],
   'GET /api/v1/docs.json': [OPEN, OPEN, OPEN, OPEN],
   'GET /api/v1/public/stats': [OPEN, OPEN, OPEN, OPEN],
 

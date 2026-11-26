@@ -16,7 +16,7 @@ import routes from './routes/index.js'
 import testHookRoutes from './routes/testHooks.js'
 import { logger } from './utils/logger.js'
 import { requestIdFrom } from './utils/requestId.js'
-import { requestLogProps, requestLogSerializer } from './utils/requestLog.js'
+import { isHealthCheck, requestLogProps, requestLogSerializer } from './utils/requestLog.js'
 import swaggerUi from 'swagger-ui-express'
 
 const app = express()
@@ -33,7 +33,7 @@ app.use(pinoHttp({
   logger,
   // S10: a caller's X-Request-Id is kept only if it is 1-64 letters, digits or hyphens.
   genReqId: (req, res) => { const id = requestIdFrom(req.headers['x-request-id']); res.setHeader('X-Request-Id', id); return id },
-  autoLogging: { ignore: (req) => req.url.endsWith('/health') },
+  autoLogging: { ignore: isHealthCheck },
   customProps: requestLogProps, // the visitor's IP (req.ip), not the proxy's socket address
   serializers: { req: requestLogSerializer }, // no email address in logged URLs (C3)
   customLogLevel: (req, res, error) => (error || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),

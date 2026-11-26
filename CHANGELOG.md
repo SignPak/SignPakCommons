@@ -22,6 +22,10 @@ Versions are `backend / frontend`. The e2e package stays at 1.0.0 (it is never r
 - CI: a "Docker image" job builds the image and checks it against a real MongoDB (non-root,
   contents, bcrypt, health, graceful stop), and "Deploy (Coolify)" calls the deploy webhook
   (POST) after every other job passes on `main`.
+- After verification: the image's health check is the new `GET /api/v1/health/live`, which
+  fails only without the database. A storage failure at startup (an expired Drive token, D3)
+  no longer stops the API: login and browsing keep working, uploads fail, and `/api/v1/health`
+  shows `"storage":false` and answers 503. The health checks retry storage.
 
 ## Phase 10: docs, SRS sync and final check (1.0.16 / 1.0.18), 2026-11-23
 

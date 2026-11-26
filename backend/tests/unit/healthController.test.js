@@ -23,3 +23,23 @@ test('C1: health exposes booleans and counters only', () => {
   assert.deepEqual(Object.keys(body).sort(), ['database', 'status', 'storage', 'uptime'])
   assert.equal(typeof body.storage, 'boolean')
 })
+
+// Phase 11 (D1, Coolify): the container's health check. Traefik stops routing to an unhealthy
+// container, so only the database may fail it; a storage problem (a Drive token, D3) breaks
+// uploads but must not take login and browsing offline.
+test('D1: liveness answers 503 only when the database is down; storage is reported but never fails it', async () => {
+  const { buildLiveHealth } = await import('../../src/controllers/healthController.js')
+  assert.deepEqual(buildLiveHealth({ database: true, storage: true, uptimeSeconds: 7.6 }), {
+    status: 200,
+    body: { status: 'ok', database: 'connected', storage: true, uptime: 8 },
+  })
+  assert.deepEqual(buildLiveHealth({ database: true, storage: false, uptimeSeconds: 2 }), {
+    status: 200,
+    body: { status: 'degraded', database: 'connected', storage: false, uptime: 2 },
+  })
+  for (const storage of [true, false]) {
+    const { status, body } = buildLiveHealth({ database: false, storage, uptimeSeconds: 1 })
+    assert.equal(status, 503, `storage=${storage}`)
+    assert.deepEqual(body, { status: 'degraded', database: 'disconnected', storage, uptime: 1 })
+  }
+})

@@ -8,9 +8,49 @@ import { logger } from '../utils/logger.js'
 
 let initPromise = null
 let storageReady = false
+let storagePromise = null
+let lastStorageAttempt = 0
+// The health checks retry a failed storage start at most this often (Docker probes every 30 s).
+let storageRetryIntervalMs = 30_000
 
 /** True once every configured storage driver has initialized. Reported by the health check. */
 export const isStorageReady = () => storageReady
+
+/**
+ * Phase 11 (D1): storage is started separately and its failure does not fail initialization.
+ * A Google Drive token that is expired or revoked at startup (D3) used to make every request
+ * answer 503, login and browsing included. Now only what needs storage fails (uploads and
+ * playback from Drive); /health reports storage: false and answers 503, and the health checks
+ * retry it (retryStorage below), so it recovers without a restart once Google answers again.
+ */
+function initStorage() {
+  if (!storagePromise) {
+    lastStorageAttempt = Date.now()
+    storagePromise = storageService.init()
+      .then(() => {
+        storageReady = true
+        logger.info('Storage initialized')
+      })
+      .catch((error) => {
+        logger.error({ err: error }, 'Storage failed to initialize: uploads and playback from storage fail until it does; the rest of the API works')
+      })
+      .finally(() => { storagePromise = null })
+  }
+  return storagePromise
+}
+
+/** Tries a failed storage start again, at most once per interval. Called by the health checks. */
+export function retryStorage() {
+  if (storageReady || !initPromise) return Promise.resolve()
+  if (!storagePromise && Date.now() - lastStorageAttempt < storageRetryIntervalMs) return Promise.resolve()
+  return initStorage()
+}
+
+/** Test seam (NODE_ENV=test only): how often the health checks may retry storage. */
+export function setStorageRetryIntervalForTests(ms) {
+  if (!env.isTest) throw new Error('setStorageRetryIntervalForTests() is only available when NODE_ENV=test.')
+  storageRetryIntervalMs = ms
+}
 
 export function initServices() {
   if (!initPromise) {
@@ -18,9 +58,9 @@ export function initServices() {
       logger.info('Connecting to MongoDB')
       if (!isDbReady()) await connectDb()
 
+      // Never throws: a storage failure is logged and reported by the health check.
       logger.info('Initializing storage')
-      await storageService.init()
-      storageReady = true
+      if (!storageReady) await initStorage()
 
       logger.info('Bootstrapping the admin account')
       await authService.ensureAdminFromEnv()
@@ -28,7 +68,7 @@ export function initServices() {
       // S9: give unfinished sign-ups from before the TTL index an expiry.
       await userRepo.backfillSignupExpiry()
 
-      logger.info('All services initialized')
+      logger.info({ storage: storageReady }, storageReady ? 'All services initialized' : 'Services initialized without storage')
     })().catch((error) => {
       initPromise = null
       logger.fatal({ err: error }, 'Failed to initialize background services')
@@ -50,15 +90,18 @@ export function serviceUnavailableBody(error, { isProduction }) {
   return { error: body }
 }
 
-const HEALTH_PATH = `${API_PREFIX}/health`
+// Both health checks: /health (database and storage) and /health/live (the container's check).
+const HEALTH_PATHS = new Set([`${API_PREFIX}/health`, `${API_PREFIX}/health/live`])
 
 export async function ensureServicesInitialized(req, res, next) {
   if (req.method === 'OPTIONS') return next()
-  // The health check reports a failed initialization itself (database and storage status), so
-  // it is let through instead of being replaced by the generic 503 below. It still starts the
-  // initialization, so a fresh process becomes healthy on its own.
-  if (req.method === 'GET' && req.path === HEALTH_PATH) {
+  // The health checks report a failed initialization themselves (database and storage
+  // status), so they are let through instead of being replaced by the generic 503 below. They
+  // still start the initialization, and retry a failed storage start, so a fresh process
+  // becomes healthy on its own.
+  if (req.method === 'GET' && HEALTH_PATHS.has(req.path)) {
     await initServices().catch(() => {})
+    await retryStorage()
     return next()
   }
   try {

@@ -21,13 +21,35 @@ export function buildHealth({ database, storage, uptimeSeconds }) {
   }
 }
 
+/**
+ * Phase 11 (D1): the container's health check (backend/Dockerfile). Traefik stops routing to an
+ * unhealthy container, so this fails (503) only when MongoDB is down: without the database
+ * nothing works. A storage failure (usually the Google Drive token, D3) is reported here as
+ * storage: false and status "degraded" but answers 200, so login and browsing stay up while
+ * uploads fail. /health keeps the strict answer for people and deploy.sh.
+ */
+export function buildLiveHealth({ database, storage, uptimeSeconds }) {
+  return {
+    status: database ? 200 : 503,
+    body: {
+      status: database && storage ? 'ok' : 'degraded',
+      database: database ? 'connected' : 'disconnected',
+      storage,
+      uptime: Math.round(uptimeSeconds),
+    },
+  }
+}
+
+const respond = (build) => (req, res) => {
+  const { status, body } = build({
+    database: isDbReady(),
+    storage: isStorageReady(),
+    uptimeSeconds: process.uptime(),
+  })
+  res.status(status).json({ data: body })
+}
+
 export const healthController = {
-  get(req, res) {
-    const { status, body } = buildHealth({
-      database: isDbReady(),
-      storage: isStorageReady(),
-      uptimeSeconds: process.uptime(),
-    })
-    res.status(status).json({ data: body })
-  },
+  get: respond(buildHealth),
+  live: respond(buildLiveHealth),
 }

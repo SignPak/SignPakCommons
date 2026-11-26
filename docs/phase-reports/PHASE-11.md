@@ -21,7 +21,7 @@ server; `deploy/README.md` now starts with Coolify. `docs/FIX-PLAN.md` has a not
 
 | # | Item | Status | Summary |
 | --- | --- | --- | --- |
-| 1 | `backend/Dockerfile`, `.dockerignore` | **Done** | Two stages on `node:22-bookworm-slim`; `npm ci --omit=dev`; `NODE_ENV=production`; runs as `node`; `EXPOSE 5000`; `HEALTHCHECK` on `/api/v1/health` (with `node`). `.dockerignore` is an allowlist. bcrypt loads from its prebuilt binary (no compiler needed): checked in the image. |
+| 1 | `backend/Dockerfile`, `.dockerignore` | **Done** | Two stages on `node:22-bookworm-slim`; `npm ci --omit=dev`; `NODE_ENV=production`; runs as `node`; `EXPOSE 5000`; `HEALTHCHECK` with `node` (on `/api/v1/health/live` since the fix after verification). `.dockerignore` is an allowlist. bcrypt loads from its prebuilt binary (no compiler needed): checked in the image. |
 | 2 | `HOST=0.0.0.0` under Coolify | **Done** | Documented in `deploy/README.md`, `setup.md` and `.env.production.example`, with the condition: no host port published. The 127.0.0.1 default stays for a bare server. The server now warns when it runs in a container on loopback. |
 | 3 | `REQUEST_TIMEOUT_MS` | **Done** | Default 900000 (15 min), allowed 60000–3600000; sets `server.requestTimeout` (`src/utils/httpServer.js`). `headersTimeout` and `keepAliveTimeout` unchanged. In `env.js`, both `.env` examples and `setup.md`. |
 | 4 | Graceful shutdown vs. the stop grace period | **Fits; no change** | The API drains for up to 10 s. Coolify's Stop Grace Period is 30 s when left empty. Documented; the CI image check runs `docker stop` and requires exit 0 and "Shutdown complete". |
@@ -39,7 +39,7 @@ Found in Coolify's docs and source while planning, and approved with the plan:
    needs only the `deploy` permission, and Settings → Advanced → **API Access** must be on.
 2. **Coolify's own HTTP health check needs `curl` or `wget` inside the image**, and the slim
    image has neither. Instead of adding curl, the image has its own `HEALTHCHECK` on
-   `/api/v1/health` (run with `node`), and Coolify's Healthcheck setting stays **off**: Coolify
+   `/api/v1/health` (run with `node`; `/api/v1/health/live` after verification), and Coolify's Healthcheck setting stays **off**: Coolify
    then uses the image's check, also for rolling updates.
 3. **The stop grace period needs no change.** Coolify's default is 30 s (Advanced →
    Operations → Stop Grace Period, empty); the drain is 10 s. Plain `docker stop` waits only
@@ -208,3 +208,89 @@ cd backend && node --test tests/unit/httpServer.test.js tests/integration/reques
 - Other containers on Coolify's Docker network can reach port 5000 directly; nothing untrusted
   should run on that server.
 - `HEALTHCHECK --start-interval` needs Docker Engine 25+.
+
+## Fixes after verification
+
+### The container health check no longer takes the API offline for a storage problem
+
+**What you asked for:** Traefik stops routing to an unhealthy container. The image's
+`HEALTHCHECK` used `/api/v1/health`, which fails when storage fails, so a Google Drive token
+that fails at startup (D3) would make the whole API answer "no available server". You asked
+for `GET /api/v1/health/live`, which fails only without the database, as the image's check;
+`/api/v1/health` stays as it was.
+
+**One more change was needed for that to work, found while writing the tests.** A storage
+failure at startup also failed `initServices()`, and `ensureServicesInitialized` then answered
+every request except `/health` with `503 SERVICE_UNAVAILABLE`. With only the new endpoint,
+Traefik would have kept routing, but login and browsing would still have failed. The new test
+"with storage failing, login and browsing still work" showed it: before the change, login got
+`503 {"code":"SERVICE_UNAVAILABLE",…,"detail":"invalid_grant"}`.
+
+**What changed:**
+- **`GET /api/v1/health/live`** (`healthController.live`, `buildLiveHealth`): `200` with
+  `{ status: "ok"|"degraded", database, storage, uptime }` while MongoDB is connected, `503`
+  only when it isn't. Storage is reported and makes `status` `degraded`, but never fails it.
+  - Like `/health`, it is let through `ensureServicesInitialized` (it starts and retries
+    initialization) and through the access-restriction check when the database is down.
+    Without that second bypass it answered `500` after Mongoose's 10 s buffer timeout, which
+    the database-down test caught.
+  - It is left out of the request log, with `/health` (`isHealthCheck` in
+    `src/utils/requestLog.js`, which also ignores a query string now).
+- **Storage no longer fails initialization** (`src/services/initialization.js`). The database,
+  the admin bootstrap and the sign-up backfill must still succeed. A storage failure is logged
+  ("Storage failed to initialize: uploads and playback from storage fail until it does; the
+  rest of the API works") and reported as `storage: false`. The health checks retry a failed
+  storage start at most every 30 s, so it recovers on its own once Google answers again.
+- **The Dockerfile `HEALTHCHECK`** uses `/api/v1/health/live`. `/api/v1/health` is unchanged
+  (`200` only with database and storage) and is still what `deploy.sh` checks.
+- **Docs:** the OpenAPI spec, `API.md`, `ARCHITECTURE.md`, `MODULE-REFERENCE.md` and
+  `setup.md`. In `deploy/README.md`, 2.4 explains both endpoints; 2.8 says to check
+  `"storage":true` after every deploy (usually the Drive token if not: uploads fail, but the
+  site stays up); section 4 says the same.
+
+**Tests (failing first; every one failed before the change):**
+
+| ID | Level | Test |
+| --- | --- | --- |
+| U-220 | unit | `buildLiveHealth`: database down → 503 (with storage up or down); storage down → 200 with `storage: false` and `degraded`; both up → 200 `ok` |
+| U-221 | unit | both health paths, with or without a query string, are left out of the request log; nothing else is |
+| U-222 | unit | the image's `HEALTHCHECK` uses `/health/live` and not `/health`; `deploy.sh` still checks `/health`; the README explains both |
+| I-164 | integration | the production app with an unparseable database URI: `/health/live` → 503, `database: disconnected` |
+| I-165 | integration | the app with a Drive whose startup check fails like an expired token: `/health/live` → 200 with `storage: false`, `/health` → 503 |
+| I-166 | integration | same app: admin login, the session and `GET /categories` work |
+| I-167 | integration | the Drive works again: the next health check retries storage and `/health` → 200 `ok` |
+| S-01 | security | the access matrix has `GET /api/v1/health/live` as public for every role (one more per-route case, 82 in all) |
+| — | system | `check-docker-image.sh` step 7: a container with `STORAGE_DRIVER=gdrive` and placeholder OAuth credentials becomes **healthy**; `/health/live` → `200` with `storage: false`, `/health` → `503` at the same time, `/categories` → `200`, and the log has "Storage failed to initialize" |
+
+The new image check run against the image built from the previous commit (`64d8b74`) fails
+as expected: "the container … did not become healthy (last status: starting)". Under Coolify,
+that container would never have received traffic.
+
+**Gate after the fix:**
+
+| Gate | Result |
+| --- | --- |
+| Backend `test:unit` | 222 passed, 0 failed |
+| Backend `test:integration` | 167 passed, 0 failed |
+| Backend `test:security` | 82 passed, 0 failed |
+| Backend `test:coverage` | 471 passed; 94.78% lines, 90.42% branches; floors unchanged and met |
+| Image check, locally | every step passed, including the new storage-failing step: `/health/live 200 {"status":"degraded","database":"connected","storage":false,…}`, `/health 503 …`, `/categories 200` |
+| shellcheck | clean |
+
+| Gate | Result |
+| --- | --- |
+| Frontend `lint`, `test`, `test:coverage`, `build`, `check:bundle` | clean; 218 passed; 55.19% lines (floors met); main chunk 268.95 kB |
+| E2E | 87 passed, 6 skipped (Chromium-only by design) |
+| `npm audit --omit=dev --audit-level=high` | backend 0, frontend 0, e2e 0 |
+
+The CI runs for the final commit are in the hand-off message and a PR comment.
+
+**Two small script fixes along the way:** a `wait_healthy` helper replaces the inline wait loop
+(now used twice), and `http_get` reads the status code from curl's output instead of a temp
+file. With path conversion off for Git Bash, the temp file's path wasn't converted for Windows
+curl, so the body came back empty there.
+
+**Not changed:** a Drive call that hangs (rather than fails) at startup still holds up
+initialization, as before this phase. This is unrelated to the health check.
+
+**Versions:** still backend 1.0.17. This is a fix inside Phase 11, so no second bump.

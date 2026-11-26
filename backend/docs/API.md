@@ -91,7 +91,8 @@ All paths below are relative to `/api/v1`.
 
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
-| GET | `/health` | Public | Report uptime, database connectivity and whether storage initialized. `200` with `status: ok` only when both are up; otherwise `503` with `status: degraded`. Booleans only, and it answers even when initialization failed. |
+| GET | `/health` | Public | Report uptime, database connectivity and whether storage initialized. `200` with `status: ok` only when both are up; otherwise `503` with `status: degraded`. Booleans only, and it answers even when initialization failed. The check for people after a deploy, and for `deploy/deploy.sh`. |
+| GET | `/health/live` | Public | The container's health check (Docker `HEALTHCHECK`, used by Coolify and Traefik). Same body; `503` only when the database is disconnected. A storage failure gives `200` with `status: degraded` and `storage: false`, so the site stays up while uploads fail. Retries initialization like `/health`; not written to the request log. |
 | POST | `/auth/signup` | Public | Create an unverified contributor and send an email code. |
 | POST | `/auth/login` | Public | Authenticate and set the session cookie. |
 | POST | `/auth/verify-email` | Public | Verify an email code with the sign-up password and return a short-lived consent token. |

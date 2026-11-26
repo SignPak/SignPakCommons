@@ -16,6 +16,7 @@ import videoRoutes from './videoRoutes.js'
 const router = Router()
 
 router.get('/health', healthController.get)
+router.get('/health/live', healthController.live)
 
 router.get('/docs.json', (req, res) => res.json(openapi))
 // Kept out of production: swagger-ui-express serves bundled static assets from disk, and

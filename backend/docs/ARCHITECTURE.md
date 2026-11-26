@@ -31,11 +31,17 @@ Initialization is idempotent and shared between startup and requests:
 and ensures the configured admin exists. It then syncs the admin list (S7): verified accounts
 on `ADMIN_EMAIL`/`ADMIN_EMAILS` become admins and other admins go back to normal accounts,
 never the last active one. The app-level initialization middleware awaits it
-before processing a request, and returns `503 SERVICE_UNAVAILABLE` if it fails. In production
+before processing a request, and returns `503 SERVICE_UNAVAILABLE` if it fails. Storage is
+the exception (Phase 11): a storage driver that fails to start, typically an expired Google
+Drive token, is logged and reported as `storage: false`, but initialization carries on, so
+login and browsing keep working and only uploads and playback from storage fail. The health
+checks retry a failed storage start at most every 30 seconds. In production
 that body is generic; the underlying error is only included as `detail` outside production,
-because it can contain hosts or credentials (checklist S5). `GET /api/v1/health` is let
-through even when initialization fails, so it can report `database` and `storage` status
-(booleans only) instead of the generic 503. For Google Drive, "storage initialized" includes
+because it can contain hosts or credentials (checklist S5). `GET /api/v1/health` and
+`GET /api/v1/health/live` are let through even when initialization fails, so they can report
+`database` and `storage` status (booleans only) instead of the generic 503. `/health` answers
+200 only with both; `/health/live`, the container's health check, fails only without the
+database, so Traefik never stops routing to the API because of storage. For Google Drive, "storage initialized" includes
 reading the root folder through the API, so `storage: true` means the OAuth token worked at
 startup; a token revoked afterwards shows up on the next upload (logged as `invalid_grant`).
 
